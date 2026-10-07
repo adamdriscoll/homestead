@@ -1,0 +1,25 @@
+name: CI
+on:
+  push:
+  pull_request:
+jobs:
+  foundation:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 10.0.x
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: src/Homestead/package-lock.json
+      - run: dotnet restore
+      - run: dotnet build --no-restore --configuration Release
+      - run: dotnet test --no-build --configuration Release
+      - run: dotnet format --verify-no-changes --no-restore
+      - run: dotnet tool restore
+      - run: dotnet ef migrations has-pending-model-changes --project src/Homestead --no-build --configuration Release
+      - run: docker build -f deploy/Dockerfile -t homestead-smoke .
+      - run: node tests/smoke/docker-smoke.mjs

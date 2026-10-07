@@ -1,0 +1,19 @@
+@page "/account/login"
+@model Homestead.Pages.Account.LoginModel
+@{ ViewData["Title"] = "Sign in"; }
+<section class="max-w-lg mx-auto space-y-6">
+    <h1 class="text-3xl font-semibold">Welcome back</h1>
+    <p>Sign in to your Homestead.</p>
+    <form method="post" class="space-y-4">
+        <input type="hidden" asp-for="ReturnUrl" />
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" role="alert" class="text-error"></div>
+        }
+        <fieldset class="fieldset">
+            <label asp-for="Input.Email"></label><input asp-for="Input.Email" autocomplete="username" class="input w-full" />
+            <label asp-for="Input.Password"></label><input asp-for="Input.Password" autocomplete="current-password" class="input w-full" />
+        </fieldset>
+        <button type="submit" class="btn btn-primary w-full">Sign in</button>
+    </form>
+</section>

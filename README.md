@@ -6,7 +6,38 @@ Homestead v2 is a personal publishing platform for microblogs, articles, reviews
 guides, and photo galleries. The planned application uses ASP.NET Core on .NET 10,
 Razor Pages, and SQLite, with a static public website regenerated on publication.
 
-The project is currently in planning; application implementation has not started.
+Phase 1 is implemented: a .NET 10 Razor Pages application with SQLite, secure
+single-administrator setup, sign-in/sign-out, a responsive dashboard, site settings,
+and a non-root Docker deployment. The dashboard has placeholders for all five post
+types. Authoring, media uploads, and static publication start in Phase 2.
+
+## Run locally
+
+Install the .NET 10 SDK and Node.js 24. From the repository root in PowerShell:
+
+```powershell
+$env:ASPNETCORE_ENVIRONMENT = 'Development'
+$env:HOMESTEAD_BASE_URL = 'http://localhost:5080'
+$env:HOMESTEAD_DATA_PATH = Join-Path (Get-Location) 'data'
+$env:HOMESTEAD_SETUP_TOKEN = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+dotnet restore
+dotnet build
+dotnet test --no-build
+dotnet run --project src/Homestead --no-launch-profile --urls http://localhost:5080
+```
+
+Open [first-run setup](http://localhost:5080/setup) and enter the generated secret
+(inspect `$env:HOMESTEAD_SETUP_TOKEN` in your local terminal), email, and a strong
+password. Sign in, then open the dashboard and settings. Remove the setup token
+from your environment after setup; future startups use the saved administrator.
+
+The build compiles Tailwind/daisyUI CSS locally; there is no frontend server or
+Node.js dependency in the production runtime. SQLite and Data Protection keys
+live in the configured data directory, outside the public assets.
+
+See [deployment instructions](docs/deploy.md) for Linux/Docker Compose,
+[contributing](docs/contributing.md) for quality checks, and
+[Phase 1 decisions and verification](docs/phase-1.md) for scope and acceptance evidence.
 
 ## Planning documents
 

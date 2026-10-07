@@ -1,0 +1,21 @@
+@page "/setup"
+@model Homestead.Pages.Setup.IndexModel
+@{ ViewData["Title"] = "First-run setup"; }
+<section class="max-w-lg mx-auto space-y-6">
+    <h1 class="text-3xl font-semibold">Make yourself at home</h1>
+    <p>Create your one administrator account. Enter the setup secret configured on your server.</p>
+    <form method="post" class="space-y-4">
+        @if (!ViewData.ModelState.IsValid)
+        {
+            <div asp-validation-summary="All" role="alert" class="text-error"></div>
+        }
+        <fieldset class="fieldset">
+            <label asp-for="Input.Token"></label><input asp-for="Input.Token" type="password" autocomplete="off" class="input w-full" />
+            <label asp-for="Input.Email"></label><input asp-for="Input.Email" autocomplete="username" class="input w-full" />
+            <label asp-for="Input.Password"></label><input asp-for="Input.Password" autocomplete="new-password" class="input w-full" />
+            <p>Use at least 12 characters, including an uppercase letter, lowercase letter, number, and symbol.</p>
+            <label asp-for="Input.ConfirmPassword"></label><input asp-for="Input.ConfirmPassword" autocomplete="new-password" class="input w-full" />
+        </fieldset>
+        <button type="submit" class="btn btn-primary w-full">Create administrator</button>
+    </form>
+</section>

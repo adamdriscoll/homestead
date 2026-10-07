@@ -1,0 +1,4 @@
+{$HOMESTEAD_DOMAIN} {
+    encode zstd gzip
+    reverse_proxy homestead:8080
+}

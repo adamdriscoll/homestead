@@ -1,0 +1,49 @@
+name: homestead
+services:
+  homestead:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    restart: unless-stopped
+    environment:
+      HOMESTEAD_BASE_URL: https://${HOMESTEAD_DOMAIN:?Set HOMESTEAD_DOMAIN in .env}
+      HOMESTEAD_SETUP_TOKEN: ${HOMESTEAD_SETUP_TOKEN:-}
+      HOMESTEAD_TRUSTED_PROXIES: 172.30.0.3
+      AllowedHosts: ${HOMESTEAD_DOMAIN};localhost
+    volumes:
+      - homestead_data:/data
+    networks:
+      homestead:
+        ipv4_address: 172.30.0.2
+    security_opt:
+      - no-new-privileges:true
+    cap_drop: [ALL]
+
+  caddy:
+    image: caddy:2.10.2-alpine
+    restart: unless-stopped
+    environment:
+      HOMESTEAD_DOMAIN: ${HOMESTEAD_DOMAIN}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      homestead:
+        ipv4_address: 172.30.0.3
+    depends_on: [homestead]
+
+networks:
+  homestead:
+    ipam:
+      config:
+        - subnet: 172.30.0.0/24
+
+volumes:
+  homestead_data:
+  caddy_data:
+  caddy_config:

@@ -1,0 +1,24 @@
+@page "/admin"
+@model Homestead.Pages.Admin.IndexModel
+@{ ViewData["Title"] = "Dashboard"; }
+<div class="space-y-8">
+    <div class="space-y-2"><p class="text-sm">YOUR HOMESTEAD</p><h1 class="text-3xl font-semibold">@Model.SiteTitle</h1><p>A little space for everything you want to share.</p></div>
+    <div class="alert" role="status">Your foundation is ready. Post editors and public publishing are coming in later phases.</div>
+    <section aria-labelledby="create-title" class="space-y-4">
+        <h2 id="create-title" class="text-xl font-semibold">Create something</h2>
+        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            @foreach (var type in Enum.GetValues<Homestead.Data.Entities.PostType>())
+            {
+                <article class="card border border-base-300">
+                    <div class="card-body">
+                        <h3 class="card-title">@type</h3>
+                        <p>@(type switch { Homestead.Data.Entities.PostType.Microblog => "A thought, a moment, a photo.", Homestead.Data.Entities.PostType.Article => "Room for a longer story.", Homestead.Data.Entities.PostType.Review => "Share what you think.", Homestead.Data.Entities.PostType.Guide => "Show how it is done.", _ => "A collection of moments." })</p>
+                        <button class="btn" type="button" disabled>Create @type.ToString().ToLowerInvariant() · coming soon</button>
+                    </div>
+                </article>
+            }
+        </div>
+    </section>
+    <section class="space-y-2"><h2 class="text-xl font-semibold">Recent posts</h2><p>Your posts will appear here when authoring is available.</p></section>
+    <section class="space-y-2"><h2 class="text-xl font-semibold">Public site</h2><p>No public generation yet. Static generation arrives in Phase 2.</p></section>
+</div>

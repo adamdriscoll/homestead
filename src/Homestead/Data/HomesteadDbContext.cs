@@ -1,0 +1,131 @@
+using Homestead.Data.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
+
+namespace Homestead.Data;
+
+public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> options)
+    : IdentityUserContext<ApplicationUser>(options)
+{
+    public DbSet<Post> Posts => Set<Post>();
+    public DbSet<PostDraft> PostDrafts => Set<PostDraft>();
+    public DbSet<PostPublishedSnapshot> PublishedSnapshots => Set<PostPublishedSnapshot>();
+    public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
+    public DbSet<PostMedia> PostMedia => Set<PostMedia>();
+    public DbSet<ReviewDetails> Reviews => Set<ReviewDetails>();
+    public DbSet<GuideStep> GuideSteps => Set<GuideStep>();
+    public DbSet<Tag> Tags => Set<Tag>();
+    public DbSet<PostTag> PostTags => Set<PostTag>();
+    public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
+    public DbSet<SiteGeneration> SiteGenerations => Set<SiteGeneration>();
+
+    protected override void ConfigureConventions(ModelConfigurationBuilder builder)
+        => builder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
+
+    protected override void OnModelCreating(ModelBuilder builder)
+    {
+        base.OnModelCreating(builder);
+        builder.Entity<ApplicationUser>(e =>
+        {
+            e.HasIndex(x => x.AdminSlot).IsUnique();
+            e.ToTable("AspNetUsers", t => t.HasCheckConstraint("CK_User_AdminSlot", "AdminSlot = 1"));
+        });
+        builder.Entity<Post>(e =>
+        {
+            e.Property(x => x.Slug).UseCollation("NOCASE").HasMaxLength(200);
+            e.HasIndex(x => x.Slug).IsUnique();
+            e.ToTable("Posts", t =>
+            {
+                t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 4");
+                t.HasCheckConstraint("CK_Post_Status", "Status BETWEEN 0 AND 3");
+                t.HasCheckConstraint("CK_Post_PublishedSlug", "FirstPublishedAtUtc IS NULL OR (Slug IS NOT NULL AND length(trim(Slug)) > 0)");
+                t.HasTrigger("TR_Post_LockedPublication");
+            });
+        });
+        builder.Entity<PostDraft>(e =>
+        {
+            e.HasKey(x => x.PostId);
+            e.HasOne(x => x.Post).WithOne(x => x.Draft).HasForeignKey<PostDraft>(x => x.PostId);
+            e.Property(x => x.Version).IsConcurrencyToken();
+        });
+        builder.Entity<PostPublishedSnapshot>(e =>
+        {
+            e.HasKey(x => x.PostId);
+            e.HasOne(x => x.Post).WithOne(x => x.PublishedSnapshot).HasForeignKey<PostPublishedSnapshot>(x => x.PostId);
+        });
+        builder.Entity<ReviewDetails>(e =>
+        {
+            e.HasKey(x => x.PostId);
+            e.HasOne(x => x.Post).WithOne(x => x.Review).HasForeignKey<ReviewDetails>(x => x.PostId);
+            e.ToTable("Reviews", t => t.HasCheckConstraint("CK_Review_Rating", "Rating IS NULL OR Rating BETWEEN 1 AND 5"));
+        });
+        builder.Entity<GuideStep>(e =>
+        {
+            e.HasAlternateKey(x => new { x.Id, x.PostId });
+            e.HasOne(x => x.Post).WithMany(x => x.Steps).HasForeignKey(x => x.PostId);
+            e.HasIndex(x => new { x.PostId, x.Order }).IsUnique();
+            e.ToTable("GuideSteps", t => t.HasCheckConstraint("CK_Step_Order", "\"Order\" >= 0"));
+        });
+        builder.Entity<MediaAsset>().HasIndex(x => x.StoredFilename).IsUnique();
+        builder.Entity<PostMedia>(e =>
+        {
+            e.HasOne(x => x.Post).WithMany(x => x.Media).HasForeignKey(x => x.PostId);
+            e.HasOne(x => x.MediaAsset).WithMany().HasForeignKey(x => x.MediaAssetId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(x => x.GuideStep).WithMany().HasForeignKey(x => new { x.GuideStepId, x.PostId })
+                .HasPrincipalKey(x => new { x.Id, x.PostId }).OnDelete(DeleteBehavior.Restrict);
+            e.HasIndex(x => new { x.PostId, x.Role, x.SortOrder }).IsUnique();
+            e.ToTable("PostMedia", t =>
+            {
+                t.HasCheckConstraint("CK_Media_Role", "Role BETWEEN 0 AND 3");
+                t.HasCheckConstraint("CK_Media_Order", "SortOrder >= 0");
+            });
+        });
+        builder.Entity<Tag>(e =>
+        {
+            e.Property(x => x.Slug).UseCollation("NOCASE");
+            e.Property(x => x.NormalizedName).UseCollation("NOCASE");
+            e.HasIndex(x => x.Slug).IsUnique();
+            e.HasIndex(x => x.NormalizedName).IsUnique();
+        });
+        builder.Entity<PostTag>(e =>
+        {
+            e.HasKey(x => new { x.PostId, x.TagId });
+            e.HasOne(x => x.Post).WithMany(x => x.Tags).HasForeignKey(x => x.PostId);
+            e.HasOne(x => x.Tag).WithMany().HasForeignKey(x => x.TagId);
+        });
+        builder.Entity<SiteSettings>(e =>
+        {
+            e.ToTable("SiteSettings", t => t.HasCheckConstraint("CK_Settings_Singleton", "Id = 1"));
+            e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.AvatarMediaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.LogoMediaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.HeaderMediaId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private void NormalizeTags()
+    {
+        foreach (var entry in ChangeTracker.Entries<Tag>().Where(x => x.State is EntityState.Added or EntityState.Modified))
+        {
+            entry.Entity.Name = entry.Entity.Name.Trim().Normalize();
+            entry.Entity.NormalizedName = entry.Entity.Name.ToUpperInvariant();
+            entry.Entity.Slug = entry.Entity.Slug.Trim().Normalize().ToLowerInvariant();
+        }
+    }
+
+    public override int SaveChanges(bool acceptAllChangesOnSuccess)
+    {
+        NormalizeTags();
+        return base.SaveChanges(acceptAllChangesOnSuccess);
+    }
+
+    public override Task<int> SaveChangesAsync(bool acceptAllChangesOnSuccess, CancellationToken cancellationToken = default)
+    {
+        NormalizeTags();
+        return base.SaveChangesAsync(acceptAllChangesOnSuccess, cancellationToken);
+    }
+}
+
+public sealed class UtcDateTimeConverter() : ValueConverter<DateTime, DateTime>(
+    value => value.Kind == DateTimeKind.Unspecified ? DateTime.SpecifyKind(value, DateTimeKind.Utc) : value.ToUniversalTime(),
+    value => DateTime.SpecifyKind(value, DateTimeKind.Utc));

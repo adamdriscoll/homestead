@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@ViewData["Title"] · Homestead</title>
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+</head>
+<body>
+    <a href="#main" class="btn absolute -top-20 focus:top-2 left-2">Skip to content</a>
+    <header class="border-b border-base-300">
+        <div class="max-w-5xl mx-auto p-4 flex flex-wrap items-center justify-between gap-4">
+            <a href="/admin" class="text-xl font-semibold">Homestead</a>
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <nav aria-label="Administration" class="flex flex-wrap items-center gap-2">
+                    <a class="btn" asp-page="/Admin/Index">Dashboard</a>
+                    <a class="btn" asp-page="/Admin/Settings">Settings</a>
+                    <form method="post" asp-page="/Account/Logout"><button class="btn" type="submit">Sign out</button></form>
+                </nav>
+            }
+        </div>
+    </header>
+    <main id="main" class="max-w-5xl mx-auto px-4 py-8">@RenderBody()</main>
+    <footer class="max-w-5xl mx-auto p-4 text-sm border-t border-base-300">Your home on the internet.</footer>
+</body>
+</html>

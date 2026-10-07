@@ -1,0 +1,88 @@
+using System.Net;
+using System.Text.RegularExpressions;
+using Homestead.Data;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+
+namespace Homestead.Tests;
+
+public sealed class TemporaryData : IDisposable
+{
+    public string Path { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "homestead-tests", Guid.NewGuid().ToString("N"));
+    public void Dispose()
+    {
+        SqliteConnection.ClearAllPools();
+        if (Directory.Exists(Path)) Directory.Delete(Path, recursive: true);
+    }
+}
+
+public sealed class TestApplication(string dataPath, string environment = "Development", string? setupToken = TestApplication.SetupToken)
+    : WebApplicationFactory<Program>
+{
+    public const string SetupToken = "test-only-bootstrap-secret-32-characters";
+    public const string Password = "Test-only-password-123!";
+    public const string Email = "owner@example.test";
+
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.UseEnvironment(environment);
+        builder.ConfigureServices(services => services.AddSingleton<IStartupFilter, TestConnectionFilter>());
+        builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["HOMESTEAD_DATA_PATH"] = dataPath,
+            ["HOMESTEAD_BASE_URL"] = "https://example.test",
+            ["HOMESTEAD_SETUP_TOKEN"] = setupToken,
+            ["HOMESTEAD_TRUSTED_PROXIES"] = "192.0.2.10"
+        }));
+    }
+
+    public HttpClient Client(bool handleCookies = true) => CreateClient(new WebApplicationFactoryClientOptions
+    { AllowAutoRedirect = false, HandleCookies = handleCookies, BaseAddress = new Uri("https://localhost") });
+
+    public async Task WithDatabase(Func<HomesteadDbContext, Task> action)
+    {
+        await using var scope = Services.CreateAsyncScope();
+        await action(scope.ServiceProvider.GetRequiredService<HomesteadDbContext>());
+    }
+
+    public static async Task<HttpResponseMessage> Submit(HttpClient client, string path, Dictionary<string, string> fields, string? postPath = null)
+    {
+        using var page = await client.GetAsync(path);
+        page.EnsureSuccessStatusCode();
+        var html = await page.Content.ReadAsStringAsync();
+        var match = Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"");
+        Assert.True(match.Success, "The form must include an antiforgery token.");
+        fields["__RequestVerificationToken"] = WebUtility.HtmlDecode(match.Groups[1].Value);
+        return await client.PostAsync(postPath ?? path, new FormUrlEncodedContent(fields));
+    }
+
+    public static Task<HttpResponseMessage> Setup(HttpClient client, string? token = SetupToken) => Submit(client, "/setup", new()
+    {
+        ["Input.Token"] = token ?? "",
+        ["Input.Email"] = Email,
+        ["Input.Password"] = Password,
+        ["Input.ConfirmPassword"] = Password
+    });
+
+    public static Task<HttpResponseMessage> Login(HttpClient client, string password = Password, string returnUrl = "/admin") => Submit(client, "/account/login", new()
+    { ["Input.Email"] = Email, ["Input.Password"] = password, ["ReturnUrl"] = returnUrl });
+}
+
+public sealed class TestConnectionFilter : IStartupFilter
+{
+    public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+    {
+        app.Use(async (context, continuation) =>
+        {
+            // TestServer has no socket address by default. Supply an untrusted peer like real Kestrel.
+            context.Connection.RemoteIpAddress = IPAddress.Parse("203.0.113.40");
+            await continuation(context);
+        });
+        next(app);
+    };
+}
