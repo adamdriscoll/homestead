@@ -13,16 +13,14 @@
                     <div class="card-body">
                         <h3 class="card-title">@type</h3>
                         <p>@(type switch { Homestead.Data.Entities.PostType.Microblog => "A thought, a moment, a photo.", Homestead.Data.Entities.PostType.Article => "Room for a longer story.", Homestead.Data.Entities.PostType.Review => "Share what you think.", Homestead.Data.Entities.PostType.Guide => "Show how it is done.", _ => "A collection of moments." })</p>
-                        @if (type is Homestead.Data.Entities.PostType.Article or Homestead.Data.Entities.PostType.Microblog)
-                        { <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New"><input type="hidden" name="type" value="@type" /><button class="btn">@(type == Homestead.Data.Entities.PostType.Microblog ? "Create note" : "Create article")</button></form> }
-                        else { <button class="btn" type="button" disabled>Create @type.ToString().ToLowerInvariant() · coming soon</button> }
+                        <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New"><input type="hidden" name="type" value="@type" /><button class="btn">Create @(type == Homestead.Data.Entities.PostType.Microblog ? "note" : type.ToString().ToLowerInvariant())</button></form>
                     </div>
                 </article>
             }
         </div>
     </section>
     <section class="space-y-2"><h2 class="text-xl font-semibold">Recent posts</h2>
-        @foreach (var post in Model.RecentPosts) { <p><a class="underline" href="/admin/posts/@post.Id/edit">@(post.Draft?.Title ?? "Untitled article")</a> · @post.Status</p> }
+        @foreach (var post in Model.RecentPosts) { <p><a class="underline" href="/admin/posts/@post.Id/edit">@(post.Review?.Subject is { Length: > 0 } subject ? subject : string.IsNullOrWhiteSpace(post.Draft?.Title) ? $"Untitled {(post.Type == Homestead.Data.Entities.PostType.Microblog ? "note" : post.Type.ToString().ToLowerInvariant())}" : post.Draft.Title)</a> · @post.Status</p> }
         <a class="btn" href="/admin/posts">All posts</a>
     </section>
     <section class="space-y-2"><h2 class="text-xl font-semibold">Public site</h2>

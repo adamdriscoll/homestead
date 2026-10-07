@@ -120,6 +120,43 @@ try {
   const noteFields = { 'Input.Title': 'A porch note', 'Input.BodyMarkdown': 'A quiet afternoon & a cup of tea.',
     'Input.Tags': 'Home, Moments', 'Input.Version': '0' };
   assert.equal((await form(noteEditor, noteEditor + '?handler=Publish', noteFields)).status, 302);
+  for (const [type, slug, fields] of [
+    ['Review', 'compose-coffee', { 'Input.Subject': 'Compose coffee', 'Input.Rating': '5', 'Input.BodyMarkdown': 'A **warm** cup.', 'Input.ExternalUrl': 'https://example.test/coffee' }],
+    ['Guide', 'compose-guide', { 'Input.Title': 'Compose guide', 'Input.BodyMarkdown': 'Make yourself at home.',
+      'Input.Steps[0].Id': '85895aa3-2ee7-4698-acee-14554be33490', 'Input.Steps[0].BodyMarkdown': 'Open the **door**.',
+      'Input.Steps[1].Id': 'fa194c9a-3f88-45fc-9c3a-066903db75f3', 'Input.Steps[1].BodyMarkdown': 'Put the kettle on.' }],
+    ['Gallery', 'compose-gallery', { 'Input.Title': 'Compose gallery', 'Input.BodyMarkdown': 'Home in pictures.' }]
+  ]) {
+    const createdType = await form('/admin/posts', '/admin/posts?handler=New', { type });
+    assert.equal(createdType.status, 302);
+    const typeEditor = createdType.headers.location;
+    if (type === 'Gallery') {
+      const uploadPage = await http(typeEditor);
+      const uploadToken = uploadPage.text.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)[1];
+      const batch = Buffer.concat([
+        Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n${uploadToken}\r\n`),
+        ...['first.png', 'second.png'].flatMap(filename => [
+          Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="Uploads"; filename="${filename}"\r\nContent-Type: image/png\r\n\r\n`), photo, Buffer.from('\r\n')
+        ]), Buffer.from(`--${boundary}--\r\n`)
+      ]);
+      assert.equal((await http(typeEditor + '?handler=Upload', 'POST', batch, `multipart/form-data; boundary=${boundary}`)).status, 302);
+      const galleryEditor = await http(typeEditor);
+      assert.ok(galleryEditor.text.includes('Some photos are missing alt text'));
+      const images = [...galleryEditor.text.matchAll(/data-media="([^"]+)"/g)].map(match => match[1]);
+      assert.equal(images.length, 2);
+      for (const image of images) assert.equal((await http(image)).status, 404);
+      const secondId = images[1].split('/')[2];
+      fields[`Input.Captions[${secondId}]`] = 'The second view'; fields[`Input.AltText[${secondId}]`] = 'A home';
+      fields['Input.MediaOrder[0]'] = secondId; fields['Input.MediaOrder[1]'] = images[0].split('/')[2];
+    }
+    assert.equal((await form(typeEditor, typeEditor + '?handler=Publish', { ...fields, 'Input.Version': '0', 'Input.Tags': 'Home' })).status, 302);
+    const output = await http(`/posts/${slug}/`); assert.equal(output.status, 200);
+    assert.ok((await http('/rss.xml')).text.includes(`/posts/${slug}/`));
+    assert.ok((await http('/sitemap.xml')).text.includes(`/posts/${slug}/`));
+    if (type === 'Review') assert.ok(output.text.includes('5/5'));
+    if (type === 'Guide') assert.ok(output.text.includes('<ol'));
+    if (type === 'Gallery') assert.ok(output.text.includes('<figcaption>The second view</figcaption>'));
+  }
   for (const path of ['/', '/notes/', '/articles/', '/reviews/', '/guides/', '/galleries/', '/about/', '/tags/home/']) {
     const page = await http(path); assert.equal(page.status, 200);
     assert.ok(page.text.includes('property="og:image"')); assert.match(page.text, /type="application\/rss(?:\+|&#x2B;)xml"/i);
@@ -128,6 +165,7 @@ try {
   assert.ok((await http('/notes/')).text.includes('A porch note'));
   assert.ok((await http('/about/')).text.includes('Persisted About'));
   assert.ok((await http('/rss.xml')).text.includes('A porch note'));
+  for (const slug of ['compose-coffee', 'compose-guide', 'compose-gallery']) assert.equal((await http(`/posts/${slug}/`)).status, 200);
   assert.ok((await http('/sitemap.xml')).text.includes('https://changed.example.test/posts/a-porch-note/'));
   assert.ok((await http('/robots.txt')).text.includes('Sitemap: https://changed.example.test/sitemap.xml'));
   assert.equal((await http('/assets/social-default.png')).status, 200);
@@ -157,7 +195,7 @@ try {
   assert.equal((await http(imageUrl)).status, 200);
   const privateImage = imageUrl.replace(/\/media\/([^/]+)\/[^/]+/, '/admin/media/$1');
   assert.equal((await http(privateImage)).status, 302);
-  console.log('PASS: HTTPS authoring, article/media lifecycle, notes, public listings/About/tags, RSS/sitemap/social metadata, draft isolation, non-root runtime, and restart persistence.');
+  console.log('PASS: HTTPS authoring, all five post types, gallery batch/order/captions, article/media lifecycle, public discovery, draft isolation, non-root runtime, and restart persistence.');
 } catch (error) {
   try { console.error(docker([...base, 'logs', '--tail', '60'])); } catch { /* original error wins */ }
   throw error;

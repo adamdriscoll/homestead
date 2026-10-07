@@ -15,7 +15,7 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active) : PageM
     public async Task OnGetAsync()
     {
         SiteTitle = await db.SiteSettings.Select(x => x.Title).SingleAsync();
-        RecentPosts = await db.Posts.Include(x => x.Draft).Where(x => x.Status != PostStatus.Deleted).OrderByDescending(x => x.UpdatedAtUtc).Take(5).ToListAsync();
+        RecentPosts = await db.Posts.Include(x => x.Draft).Include(x => x.Review).Where(x => x.Status != PostStatus.Deleted).OrderByDescending(x => x.UpdatedAtUtc).Take(5).ToListAsync();
         LatestBuild = await db.SiteGenerations.OrderByDescending(x => x.BuiltAtUtc).FirstOrDefaultAsync();
     }
 }

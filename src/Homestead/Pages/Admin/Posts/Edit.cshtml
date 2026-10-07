@@ -1,8 +1,9 @@
 @page "/admin/posts/{id:guid}/edit"
 @model Homestead.Pages.Admin.Posts.EditModel
-@{ var note = Model.Post.Type == Homestead.Data.Entities.PostType.Microblog; ViewData["Title"] = note ? "Edit note" : "Edit article"; }
+@using Homestead.Data.Entities
+@{ var note = Model.Post.Type == PostType.Microblog; var gallery = Model.Post.Type == PostType.Gallery; var guide = Model.Post.Type == PostType.Guide; var review = Model.Post.Type == PostType.Review; ViewData["Title"] = $"Edit {Model.TypeLabel}"; }
 <div class="space-y-6">
-    <h1 class="text-3xl font-semibold">@(note ? "Your note" : "Your article")</h1>
+    <h1 class="text-3xl font-semibold">Your @Model.TypeLabel</h1>
     @if (note) { <p>A thought, a moment, a photo. Add text or a photo to publish.</p> }
     @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
     @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-error" role="alert"></div> }
@@ -15,21 +16,48 @@
         { <p role="alert">Saved publication changes are pending. The previous post is still public. Rebuild from Posts to retry.</p> }
     }
     else if (Model.Post.Status == Homestead.Data.Entities.PostStatus.Published) { <p role="alert">Publication pending. Rebuild from Posts to retry.</p> }
-    <form method="post" asp-page-handler="Save" id="article-editor" class="space-y-4">
+    <form method="post" asp-page-handler="Save" id="article-editor" data-post-type="@Model.Post.Type" class="space-y-4">
         <input type="hidden" asp-for="Input.Version" />
-        <label class="block space-y-2"><span>@(note ? "Title (optional)" : "Title")</span><input asp-for="Input.Title" class="input w-full" maxlength="300" /></label>
-        @if (!note)
+        @if (review)
+        {
+            <label class="block space-y-2"><span>Subject</span><input asp-for="Input.Subject" class="input w-full" maxlength="300" /></label>
+            <label class="block space-y-2"><span>Rating (1–5)</span><input asp-for="Input.Rating" type="number" min="1" max="5" step="1" class="input w-full" /></label>
+            <label class="block space-y-2"><span>Subject URL (optional · HTTP or HTTPS)</span><input asp-for="Input.ExternalUrl" type="url" class="input w-full" maxlength="2000" /></label>
+        }
+        else
+        { <label class="block space-y-2"><span>@(note || gallery ? "Title (optional)" : "Title")</span><input asp-for="Input.Title" class="input w-full" maxlength="300" /></label> }
+        @if (Model.Post.Type == PostType.Article)
         {
             <label class="block space-y-2"><span>Summary (optional)</span><textarea asp-for="Input.Summary" class="textarea w-full" maxlength="1000" rows="2"></textarea></label>
         }
         <div class="flex flex-wrap gap-2" role="toolbar" aria-label="Markdown formatting">
-            @foreach (var action in new[] { "Bold", "Italic", "Heading", "Link", "List", "Quote", "Code", "Image" })
+            @foreach (var action in (gallery ? new[] { "Bold", "Italic", "Heading", "Link", "List", "Quote", "Code" } : new[] { "Bold", "Italic", "Heading", "Link", "List", "Quote", "Code", "Image" }))
             { <button type="button" class="btn min-h-11" data-format="@action.ToLowerInvariant()">@action</button> }
         </div>
-        <label class="block space-y-2"><span>@(note ? "Note (Markdown)" : "Article body (Markdown)")</span><textarea asp-for="Input.BodyMarkdown" class="textarea w-full font-mono" maxlength="200000" rows="@(note ? 6 : 16)"></textarea></label>
-        <p class="text-sm">Raw HTML is displayed as text. Upload images below, then choose Insert image.</p>
+        <label class="block space-y-2"><span>@(note ? "Note (Markdown)" : review ? "Review (Markdown)" : guide || gallery ? "Introduction (optional · Markdown)" : "Article body (Markdown)")</span><textarea asp-for="Input.BodyMarkdown" class="textarea w-full font-mono" maxlength="200000" rows="@(note || gallery || guide ? 6 : 16)"></textarea></label>
+        @if (guide)
+        {
+            <section class="space-y-4" aria-labelledby="steps-title">
+                <h2 id="steps-title" class="text-xl font-semibold">Steps</h2>
+                <p>Each step needs instructions before publishing. Select a step for each photo below.</p>
+                @for (var i = 0; i < Model.Input.Steps.Count; i++)
+                {
+                    <div class="border border-base-300 rounded-lg p-4 space-y-3">
+                        <input asp-for="Input.Steps[i].Id" type="hidden" />
+                        <label class="block space-y-2"><span>Step @(i + 1) instructions (Markdown)</span><textarea asp-for="Input.Steps[i].BodyMarkdown" class="textarea w-full font-mono" rows="6" maxlength="200000"></textarea></label>
+                        <div class="flex flex-wrap gap-2">
+                            <button class="btn" asp-page-handler="Arrange" name="command" value="step-up:@i" disabled="@(i == 0)">Move step up</button>
+                            <button class="btn" asp-page-handler="Arrange" name="command" value="step-down:@i" disabled="@(i == Model.Input.Steps.Count - 1)">Move step down</button>
+                            <button class="btn" asp-page-handler="Arrange" name="command" value="remove-step:@i">Remove step</button>
+                        </div>
+                    </div>
+                }
+                <button class="btn" asp-page-handler="Arrange" name="command" value="add-step">Add step</button>
+            </section>
+        }
+        <p class="text-sm">Raw HTML is displayed as text. @(gallery ? "Upload photos below to add them to the grid." : "Upload images below, then choose Insert image.")</p>
         <label class="block space-y-2"><span>Tags (comma separated)</span><input asp-for="Input.Tags" class="input w-full" maxlength="1000" /></label>
-        @if (!note)
+        @if (Model.Post.Type == PostType.Article)
         {
             <label class="block space-y-2"><span>Cover image</span>
                 <select asp-for="Input.CoverMediaId" class="select w-full"><option value="">No cover</option>
@@ -38,15 +66,37 @@
             </label>
         }
         @if (note) { <p>All uploaded photos appear with this note. Inserting a photo in the text places it inline.</p> }
+        @if (gallery)
+        {
+            <p>Photos appear in this order. Add captions and descriptions before publishing.</p>
+            @if (Model.Post.Media.Any(x => string.IsNullOrWhiteSpace(Model.Input.AltText.GetValueOrDefault(x.MediaAssetId))))
+            { <p class="alert" role="status">Some photos are missing alt text. Describe them so more readers can enjoy the gallery.</p> }
+        }
         <div id="article-images" class="space-y-4">
-            @foreach (var image in Model.Post.Media)
+            @foreach (var image in Model.Post.Media.OrderBy(x => x.SortOrder))
             {
                 var url = $"/media/{image.MediaAssetId:D}/{image.MediaAsset.StoredFilename}";
                 <div class="border border-base-300 rounded-lg p-4 space-y-2" data-media="@url">
+                    <input type="hidden" name="Input.MediaOrder" value="@image.MediaAssetId" />
                     <img src="/admin/media/@image.MediaAssetId" alt="@(image.AltText ?? "")" class="max-h-40 max-w-full" />
                     <label class="block">Image description (alt text)<input name="Input.AltText[@image.MediaAssetId]" value="@(Model.Input.AltText.GetValueOrDefault(image.MediaAssetId) ?? image.AltText)" class="input w-full" maxlength="1000" /></label>
-                    <button type="button" class="btn" data-insert-image="@url">Insert image</button>
-                    <p class="text-sm break-all">Markdown: ![description](@url)</p>
+                    @if (gallery || guide || review)
+                    { <label class="block">Caption (optional)<input name="Input.Captions[@image.MediaAssetId]" value="@(Model.Input.Captions.GetValueOrDefault(image.MediaAssetId) ?? image.Caption)" class="input w-full" maxlength="1000" /></label> }
+                    @if (guide)
+                    {
+                        <label class="block">Photo placement<select name="Input.StepImages[@image.MediaAssetId]" class="select w-full">
+                            <option value="">Introduction</option>
+                            @for (var i = 0; i < Model.Input.Steps.Count; i++)
+                            { <option value="@Model.Input.Steps[i].Id" selected="@(Model.Input.StepImages.GetValueOrDefault(image.MediaAssetId) == Model.Input.Steps[i].Id)">Step @(i + 1)</option> }
+                        </select></label>
+                    }
+                    <div class="flex flex-wrap gap-2">
+                        @if (!gallery) { <button type="button" class="btn" data-insert-image="@url">Insert image</button> }
+                        <button class="btn" asp-page-handler="Arrange" name="command" value="photo-up:@image.MediaAssetId">Move photo up</button>
+                        <button class="btn" asp-page-handler="Arrange" name="command" value="photo-down:@image.MediaAssetId">Move photo down</button>
+                        <button class="btn" asp-page-handler="Arrange" name="command" value="remove-photo:@image.MediaAssetId">Remove photo</button>
+                    </div>
+                    @if (!gallery) { <p class="text-sm break-all">Markdown: ![description](@url)</p> }
                 </div>
             }
         </div>
@@ -66,7 +116,7 @@
     <iframe id="draft-preview" title="Private post preview" class="w-full min-h-160 border border-base-300" sandbox="allow-same-origin" hidden></iframe>
     <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" id="image-upload" class="space-y-3 border-t border-base-300 pt-6">
         <h2 class="text-xl font-semibold">Add a photo</h2>
-        <label class="block space-y-2"><span>Photo (JPEG, PNG, WebP · up to 20 MB)</span><input asp-for="Upload" class="file-input w-full" type="file" accept="image/jpeg,image/png,image/webp,.heic,.heif" /></label>
+        <label class="block space-y-2"><span>Photos (JPEG, PNG, WebP · up to 20 MB each · five per upload)</span><input asp-for="Uploads" class="file-input w-full" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif" /></label>
         <label class="block space-y-2"><span>Image description (alt text)</span><input asp-for="UploadAlt" class="input w-full" maxlength="1000" /></label>
         <p class="text-sm">HEIC/HEIF: export as JPEG or select Most Compatible in your camera settings. Desktop: paste or drop a photo into the body.</p>
         <button class="btn" type="submit">Upload photo</button>

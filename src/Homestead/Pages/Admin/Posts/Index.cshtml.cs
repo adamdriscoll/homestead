@@ -18,13 +18,14 @@ public sealed class IndexModel(HomesteadDbContext db, ArticleService articles, A
         var liveIds = active.Current?.Articles.Select(x => x.PostId).ToArray() ?? [];
         var query = db.Posts.AsSplitQuery().Include(x => x.Draft).Include(x => x.PublishedSnapshot)
             .Include(x => x.Tags).ThenInclude(x => x.Tag).Include(x => x.Media)
+            .Include(x => x.Review).Include(x => x.Steps)
             .Where(x => x.Status != PostStatus.Deleted || liveIds.Contains(x.Id));
         if (status is not null) query = query.Where(x => x.Status == status);
         Posts = await query.OrderByDescending(x => x.UpdatedAtUtc).ToListAsync();
     }
     public async Task<IActionResult> OnPostNewAsync(PostType type = PostType.Article)
     {
-        if (type is not (PostType.Article or PostType.Microblog)) return BadRequest();
+        if (!ModelState.IsValid || !Enum.IsDefined(type)) return BadRequest();
         var post = await articles.CreateAsync(type);
         return RedirectToPage("Edit", new { id = post.Id });
     }

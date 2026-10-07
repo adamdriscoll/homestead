@@ -80,7 +80,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
             {
                 Post = post,
                 MediaAsset = asset,
-                Role = MediaRole.Inline,
+                Role = post.Type == PostType.Gallery ? MediaRole.Gallery : post.Type == PostType.Guide ? MediaRole.GuideStep : MediaRole.Inline,
                 SortOrder = post.Media.Count == 0 ? 0 : post.Media.Max(x => x.SortOrder) + 1,
                 AltText = altText
             });

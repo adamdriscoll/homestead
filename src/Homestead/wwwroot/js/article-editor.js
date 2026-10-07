@@ -1,10 +1,12 @@
 (() => {
   const form = document.querySelector('#article-editor');
   if (!form) return;
-  const body = form.querySelector('[name="Input.BodyMarkdown"]');
+  let body = form.querySelector('[name="Input.BodyMarkdown"]');
+  const structured = ['Review', 'Guide', 'Gallery'].includes(form.dataset.postType);
   const version = form.querySelector('[name="Input.Version"]');
   const status = document.querySelector('#save-status');
   const uploader = document.querySelector('#image-upload');
+  const filePicker = uploader.querySelector('input[type="file"]');
   const uploadStatus = document.querySelector('#upload-status');
   const preview = document.querySelector('#draft-preview');
   const previewLink = form.querySelector('[data-preview]');
@@ -20,6 +22,9 @@
   }
   form.addEventListener('input', e => { if (e.target.name !== 'ConfirmDelete') changed(); });
   form.addEventListener('change', e => { if (e.target.tagName === 'SELECT') changed(); });
+  form.addEventListener('focusin', e => {
+    if (e.target.tagName === 'TEXTAREA' && (e.target.name === 'Input.BodyMarkdown' || e.target.name.endsWith('.BodyMarkdown'))) body = e.target;
+  });
   function save() {
     clearTimeout(timer);
     pending = pending.then(async () => {
@@ -54,7 +59,7 @@
       case 'list': insert('\n\n' + (body.value.slice(body.selectionStart, body.selectionEnd) || 'List item').split('\n').map(x => '- ' + x).join('\n') + '\n\n'); break;
       case 'quote': insert('\n\n' + (body.value.slice(body.selectionStart, body.selectionEnd) || 'Quoted text').split('\n').map(x => '> ' + x).join('\n') + '\n\n'); break;
       case 'code': wrap('\n\n```\n', '\n```\n\n', 'code'); break;
-      case 'image': uploader.querySelector('[name="Upload"]').focus(); uploader.scrollIntoView({ behavior: 'smooth', block: 'center' }); break;
+      case 'image': filePicker.focus(); uploader.scrollIntoView({ behavior: 'smooth', block: 'center' }); break;
     }
   }
   form.addEventListener('click', e => {
@@ -62,11 +67,11 @@
     if (tool) format(tool.dataset.format);
     const image = e.target.closest('[data-insert-image]');
     if (image) {
-      const alt = image.parentElement.querySelector('input').value.replace(/[\[\]\\\r\n]/g, '');
+      const alt = image.closest('[data-media]').querySelector('[name^="Input.AltText"]').value.replace(/[\[\]\\\r\n]/g, '');
       insert(`\n\n![${alt}](${image.dataset.insertImage})\n\n`);
     }
   });
-  body.addEventListener('keydown', e => {
+  form.addEventListener('keydown', e => {
     if ((e.ctrlKey || e.metaKey) && ['b', 'i'].includes(e.key.toLowerCase())) {
       e.preventDefault(); format(e.key.toLowerCase() === 'b' ? 'bold' : 'italic');
     }
@@ -99,26 +104,50 @@
     clearTimeout(timer);
     if (!await save()) { uploadStatus.textContent = 'Save the draft before uploading.'; return; }
     uploadStatus.textContent = 'Uploading…';
-    const data = new FormData(uploader); data.set('Upload', file);
+    const data = new FormData(uploader); data.delete('Uploads'); data.set('Upload', file);
     try {
       const response = await fetch(uploader.action, { method: 'POST', body: data, headers: { Accept: 'application/json' } });
       if (response.redirected) throw new Error('Sign in again before uploading.');
       const image = await response.json();
       if (!response.ok) throw new Error(image.message || 'Upload failed.');
+      if (structured) { uploadStatus.textContent = 'Photo uploaded.'; return true; }
       const container = document.createElement('div'); container.className = 'border border-base-300 rounded-lg p-4 space-y-2';
+      container.dataset.media = image.url;
+      const order = document.createElement('input'); order.type = 'hidden'; order.name = 'Input.MediaOrder'; order.value = image.id;
       const img = document.createElement('img'); img.src = image.privateUrl; img.alt = image.altText; img.className = 'max-h-40 max-w-full';
       const label = document.createElement('label'); label.className = 'block'; label.textContent = 'Image description (alt text)';
       const input = document.createElement('input'); input.name = `Input.AltText[${image.id}]`; input.value = image.altText; input.maxLength = 1000; input.className = 'input w-full'; label.append(input);
       const button = document.createElement('button'); button.type = 'button'; button.className = 'btn'; button.dataset.insertImage = image.url; button.textContent = 'Insert image';
-      container.append(img, label, button); document.querySelector('#article-images').append(container);
+      container.append(order, img, label, button); document.querySelector('#article-images').append(container);
       const option = document.createElement('option'); option.value = image.id; option.textContent = file.name; form.querySelector('[name="Input.CoverMediaId"]')?.append(option);
       insert(`\n\n![${image.altText.replace(/[\[\]\\\r\n]/g, '')}](${image.url})\n\n`);
-      uploader.querySelector('[name="Upload"]').value = ''; uploadStatus.textContent = 'Uploaded and inserted into the draft.';
-    } catch (error) { uploadStatus.textContent = error.message || 'Upload failed. Try again.'; }
+      uploadStatus.textContent = 'Uploaded and inserted into the draft.'; return true;
+    } catch (error) { uploadStatus.textContent = error.message || 'Upload failed. Try again.'; return false; }
   }
-  uploader.addEventListener('submit', e => { e.preventDefault(); upload(uploader.querySelector('[name="Upload"]').files[0]); });
-  body.addEventListener('paste', e => { const file = [...e.clipboardData.files].find(x => x.type.startsWith('image/')); if (file) { e.preventDefault(); upload(file); } });
-  body.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
-  body.addEventListener('drop', e => { if (e.dataTransfer.files.length) { e.preventDefault(); upload(e.dataTransfer.files[0]); } });
+  let uploading = false;
+  async function uploadFiles(files) {
+    if (uploading) return;
+    if (files.length < 1 || files.length > 5) { uploadStatus.textContent = 'Choose between one and five photos per upload.'; return; }
+    uploading = true;
+    let uploaded = false, failed = false;
+    try {
+      for (const file of files) {
+        if (!await upload(file)) { failed = true; break; }
+        uploaded = true;
+      }
+      if (uploaded && !failed) filePicker.value = '';
+      if (structured && uploaded && await save()) {
+        // Refresh server-rendered order, caption and step-placement controls after saving edits.
+        if (failed) sessionStorage.setItem('homestead-upload-error', uploadStatus.textContent);
+        submitting = true; window.location.assign(window.location.pathname);
+      }
+    } finally { uploading = false; }
+  }
+  const previousUploadError = sessionStorage.getItem('homestead-upload-error');
+  if (previousUploadError) { uploadStatus.textContent = previousUploadError; sessionStorage.removeItem('homestead-upload-error'); }
+  uploader.addEventListener('submit', e => { e.preventDefault(); uploadFiles([...filePicker.files]); });
+  form.addEventListener('paste', e => { const files = [...e.clipboardData.files].filter(x => x.type.startsWith('image/')); if (files.length) { e.preventDefault(); uploadFiles(files); } });
+  form.addEventListener('dragover', e => { if (e.dataTransfer.types.includes('Files')) e.preventDefault(); });
+  form.addEventListener('drop', e => { if (e.dataTransfer.files.length) { e.preventDefault(); uploadFiles([...e.dataTransfer.files]); } });
   window.addEventListener('beforeunload', e => { if (saved !== revision && !submitting) { e.preventDefault(); e.returnValue = ''; } });
 })();

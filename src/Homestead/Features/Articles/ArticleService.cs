@@ -13,11 +13,12 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
     public Task<Post?> FindAsync(Guid id) => db.Posts.AsSplitQuery().Include(x => x.Draft)
         .Include(x => x.PublishedSnapshot).Include(x => x.Tags).ThenInclude(x => x.Tag)
         .Include(x => x.Media).ThenInclude(x => x.MediaAsset)
-        .SingleOrDefaultAsync(x => x.Id == id && (x.Type == PostType.Article || x.Type == PostType.Microblog) && x.Status != PostStatus.Deleted);
+        .Include(x => x.Review).Include(x => x.Steps)
+        .SingleOrDefaultAsync(x => x.Id == id && x.Status != PostStatus.Deleted);
 
     public async Task<Post> CreateAsync(PostType type = PostType.Article)
     {
-        if (type is not (PostType.Article or PostType.Microblog)) throw new InvalidOperationException("This editor is not available yet.");
+        if (!Enum.IsDefined(type)) throw new InvalidOperationException("Choose one of the five post types.");
         var post = new Post { Type = type, Draft = new PostDraft() };
         db.Posts.Add(post); await db.SaveChangesAsync(); return post;
     }
@@ -27,19 +28,71 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         await writer.Semaphore.WaitAsync();
         try
         {
+            db.ChangeTracker.Clear();
             var post = await FindAsync(id) ?? throw new KeyNotFoundException();
             if (post.Draft!.Version != input.Version) throw new DraftConflictException();
             if (input.CoverMediaId is { } cover && !post.Media.Any(x => x.MediaAssetId == cover))
                 throw new InvalidOperationException("Choose a cover image uploaded to this article.");
             if (input.AltText.Values.Any(x => x?.Length > 1000)) throw new InvalidOperationException("Image descriptions must be at most 1000 characters.");
+            if (input.Captions.Values.Any(x => x?.Length > 1000)) throw new InvalidOperationException("Captions must be at most 1000 characters.");
+            if (post.Type == PostType.Review && (input.Subject?.Length > 300 || input.ExternalUrl?.Length > 2000 || input.Rating is < 1 or > 5 || !PostValidation.IsExternalUrl(input.ExternalUrl)))
+                throw new InvalidOperationException("Use a subject of at most 300 characters, a rating from 1 to 5, and an absolute HTTP or HTTPS URL without credentials.");
+            if (input.Steps.Count > 100 || input.Steps.Any(x => x.Id == Guid.Empty || x.BodyMarkdown.Length > 200_000) || input.Steps.Select(x => x.Id).Distinct().Count() != input.Steps.Count)
+                throw new InvalidOperationException("Use up to 100 distinct steps, each at most 200000 characters.");
+            var stepIds = input.Steps.Select(x => x.Id).ToArray();
+            if (post.Type == PostType.Guide && await db.GuideSteps.AnyAsync(x => stepIds.Contains(x.Id) && x.PostId != id))
+                throw new InvalidOperationException("Steps must belong to this guide.");
+            var mediaIds = post.Media.Select(x => x.MediaAssetId).ToHashSet();
+            if (input.RemovedMediaIds.Any(x => !mediaIds.Contains(x))) throw new InvalidOperationException("Choose photos belonging to this post.");
+            if (input.MediaOrder.Distinct().Count() != input.MediaOrder.Count || input.MediaOrder.Any(x => !mediaIds.Contains(x)) ||
+                input.StepImages.Any(x => !mediaIds.Contains(x.Key) || (x.Value is { } step && !stepIds.Contains(step))))
+                throw new InvalidOperationException("Choose photos and steps belonging to this post.");
+            var names = (input.Tags ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Select(x => x.Normalize()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
+            if (names.Length > 20 || names.Any(x => x.Length > 80)) throw new InvalidOperationException("Use up to 20 tags, each at most 80 characters.");
+            await using var transaction = await db.Database.BeginTransactionAsync();
+            var removedMedia = post.Media.Where(x => input.RemovedMediaIds.Contains(x.MediaAssetId)).ToArray();
+            db.PostMedia.RemoveRange(removedMedia);
+            foreach (var image in removedMedia) post.Media.Remove(image);
+            if (input.CoverMediaId is { } removedCover && input.RemovedMediaIds.Contains(removedCover)) input.CoverMediaId = null;
+            // Move existing rows out of the unique order ranges before assigning the new order.
+            var stepOffset = post.Steps.Count == 0 ? 0 : post.Steps.Max(x => x.Order) + 1;
+            foreach (var step in post.Steps) step.Order += stepOffset;
+            var mediaOffset = post.Media.Count == 0 ? 0 : post.Media.Max(x => x.SortOrder) + 1;
+            foreach (var image in post.Media) image.SortOrder += mediaOffset;
+            await db.SaveChangesAsync();
+            if (post.Type == PostType.Review)
+            {
+                post.Review ??= new ReviewDetails();
+                post.Review.Subject = input.Subject ?? ""; post.Review.Rating = input.Rating;
+                post.Review.ExternalUrl = string.IsNullOrWhiteSpace(input.ExternalUrl) ? null : input.ExternalUrl.Trim();
+            }
+            if (post.Type == PostType.Guide)
+            {
+                foreach (var image in post.Media) image.GuideStepId = null;
+                // Clear foreign keys before removing steps; originals remain available for backup.
+                await db.SaveChangesAsync();
+                var removed = post.Steps.Where(x => !stepIds.Contains(x.Id)).ToArray();
+                db.GuideSteps.RemoveRange(removed);
+                foreach (var step in removed) post.Steps.Remove(step);
+                foreach (var (step, order) in input.Steps.Select((step, order) => (step, order)))
+                {
+                    var row = post.Steps.SingleOrDefault(x => x.Id == step.Id);
+                    if (row is null) { row = new GuideStep { Id = step.Id, PostId = post.Id, Post = post }; db.GuideSteps.Add(row); }
+                    row.Order = order; row.BodyMarkdown = step.BodyMarkdown;
+                }
+                foreach (var image in post.Media) image.GuideStepId = input.StepImages.GetValueOrDefault(image.MediaAssetId);
+            }
             post.Draft.Title = input.Title; post.Draft.BodyMarkdown = input.BodyMarkdown ?? "";
             post.Draft.Summary = input.Summary; post.Draft.CoverMediaId = input.CoverMediaId;
             post.Draft.Version++; post.UpdatedAtUtc = DateTime.UtcNow;
             foreach (var media in post.Media)
+            {
                 if (input.AltText.TryGetValue(media.MediaAssetId, out var alt)) media.AltText = alt;
-            var names = (input.Tags ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Select(x => x.Normalize()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
-            if (names.Length > 20 || names.Any(x => x.Length > 80)) throw new InvalidOperationException("Use up to 20 tags, each at most 80 characters.");
+                if (input.Captions.TryGetValue(media.MediaAssetId, out var caption)) media.Caption = caption;
+            }
+            var orderIds = input.MediaOrder.Concat(post.Media.OrderBy(x => x.SortOrder).Select(x => x.MediaAssetId).Where(x => !input.MediaOrder.Contains(x))).ToArray();
+            foreach (var image in post.Media) image.SortOrder = Array.IndexOf(orderIds, image.MediaAssetId);
             db.PostTags.RemoveRange(post.Tags); post.Tags.Clear();
             foreach (var name in names)
             {
@@ -55,6 +108,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
             }
             try { await db.SaveChangesAsync(); }
             catch (DbUpdateConcurrencyException) { throw new DraftConflictException(); }
+            await transaction.CommitAsync();
             return post.Draft.Version;
         }
         finally { writer.Semaphore.Release(); }
@@ -65,15 +119,25 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         post.FirstPublishedAtUtc ?? now, now, post.Draft.Version,
         post.Tags.Select(x => x.Tag.Name).ToArray(), post.Draft.CoverMediaId,
         post.Media.OrderBy(x => x.SortOrder).Select(x => new ArticleMedia(x.MediaAssetId,
-            x.MediaAsset.StoredFilename, x.MediaAsset.MimeType, x.AltText ?? "")).ToArray())
-    { Type = post.Type, TagSlugs = post.Tags.ToDictionary(x => x.Tag.Name, x => x.Tag.Slug) };
+            x.MediaAsset.StoredFilename, x.MediaAsset.MimeType, x.AltText ?? "")
+        { Caption = x.Caption, GuideStepId = x.GuideStepId }).ToArray())
+    {
+        Type = post.Type,
+        TagSlugs = post.Tags.ToDictionary(x => x.Tag.Name, x => x.Tag.Slug),
+        Review = post.Review is { } review ? new(review.Subject, review.Rating, review.ExternalUrl) : null,
+        Steps = post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).ToArray()
+    };
 
     public static bool HasDraftChanges(Post post, ArticleSnapshot live) => post.Draft is { } draft &&
         ((draft.Title ?? "") != live.Title || draft.BodyMarkdown != live.BodyMarkdown || draft.Summary != live.Summary ||
          draft.CoverMediaId != live.CoverMediaId ||
          !post.Tags.Select(x => x.Tag.Name).Order(StringComparer.Ordinal).SequenceEqual(live.Tags.Order(StringComparer.Ordinal)) ||
-         live.Media.Any(x => (post.Media.SingleOrDefault(m => m.MediaAssetId == x.Id)?.AltText ?? "") != x.AltText) ||
-         (post.Type == PostType.Microblog && !post.Media.Select(x => x.MediaAssetId).ToHashSet().SetEquals(live.Media.Select(x => x.Id))));
+         live.Media.Any(x => post.Media.SingleOrDefault(m => m.MediaAssetId == x.Id) is not { } media ||
+             (media.AltText ?? "") != x.AltText || media.Caption != x.Caption || media.GuideStepId != x.GuideStepId) ||
+         (post.Type is PostType.Microblog or PostType.Review or PostType.Gallery or PostType.Guide &&
+          !post.Media.OrderBy(x => x.SortOrder).Select(x => x.MediaAssetId).SequenceEqual(live.Media.Select(x => x.Id))) ||
+         (post.Type == PostType.Review && new ReviewSnapshot(post.Review?.Subject ?? "", post.Review?.Rating, post.Review?.ExternalUrl) != live.Review) ||
+         (post.Type == PostType.Guide && !post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).SequenceEqual(live.Steps)));
 
     public static bool IsPublicationPending(Post post, ArticleSnapshot? live)
     {

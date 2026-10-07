@@ -94,14 +94,14 @@ public sealed class PublicExperienceTests
     }
 
     [Fact]
-    public async Task Blank_notes_and_title_only_notes_cannot_publish_and_unimplemented_types_cannot_be_created()
+    public async Task Blank_notes_and_title_only_notes_cannot_publish_and_unknown_types_cannot_be_created()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var author = app.Client();
         _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author); var id = await Create(author);
         await Action(author, id, "Publish", Fields(0, "   ", "Title only"));
         Assert.Empty(app.Services.GetRequiredService<ActiveSite>().Current!.Articles);
         Assert.Contains("needs text or at least one photo", await author.GetStringAsync($"/admin/posts/{id}/edit"));
-        Assert.Equal(HttpStatusCode.BadRequest, (await TestApplication.Submit(author, "/admin/posts", new() { ["type"] = "Review" }, "/admin/posts?handler=New")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await TestApplication.Submit(author, "/admin/posts", new() { ["type"] = "Unknown" }, "/admin/posts?handler=New")).StatusCode);
         Assert.Equal(HttpStatusCode.BadRequest, (await author.PostAsync($"/admin/posts/{id}/edit?handler=Publish", new FormUrlEncodedContent(Fields(1, "Body")))).StatusCode);
     }
 

@@ -13,9 +13,11 @@ public static partial class DiscoveryFiles
         ? $"Notes and stories from {settings.Title}." : settings.Description;
     public static string Description(ArticleSnapshot post)
     {
-        var text = string.IsNullOrWhiteSpace(post.Summary) ? Markdig.Markdown.ToPlainText(post.BodyMarkdown) : post.Summary;
+        var source = post.BodyMarkdown;
+        if (post.Type == PostType.Guide) source += "\n" + string.Join("\n", post.Steps.Select(x => x.BodyMarkdown));
+        var text = string.IsNullOrWhiteSpace(post.Summary) ? Markdig.Markdown.ToPlainText(source) : post.Summary;
         text = Whitespace().Replace(text, " ").Trim();
-        return text.Length == 0 ? $"A photo note · {post.PublishedAtUtc:MMMM d, yyyy}" : text[..Math.Min(280, text.Length)];
+        return text.Length == 0 ? $"{(post.Type == PostType.Gallery ? "A photo gallery" : "A photo note")} · {post.PublishedAtUtc:MMMM d, yyyy}" : text[..Math.Min(280, text.Length)];
     }
 
     public static string Rss(SiteSettings settings, ArticleSnapshot[] posts, SafeMarkdown markdown)
@@ -32,12 +34,7 @@ public static partial class DiscoveryFiles
                 {
                     var url = Absolute(settings, $"/posts/{post.Slug}/");
                     // XML serializes HTML as text; consumers decode it once as RSS content.
-                    var html = markdown.Render(post, false, settings.CanonicalBaseUrl);
-                    if (post.Type == PostType.Article && post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover)
-                        html = ImageHtml(cover) + html;
-                    if (post.Type == PostType.Microblog)
-                        html += string.Concat(markdown.PhotosOutsideBody(post).Select(ImageHtml));
-                    string ImageHtml(ArticleMedia image) => $"<p><img src=\"{System.Net.WebUtility.HtmlEncode(Absolute(settings, image.Url))}\" alt=\"{System.Net.WebUtility.HtmlEncode(image.AltText)}\"></p>";
+                    var html = markdown.RenderContent(post, false, settings.CanonicalBaseUrl);
                     return new XElement("item", new XElement("title", post.DisplayTitle), new XElement("link", url),
                         new XElement("guid", new XAttribute("isPermaLink", "true"), url),
                         new XElement("pubDate", post.PublishedAtUtc.ToString("r", CultureInfo.InvariantCulture)),

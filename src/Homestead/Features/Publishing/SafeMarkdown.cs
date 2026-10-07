@@ -9,6 +9,37 @@ public sealed class SafeMarkdown
 {
     private readonly MarkdownPipeline pipeline = new MarkdownPipelineBuilder().DisableHtml().Build();
 
+    // Full-content surfaces share this renderer, including private preview and RSS.
+    public string RenderContent(ArticleSnapshot post, bool preview, string? canonicalBaseUrl = null)
+    {
+        static string Encode(string? text) => System.Net.WebUtility.HtmlEncode(text ?? "");
+        string Photo(ArticleMedia image) => $"<figure><img src=\"{Encode(preview ? image.PrivateUrl : canonicalBaseUrl is null ? image.Url : canonicalBaseUrl.TrimEnd('/') + image.Url)}\" alt=\"{Encode(image.AltText)}\" class=\"w-full rounded-lg\" loading=\"lazy\">" +
+            (string.IsNullOrWhiteSpace(image.Caption) ? "" : $"<figcaption>{Encode(image.Caption)}</figcaption>") + "</figure>";
+        var html = post.Summary is { Length: > 0 } ? $"<p>{Encode(post.Summary)}</p>" : "";
+        if (post.Type == Data.Entities.PostType.Review && post.Review is { } review)
+        {
+            html += $"<p><strong>{Encode(review.Subject)}</strong> · {review.Rating}/5</p>";
+            if (!string.IsNullOrWhiteSpace(review.ExternalUrl) && PostValidation.IsExternalUrl(review.ExternalUrl))
+                html += $"<p><a href=\"{Encode(review.ExternalUrl)}\" rel=\"noopener noreferrer\">Visit reviewed subject</a></p>";
+        }
+        if (post.Type == Data.Entities.PostType.Article && post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover) html += Photo(cover);
+        html += Render(post, preview, canonicalBaseUrl);
+        if (post.Type == Data.Entities.PostType.Guide)
+        {
+            html += string.Concat(PhotosOutsideBody(post).Where(x => x.GuideStepId is null).Select(Photo));
+            html += "<ol class=\"list-decimal pl-6 space-y-6\">";
+            foreach (var step in post.Steps)
+            {
+                html += "<li>" + Render(post with { BodyMarkdown = step.BodyMarkdown }, preview, canonicalBaseUrl);
+                html += string.Concat(PhotosOutsideBody(post).Where(x => x.GuideStepId == step.Id).Select(Photo)) + "</li>";
+            }
+            html += "</ol>";
+        }
+        else if (post.Type is Data.Entities.PostType.Microblog or Data.Entities.PostType.Review or Data.Entities.PostType.Gallery)
+            html += "<div class=\"grid gap-3 sm:grid-cols-2\">" + string.Concat(PhotosOutsideBody(post).Select(Photo)) + "</div>";
+        return html;
+    }
+
     public ArticleMedia[] ReferencedMedia(ArticleSnapshot article)
     {
         var urls = InlineImageUrls(article);
@@ -16,11 +47,11 @@ public sealed class SafeMarkdown
             throw new InvalidOperationException("Inline images must reference images uploaded to this article. Use the Image button to insert them.");
         if (article.CoverMediaId is { } id && !article.Media.Any(x => x.Id == id))
             throw new InvalidOperationException("The cover image is missing.");
-        return article.Media.Where(x => article.Type == Data.Entities.PostType.Microblog || urls.Contains(x.Url) || x.Id == article.CoverMediaId).ToArray();
+        return article.Media.Where(x => article.Type != Data.Entities.PostType.Article || urls.Contains(x.Url) || x.Id == article.CoverMediaId).ToArray();
     }
 
-    private HashSet<string?> InlineImageUrls(ArticleSnapshot article) => Markdown.Parse(article.BodyMarkdown, pipeline)
-        .Descendants<LinkInline>().Where(x => x.IsImage).Select(x => x.Url).ToHashSet(StringComparer.Ordinal);
+    private HashSet<string?> InlineImageUrls(ArticleSnapshot article) => new[] { article.BodyMarkdown }.Concat(article.Steps.Select(x => x.BodyMarkdown))
+        .SelectMany(text => Markdown.Parse(text, pipeline).Descendants<LinkInline>().Where(x => x.IsImage).Select(x => x.Url)).ToHashSet(StringComparer.Ordinal);
 
     public ArticleMedia[] PhotosOutsideBody(ArticleSnapshot article)
     {

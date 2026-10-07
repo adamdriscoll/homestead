@@ -24,13 +24,11 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             if (post.Draft!.Version != version) throw new DraftConflictException();
             if (action == "publish")
             {
-                if (post.Type == PostType.Article && (string.IsNullOrWhiteSpace(post.Draft.Title) || string.IsNullOrWhiteSpace(post.Draft.BodyMarkdown)))
-                    return new(false, "An article needs a title and body before publication.");
-                if (post.Type == PostType.Microblog && string.IsNullOrWhiteSpace(post.Draft.BodyMarkdown) && post.Media.Count == 0)
-                    return new(false, "A note needs text or at least one photo before publication.");
+                if (PostValidation.PublicationError(post) is { } error) return new(false, error);
                 var now = DateTime.UtcNow;
-                var slug = post.Slug ?? (string.IsNullOrWhiteSpace(post.Draft.Title)
-                    ? $"note-{now:yyyy-MM-dd}-{post.Id.ToString("N")[..8]}" : Slugs.Create(post.Draft.Title)); var root = slug; var suffix = 2;
+                var title = post.Type == PostType.Review ? post.Review!.Subject : post.Draft.Title;
+                var slug = post.Slug ?? (string.IsNullOrWhiteSpace(title)
+                    ? $"{(post.Type == PostType.Microblog ? "note" : "gallery")}-{now:yyyy-MM-dd}-{post.Id.ToString("N")[..8]}" : Slugs.Create(title)); var root = slug; var suffix = 2;
                 while (await db.Posts.AnyAsync(x => x.Slug == slug && x.Id != id)) slug = $"{root}-{suffix++}";
                 var snapshot = ArticleService.Snapshot(post, slug, now);
                 try { snapshot = snapshot with { Media = markdown.ReferencedMedia(snapshot) }; }
@@ -56,7 +54,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 { "publish" => "Post published. Your public site is active.", "unpublish" => "Post unpublished.", _ => "Post deleted." },
                 Url = action == "publish" ? $"/posts/{post.Slug}/" : null
             }
-                : result with { Message = result.Message + (stillLive ? " The previous article is still public." : " This article is not public.") };
+                : result with { Message = result.Message + (stillLive ? " The previous post is still public." : " This post is not public.") };
         }
         finally { writer.Semaphore.Release(); }
     }

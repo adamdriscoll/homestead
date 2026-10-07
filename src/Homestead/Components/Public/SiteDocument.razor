@@ -70,7 +70,11 @@
                         @if (post.Type == PostType.Microblog) { <PostContent Post="post" /> }
                         else
                         {
-                            @if (post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover)
+                            @if (post.Type == PostType.Review && post.Review is { } review)
+                            { <p><strong>@review.Subject</strong> · @review.Rating/5</p> }
+                            @if (post.Type == PostType.Guide) { <p>@post.Steps.Length steps</p> }
+                            @if (post.Type == PostType.Gallery) { <p>@post.Media.Length photos</p> }
+                            @if ((post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) ?? (post.Type == PostType.Article ? null : post.Media.FirstOrDefault())) is { } cover)
                             { <img src="@cover.Url" alt="@cover.AltText" class="w-full max-h-80 object-cover rounded-lg" loading="lazy" /> }
                             <p>@DiscoveryFiles.Description(post)</p>
                         }

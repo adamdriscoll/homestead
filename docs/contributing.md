@@ -25,6 +25,10 @@ feeds, tag-slug collisions, XML feeds, complete social metadata, branding replac
 and failure/retry, safe profile links, and upgrades from Phase 2. The production
 Compose smoke also checks notes, static listings/About/tags, discovery, and restart.
 Domain tests exercise database constraints rather than an in-memory provider.
+Five-type tests cover every publication lifecycle, structured draft isolation,
+review validation, step/photo ordering, captions and alt text, foreign-media/step
+rejection, safe Markdown, conflict detection, batch uploads, and failed build retry.
+The Compose smoke publishes all five types and checks gallery batch uploads.
 The CI workflow also builds and tests the Linux container with Caddy.
 
 When the domain model changes, add a migration:

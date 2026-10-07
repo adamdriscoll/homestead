@@ -1,18 +1,6 @@
-@using Homestead.Data.Entities
 @inject SafeMarkdown Markdown
-@if (Post.Summary is { Length: > 0 }) { <p class="text-xl">@Post.Summary</p> }
-@if (Post.Type == PostType.Article && Post.Media.SingleOrDefault(x => x.Id == Post.CoverMediaId) is { } cover)
-{ <img src="@Url(cover)" alt="@cover.AltText" class="w-full rounded-lg" /> }
-<div class="prose-content">@((MarkupString)Markdown.Render(Post, Preview))</div>
-@if (Post.Type == PostType.Microblog)
-{
-    <div class="grid gap-3 sm:grid-cols-2">
-        @foreach (var photo in Markdown.PhotosOutsideBody(Post))
-        { <img src="@Url(photo)" alt="@photo.AltText" class="w-full rounded-lg" loading="lazy" /> }
-    </div>
-}
+<div class="prose-content">@((MarkupString)Markdown.RenderContent(Post, Preview))</div>
 @code {
     [Parameter, EditorRequired] public ArticleSnapshot Post { get; set; } = null!;
     [Parameter] public bool Preview { get; set; }
-    private string Url(ArticleMedia image) => Preview ? image.PrivateUrl : image.Url;
 }
