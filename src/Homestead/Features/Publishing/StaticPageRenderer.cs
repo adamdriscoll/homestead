@@ -6,7 +6,8 @@ using Microsoft.AspNetCore.Components.Web;
 
 namespace Homestead.Features.Publishing;
 
-public sealed record PublicPage(SiteSettings Settings, ArticleSnapshot? Article, ArticleSnapshot[] Articles, bool Preview = false);
+public sealed record PublicPage(SiteSettings Settings, ArticleSnapshot? Article, ArticleSnapshot[] Articles,
+    bool Preview = false, string Path = "/", string Heading = "Welcome home.", ArticleMedia[]? Branding = null);
 
 public interface IStaticPageRenderer
 {

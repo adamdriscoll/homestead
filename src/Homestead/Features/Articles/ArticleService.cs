@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Homestead.Data;
 using Homestead.Data.Entities;
 using Homestead.Features.Publishing;
@@ -12,11 +13,12 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
     public Task<Post?> FindAsync(Guid id) => db.Posts.AsSplitQuery().Include(x => x.Draft)
         .Include(x => x.PublishedSnapshot).Include(x => x.Tags).ThenInclude(x => x.Tag)
         .Include(x => x.Media).ThenInclude(x => x.MediaAsset)
-        .SingleOrDefaultAsync(x => x.Id == id && x.Type == PostType.Article && x.Status != PostStatus.Deleted);
+        .SingleOrDefaultAsync(x => x.Id == id && (x.Type == PostType.Article || x.Type == PostType.Microblog) && x.Status != PostStatus.Deleted);
 
-    public async Task<Post> CreateAsync()
+    public async Task<Post> CreateAsync(PostType type = PostType.Article)
     {
-        var post = new Post { Type = PostType.Article, Draft = new PostDraft() };
+        if (type is not (PostType.Article or PostType.Microblog)) throw new InvalidOperationException("This editor is not available yet.");
+        var post = new Post { Type = type, Draft = new PostDraft() };
         db.Posts.Add(post); await db.SaveChangesAsync(); return post;
     }
 
@@ -63,11 +65,23 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         post.FirstPublishedAtUtc ?? now, now, post.Draft.Version,
         post.Tags.Select(x => x.Tag.Name).ToArray(), post.Draft.CoverMediaId,
         post.Media.OrderBy(x => x.SortOrder).Select(x => new ArticleMedia(x.MediaAssetId,
-            x.MediaAsset.StoredFilename, x.MediaAsset.MimeType, x.AltText ?? "")).ToArray());
+            x.MediaAsset.StoredFilename, x.MediaAsset.MimeType, x.AltText ?? "")).ToArray())
+    { Type = post.Type, TagSlugs = post.Tags.ToDictionary(x => x.Tag.Name, x => x.Tag.Slug) };
 
     public static bool HasDraftChanges(Post post, ArticleSnapshot live) => post.Draft is { } draft &&
-        (draft.Title != live.Title || draft.BodyMarkdown != live.BodyMarkdown || draft.Summary != live.Summary ||
+        ((draft.Title ?? "") != live.Title || draft.BodyMarkdown != live.BodyMarkdown || draft.Summary != live.Summary ||
          draft.CoverMediaId != live.CoverMediaId ||
          !post.Tags.Select(x => x.Tag.Name).Order(StringComparer.Ordinal).SequenceEqual(live.Tags.Order(StringComparer.Ordinal)) ||
-         live.Media.Any(x => (post.Media.SingleOrDefault(m => m.MediaAssetId == x.Id)?.AltText ?? "") != x.AltText));
+         live.Media.Any(x => (post.Media.SingleOrDefault(m => m.MediaAssetId == x.Id)?.AltText ?? "") != x.AltText) ||
+         (post.Type == PostType.Microblog && !post.Media.Select(x => x.MediaAssetId).ToHashSet().SetEquals(live.Media.Select(x => x.Id))));
+
+    public static bool IsPublicationPending(Post post, ArticleSnapshot? live)
+    {
+        if (live is null) return post.Status == PostStatus.Published;
+        if (post.Status != PostStatus.Published || post.PublishedSnapshot is null) return true;
+        var desired = JsonSerializer.Deserialize<ArticleSnapshot>(post.PublishedSnapshot.SnapshotJson);
+        // Legacy snapshots acquire tag URLs during generation, without pulling in draft edits.
+        if (desired is { TagSlugs.Count: 0 }) desired = desired with { TagSlugs = live.TagSlugs };
+        return JsonSerializer.Serialize(desired) != JsonSerializer.Serialize(live);
+    }
 }

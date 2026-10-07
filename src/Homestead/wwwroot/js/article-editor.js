@@ -77,7 +77,9 @@
     const button = e.submitter;
     if (!await save()) return;
     submitting = true;
-    form.requestSubmit(button);
+    // A completed autosave can resolve in the original submit event's microtask.
+    // Browsers ignore reentrant submission; resume in the next event-loop task.
+    setTimeout(() => form.requestSubmit(button), 0);
   });
   async function showPreview() {
     if (!await save()) return false;
@@ -109,7 +111,7 @@
       const input = document.createElement('input'); input.name = `Input.AltText[${image.id}]`; input.value = image.altText; input.maxLength = 1000; input.className = 'input w-full'; label.append(input);
       const button = document.createElement('button'); button.type = 'button'; button.className = 'btn'; button.dataset.insertImage = image.url; button.textContent = 'Insert image';
       container.append(img, label, button); document.querySelector('#article-images').append(container);
-      const option = document.createElement('option'); option.value = image.id; option.textContent = file.name; form.querySelector('[name="Input.CoverMediaId"]').append(option);
+      const option = document.createElement('option'); option.value = image.id; option.textContent = file.name; form.querySelector('[name="Input.CoverMediaId"]')?.append(option);
       insert(`\n\n![${image.altText.replace(/[\[\]\\\r\n]/g, '')}](${image.url})\n\n`);
       uploader.querySelector('[name="Upload"]').value = ''; uploadStatus.textContent = 'Uploaded and inserted into the draft.';
     } catch (error) { uploadStatus.textContent = error.message || 'Upload failed. Try again.'; }

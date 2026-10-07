@@ -114,6 +114,23 @@ try {
   assert.equal((await http(publicPath)).text, published.text);
   assert.equal((await form(editor, editor + '?handler=Publish', { ...article, 'Input.Version': '2', 'Input.BodyMarkdown': `Updated story.\n\n![Home](${imageUrl})` })).status, 302);
   assert.ok((await http(publicPath)).text.includes('Updated story.'));
+  const noteCreated = await form('/admin/posts', '/admin/posts?handler=New', { type: 'Microblog' });
+  assert.equal(noteCreated.status, 302);
+  const noteEditor = noteCreated.headers.location;
+  const noteFields = { 'Input.Title': 'A porch note', 'Input.BodyMarkdown': 'A quiet afternoon & a cup of tea.',
+    'Input.Tags': 'Home, Moments', 'Input.Version': '0' };
+  assert.equal((await form(noteEditor, noteEditor + '?handler=Publish', noteFields)).status, 302);
+  for (const path of ['/', '/notes/', '/articles/', '/reviews/', '/guides/', '/galleries/', '/about/', '/tags/home/']) {
+    const page = await http(path); assert.equal(page.status, 200);
+    assert.ok(page.text.includes('property="og:image"')); assert.match(page.text, /type="application\/rss(?:\+|&#x2B;)xml"/i);
+    assert.ok(!page.text.includes('<script'), 'Public pages work without authoring JavaScript');
+  }
+  assert.ok((await http('/notes/')).text.includes('A porch note'));
+  assert.ok((await http('/about/')).text.includes('Persisted About'));
+  assert.ok((await http('/rss.xml')).text.includes('A porch note'));
+  assert.ok((await http('/sitemap.xml')).text.includes('https://changed.example.test/posts/a-porch-note/'));
+  assert.ok((await http('/robots.txt')).text.includes('Sitemap: https://changed.example.test/sitemap.xml'));
+  assert.equal((await http('/assets/social-default.png')).status, 200);
   const id = docker([...base, 'ps', '-q', 'homestead']);
   assert.notEqual(docker(['exec', id, 'id', '-u']), '0');
   const keys = docker(['exec', id, 'sh', '-c', 'ls /data/keys']); assert.ok(keys.includes('.xml'));
@@ -127,6 +144,12 @@ try {
   assert.ok((await http(publicPath)).text.includes('Updated story.'));
   assert.equal((await http(imageUrl)).status, 200);
   assert.ok((await http(editor)).text.includes('Updated story.'));
+  assert.ok((await http('/posts/a-porch-note/')).text.includes('A quiet afternoon'));
+  assert.ok((await http('/rss.xml')).text.includes('A porch note'));
+  assert.equal((await form(noteEditor, noteEditor + '?handler=Unpublish', { ...noteFields, 'Input.Version': '1' })).status, 302);
+  assert.equal((await http('/posts/a-porch-note/')).status, 404);
+  assert.ok(!(await http('/rss.xml')).text.includes('A porch note'));
+  assert.ok(!(await http('/sitemap.xml')).text.includes('/posts/a-porch-note/'));
   assert.equal(keys, docker(['exec', docker([...base, 'ps', '-q', 'homestead']), 'sh', '-c', 'ls /data/keys']));
   assert.equal((await form('/admin', '/account/logout', {})).status, 302);
   assert.equal((await http('/admin')).status, 302);
@@ -134,7 +157,7 @@ try {
   assert.equal((await http(imageUrl)).status, 200);
   const privateImage = imageUrl.replace(/\/media\/([^/]+)\/[^/]+/, '/admin/media/$1');
   assert.equal((await http(privateImage)).status, 302);
-  console.log('PASS: HTTPS setup/login/logout, article upload/preview/publish/update, private draft isolation, generated HTML/media, non-root runtime, and restart persistence.');
+  console.log('PASS: HTTPS authoring, article/media lifecycle, notes, public listings/About/tags, RSS/sitemap/social metadata, draft isolation, non-root runtime, and restart persistence.');
 } catch (error) {
   try { console.error(docker([...base, 'logs', '--tail', '60'])); } catch { /* original error wins */ }
   throw error;

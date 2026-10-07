@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Text;
+using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Homestead.Data.Entities;
 
@@ -36,7 +37,16 @@ public sealed record ArticleMedia(Guid Id, string Filename, string MimeType, str
 
 public sealed record ArticleSnapshot(int SchemaVersion, Guid PostId, string Slug, string Title,
     string BodyMarkdown, string? Summary, DateTime PublishedAtUtc, DateTime ModifiedAtUtc,
-    long DraftVersion, string[] Tags, Guid? CoverMediaId, ArticleMedia[] Media);
+    long DraftVersion, string[] Tags, Guid? CoverMediaId, ArticleMedia[] Media)
+{
+    // Missing fields in phase 2 snapshots retain their article semantics.
+    public PostType Type { get; init; } = PostType.Article;
+    public Dictionary<string, string> TagSlugs { get; init; } = [];
+    [JsonIgnore]
+    public string DisplayTitle => string.IsNullOrWhiteSpace(Title)
+        ? Type == PostType.Microblog ? $"Note · {PublishedAtUtc:yyyy-MM-dd}" : "Untitled article" : Title;
+    public string TagSlug(string name) => TagSlugs.GetValueOrDefault(name) ?? Slugs.Create(name);
+}
 
 public static partial class Slugs
 {

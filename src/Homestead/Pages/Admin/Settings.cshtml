@@ -3,7 +3,7 @@
 @{ ViewData["Title"] = "Settings"; }
 <section class="max-w-2xl space-y-6">
     <h1 class="text-3xl font-semibold">Settings</h1>
-    <p>Make this place yours. These settings are saved for your future public site.</p>
+    <p>Make this place yours. Saving rebuilds your public site.</p>
     @if (Model.StatusMessage != null) { <div class="alert" role="status">@Model.StatusMessage</div> }
     <form method="post" class="space-y-6">
         @if (!ViewData.ModelState.IsValid)
@@ -26,7 +26,32 @@
             <label asp-for="Input.AboutMarkdown"></label><textarea asp-for="Input.AboutMarkdown" class="textarea w-full" rows="8"></textarea>
             <label asp-for="Input.FooterText"></label><input asp-for="Input.FooterText" class="input w-full" />
         </fieldset>
-        <p class="text-sm">Logo, avatar, and header image selection will arrive with media support.</p>
+        <fieldset class="fieldset gap-3">
+            <legend class="fieldset-legend">External profiles (up to five)</legend>
+            @for (var i = 0; i < Model.Input.ProfileLinks.Count; i++)
+            {
+                <label for="profile-label-@i">Profile @(i + 1) label</label><input id="profile-label-@i" asp-for="Input.ProfileLinks[i].Label" class="input w-full" maxlength="80" />
+                <label for="profile-url-@i">Profile @(i + 1) URL</label><input id="profile-url-@i" asp-for="Input.ProfileLinks[i].Url" class="input w-full" type="url" maxlength="2048" />
+            }
+        </fieldset>
         <button type="submit" class="btn btn-primary">Save settings</button>
     </form>
+    <section class="space-y-4" aria-labelledby="branding-title">
+        <h2 id="branding-title" class="text-xl font-semibold">Branding images</h2>
+        <p>Save text settings above before uploading. JPEG, PNG, or WebP, up to 20 MB.</p>
+        @foreach (var (slot, id) in new[] { ("Avatar", Model.Settings.AvatarMediaId), ("Logo", Model.Settings.LogoMediaId), ("Header", Model.Settings.HeaderMediaId) })
+        {
+            <div class="space-y-3 border border-base-300 rounded-lg p-4">
+                <h3 class="font-semibold">@slot</h3>
+                @if (id is not null) { <img src="/admin/media/@id" alt="Current @slot" class="max-w-full max-h-32" /> }
+                <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" class="space-y-3">
+                    <input type="hidden" name="Slot" value="@slot" />
+                    <label class="block" for="upload-@slot">New @slot image</label><input id="upload-@slot" name="Upload" type="file" accept="image/jpeg,image/png,image/webp" class="file-input w-full" />
+                    <button class="btn">Upload @slot</button>
+                </form>
+                @if (id is not null)
+                { <form method="post" asp-page-handler="Remove"><input type="hidden" name="Slot" value="@slot" /><button class="btn">Remove @slot</button></form> }
+            </div>
+        }
+    </section>
 </section>

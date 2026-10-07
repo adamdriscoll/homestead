@@ -1,35 +1,43 @@
 @page "/admin/posts/{id:guid}/edit"
 @model Homestead.Pages.Admin.Posts.EditModel
-@{ ViewData["Title"] = "Edit article"; }
+@{ var note = Model.Post.Type == Homestead.Data.Entities.PostType.Microblog; ViewData["Title"] = note ? "Edit note" : "Edit article"; }
 <div class="space-y-6">
-    <h1 class="text-3xl font-semibold">Your article</h1>
+    <h1 class="text-3xl font-semibold">@(note ? "Your note" : "Your article")</h1>
+    @if (note) { <p>A thought, a moment, a photo. Add text or a photo to publish.</p> }
     @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
     @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-error" role="alert"></div> }
     <p>@Model.Post.Status · @(Model.Live is null ? "Not currently public" : "Currently public")</p>
     @if (Model.Live is { } live)
     {
-        <a class="btn" href="/posts/@live.Slug/">Open public article</a>
+        <a class="btn" href="/posts/@live.Slug/">Open public post</a>
         @if (Homestead.Features.Articles.ArticleService.HasDraftChanges(Model.Post, live)) { <p>Unpublished edits · use Update published post when ready.</p> }
-        @if (Model.Post.Status != Homestead.Data.Entities.PostStatus.Published || Model.Post.PublishedSnapshot?.SnapshotJson != System.Text.Json.JsonSerializer.Serialize(live))
-        { <p role="alert">Saved publication changes are pending. The previous article is still public. Rebuild from Posts to retry.</p> }
+        @if (Homestead.Features.Articles.ArticleService.IsPublicationPending(Model.Post, live))
+        { <p role="alert">Saved publication changes are pending. The previous post is still public. Rebuild from Posts to retry.</p> }
     }
     else if (Model.Post.Status == Homestead.Data.Entities.PostStatus.Published) { <p role="alert">Publication pending. Rebuild from Posts to retry.</p> }
     <form method="post" asp-page-handler="Save" id="article-editor" class="space-y-4">
         <input type="hidden" asp-for="Input.Version" />
-        <label class="block space-y-2"><span>Title</span><input asp-for="Input.Title" class="input w-full" maxlength="300" /></label>
-        <label class="block space-y-2"><span>Summary (optional)</span><textarea asp-for="Input.Summary" class="textarea w-full" maxlength="1000" rows="2"></textarea></label>
+        <label class="block space-y-2"><span>@(note ? "Title (optional)" : "Title")</span><input asp-for="Input.Title" class="input w-full" maxlength="300" /></label>
+        @if (!note)
+        {
+            <label class="block space-y-2"><span>Summary (optional)</span><textarea asp-for="Input.Summary" class="textarea w-full" maxlength="1000" rows="2"></textarea></label>
+        }
         <div class="flex flex-wrap gap-2" role="toolbar" aria-label="Markdown formatting">
             @foreach (var action in new[] { "Bold", "Italic", "Heading", "Link", "List", "Quote", "Code", "Image" })
             { <button type="button" class="btn min-h-11" data-format="@action.ToLowerInvariant()">@action</button> }
         </div>
-        <label class="block space-y-2"><span>Article body (Markdown)</span><textarea asp-for="Input.BodyMarkdown" class="textarea w-full min-h-80 font-mono" maxlength="200000" rows="16"></textarea></label>
+        <label class="block space-y-2"><span>@(note ? "Note (Markdown)" : "Article body (Markdown)")</span><textarea asp-for="Input.BodyMarkdown" class="textarea w-full font-mono" maxlength="200000" rows="@(note ? 6 : 16)"></textarea></label>
         <p class="text-sm">Raw HTML is displayed as text. Upload images below, then choose Insert image.</p>
         <label class="block space-y-2"><span>Tags (comma separated)</span><input asp-for="Input.Tags" class="input w-full" maxlength="1000" /></label>
-        <label class="block space-y-2"><span>Cover image</span>
-            <select asp-for="Input.CoverMediaId" class="select w-full"><option value="">No cover</option>
-                @foreach (var image in Model.Post.Media) { <option value="@image.MediaAssetId">@image.MediaAsset.OriginalFilename</option> }
-            </select>
-        </label>
+        @if (!note)
+        {
+            <label class="block space-y-2"><span>Cover image</span>
+                <select asp-for="Input.CoverMediaId" class="select w-full"><option value="">No cover</option>
+                    @foreach (var image in Model.Post.Media) { <option value="@image.MediaAssetId">@image.MediaAsset.OriginalFilename</option> }
+                </select>
+            </label>
+        }
+        @if (note) { <p>All uploaded photos appear with this note. Inserting a photo in the text places it inline.</p> }
         <div id="article-images" class="space-y-4">
             @foreach (var image in Model.Post.Media)
             {
@@ -50,12 +58,12 @@
             <button class="btn btn-primary" asp-page-handler="Publish">@(Model.Live is null ? "Publish" : "Update published post")</button>
             @if (Model.Post.FirstPublishedAtUtc is not null) { <button class="btn" asp-page-handler="Unpublish">Unpublish</button> }
         </div>
-        <details><summary class="cursor-pointer py-3">Delete article</summary>
-            <label class="flex items-center gap-2 py-3"><input asp-for="ConfirmDelete" class="checkbox" /> Permanently delete this article</label>
-            <button class="btn" asp-page-handler="Delete">Delete article</button>
+        <details><summary class="cursor-pointer py-3">Delete post</summary>
+            <label class="flex items-center gap-2 py-3"><input asp-for="ConfirmDelete" class="checkbox" /> Permanently delete this post</label>
+            <button class="btn" asp-page-handler="Delete">Delete post</button>
         </details>
     </form>
-    <iframe id="draft-preview" title="Private article preview" class="w-full min-h-160 border border-base-300" sandbox="allow-same-origin" hidden></iframe>
+    <iframe id="draft-preview" title="Private post preview" class="w-full min-h-160 border border-base-300" sandbox="allow-same-origin" hidden></iframe>
     <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" id="image-upload" class="space-y-3 border-t border-base-300 pt-6">
         <h2 class="text-xl font-semibold">Add a photo</h2>
         <label class="block space-y-2"><span>Photo (JPEG, PNG, WebP · up to 20 MB)</span><input asp-for="Upload" class="file-input w-full" type="file" accept="image/jpeg,image/png,image/webp,.heic,.heif" /></label>

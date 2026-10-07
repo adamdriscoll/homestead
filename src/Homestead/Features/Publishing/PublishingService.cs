@@ -24,10 +24,13 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             if (post.Draft!.Version != version) throw new DraftConflictException();
             if (action == "publish")
             {
-                if (string.IsNullOrWhiteSpace(post.Draft.Title) || string.IsNullOrWhiteSpace(post.Draft.BodyMarkdown))
+                if (post.Type == PostType.Article && (string.IsNullOrWhiteSpace(post.Draft.Title) || string.IsNullOrWhiteSpace(post.Draft.BodyMarkdown)))
                     return new(false, "An article needs a title and body before publication.");
+                if (post.Type == PostType.Microblog && string.IsNullOrWhiteSpace(post.Draft.BodyMarkdown) && post.Media.Count == 0)
+                    return new(false, "A note needs text or at least one photo before publication.");
                 var now = DateTime.UtcNow;
-                var slug = post.Slug ?? Slugs.Create(post.Draft.Title); var root = slug; var suffix = 2;
+                var slug = post.Slug ?? (string.IsNullOrWhiteSpace(post.Draft.Title)
+                    ? $"note-{now:yyyy-MM-dd}-{post.Id.ToString("N")[..8]}" : Slugs.Create(post.Draft.Title)); var root = slug; var suffix = 2;
                 while (await db.Posts.AnyAsync(x => x.Slug == slug && x.Id != id)) slug = $"{root}-{suffix++}";
                 var snapshot = ArticleService.Snapshot(post, slug, now);
                 try { snapshot = snapshot with { Media = markdown.ReferencedMedia(snapshot) }; }
@@ -50,7 +53,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             return result.Succeeded ? result with
             {
                 Message = action switch
-                { "publish" => "Article published. Your public site is active.", "unpublish" => "Article unpublished.", _ => "Article deleted." },
+                { "publish" => "Post published. Your public site is active.", "unpublish" => "Post unpublished.", _ => "Post deleted." },
                 Url = action == "publish" ? $"/posts/{post.Slug}/" : null
             }
                 : result with { Message = result.Message + (stillLive ? " The previous article is still public." : " This article is not public.") };
@@ -79,8 +82,22 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             var snapshots = await db.PublishedSnapshots.AsNoTracking()
                 .Where(x => x.IsActive && x.Post.Status == PostStatus.Published).Select(x => x.SnapshotJson).ToListAsync();
             var posts = snapshots.Select(x => JsonSerializer.Deserialize<ArticleSnapshot>(x) ?? throw new InvalidOperationException("Invalid article snapshot."))
-                .OrderByDescending(x => x.PublishedAtUtc).ToArray();
+                .OrderByDescending(x => x.PublishedAtUtc).ThenBy(x => x.PostId).ToArray();
+            if (posts.Any(x => x.Tags.Length > 0 && x.TagSlugs.Count == 0))
+            {
+                var tags = await db.Tags.AsNoTracking().ToArrayAsync();
+                posts = posts.Select(post => post.TagSlugs.Count > 0 ? post : post with
+                {
+                    TagSlugs = post.Tags.ToDictionary(name => name, name => tags.SingleOrDefault(tag =>
+                        tag.NormalizedName == name.Normalize().ToUpperInvariant())?.Slug ?? Slugs.Create(name))
+                }).ToArray();
+            }
+            var brandingIds = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId }.OfType<Guid>().ToArray();
+            var branding = (await db.MediaAssets.AsNoTracking().Where(x => brandingIds.Contains(x.Id)).ToArrayAsync())
+                .Select(x => new ArticleMedia(x.Id, x.StoredFilename, x.MimeType, settings.Title)).ToArray();
+            if (branding.Length != brandingIds.Distinct().Count()) throw new InvalidOperationException("A branding image is missing.");
             Directory.CreateDirectory(root); var files = new List<string>();
+            var pagePaths = new List<string>();
             async Task Write(string relative, string html)
             {
                 if (!html.StartsWith("<!doctype html>", StringComparison.OrdinalIgnoreCase) || !html.Contains("</html>", StringComparison.OrdinalIgnoreCase))
@@ -88,21 +105,45 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 var path = Path.Combine(root, relative); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 await File.WriteAllTextAsync(path, html); files.Add(relative);
             }
-            await Write("index.html", await renderer.RenderAsync(new(settings, null, posts)));
+            async Task Page(string path, string heading, ArticleSnapshot[] items, ArticleSnapshot? post = null)
+            {
+                await Write(path.TrimStart('/') + "index.html", await renderer.RenderAsync(new(settings, post, items,
+                    Path: path, Heading: heading, Branding: branding)));
+                pagePaths.Add(path);
+            }
+            await Page("/", "Welcome home.", posts);
+            foreach (var (type, path, heading) in new[] { (PostType.Article, "/articles/", "Articles"),
+                (PostType.Microblog, "/notes/", "Notes"), (PostType.Review, "/reviews/", "Reviews"),
+                (PostType.Guide, "/guides/", "Guides"), (PostType.Gallery, "/galleries/", "Galleries") })
+                await Page(path, heading, posts.Where(x => x.Type == type).ToArray());
+            await Page("/about/", "About", []);
+            foreach (var tag in posts.SelectMany(post => post.Tags.Select(name => (Name: name, Slug: post.TagSlug(name))))
+                .DistinctBy(x => x.Slug))
+            {
+                if (Slugs.Create(tag.Slug) != tag.Slug) throw new InvalidOperationException("Invalid tag slug.");
+                await Page($"/tags/{tag.Slug}/", $"Tagged: {tag.Name}", posts.Where(post => post.Tags.Any(name => post.TagSlug(name) == tag.Slug)).ToArray());
+            }
             foreach (var post in posts)
             {
                 if (post.SchemaVersion != 1 || Slugs.Create(post.Slug) != post.Slug) throw new InvalidOperationException("Invalid article snapshot slug or schema.");
-                await Write($"posts/{post.Slug}/index.html", await renderer.RenderAsync(new(settings, post, [])));
+                await Page($"/posts/{post.Slug}/", post.DisplayTitle, [], post);
             }
+            async Task DataFile(string relative, string contents)
+            { await File.WriteAllTextAsync(Path.Combine(root, relative), contents); files.Add(relative); }
+            await DataFile("rss.xml", DiscoveryFiles.Rss(settings, posts, markdown));
+            await DataFile("sitemap.xml", DiscoveryFiles.Sitemap(settings, pagePaths));
+            await DataFile("robots.txt", $"User-agent: *\nAllow: /\nSitemap: {DiscoveryFiles.Absolute(settings, "/sitemap.xml")}\n");
             Directory.CreateDirectory(Path.Combine(root, "assets"));
             File.Copy(Path.Combine(environment.WebRootPath, "css", "site.css"), Path.Combine(root, "assets", "site.css"));
             files.Add("assets/site.css");
-            foreach (var asset in posts.SelectMany(x => x.Media).DistinctBy(x => x.Id))
+            File.Copy(Path.Combine(environment.WebRootPath, "social-default.png"), Path.Combine(root, "assets", "social-default.png"));
+            files.Add("assets/social-default.png");
+            foreach (var asset in posts.SelectMany(x => x.Media).Concat(branding).DistinctBy(x => x.Id))
             {
                 var relative = asset.Url.TrimStart('/'); var destination = Path.Combine(root, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.Copy(media.OriginalPath(asset), destination); files.Add(relative);
             }
-            var manifest = new GenerationManifest(generation.Id, DateTime.UtcNow, settings, posts, files.ToArray());
+            var manifest = new GenerationManifest(generation.Id, DateTime.UtcNow, settings, posts, files.ToArray(), branding);
             var temporary = Path.Combine(paths.SitePath, $"current-{generation.Id:N}.tmp");
             await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
             {

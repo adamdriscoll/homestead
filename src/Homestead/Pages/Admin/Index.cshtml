@@ -13,8 +13,8 @@
                     <div class="card-body">
                         <h3 class="card-title">@type</h3>
                         <p>@(type switch { Homestead.Data.Entities.PostType.Microblog => "A thought, a moment, a photo.", Homestead.Data.Entities.PostType.Article => "Room for a longer story.", Homestead.Data.Entities.PostType.Review => "Share what you think.", Homestead.Data.Entities.PostType.Guide => "Show how it is done.", _ => "A collection of moments." })</p>
-                        @if (type == Homestead.Data.Entities.PostType.Article)
-                        { <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New"><button class="btn">Create article</button></form> }
+                        @if (type is Homestead.Data.Entities.PostType.Article or Homestead.Data.Entities.PostType.Microblog)
+                        { <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New"><input type="hidden" name="type" value="@type" /><button class="btn">@(type == Homestead.Data.Entities.PostType.Microblog ? "Create note" : "Create article")</button></form> }
                         else { <button class="btn" type="button" disabled>Create @type.ToString().ToLowerInvariant() · coming soon</button> }
                     </div>
                 </article>

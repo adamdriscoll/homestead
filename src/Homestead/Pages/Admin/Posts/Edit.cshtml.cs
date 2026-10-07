@@ -24,7 +24,7 @@ public sealed class EditModel(ArticleService articles, MediaService media, Publi
     }
     public async Task<IActionResult> OnPostSaveAsync(Guid id)
     {
-        if (!ModelState.IsValid) return await InvalidAsync(id, "Check the article fields. Your changes have not been saved.", 400);
+        if (!ModelState.IsValid) return await InvalidAsync(id, "Check the post fields. Your changes have not been saved.", 400);
         try
         {
             Input.Version = await articles.SaveAsync(id, Input);
@@ -53,7 +53,7 @@ public sealed class EditModel(ArticleService articles, MediaService media, Publi
     public Task<IActionResult> OnPostDeleteAsync(Guid id) => ConfirmDelete ? Transition(id, "delete", save: false) : InvalidAsync(id, "Confirm deletion first.", 400);
     private async Task<IActionResult> Transition(Guid id, string action, bool save)
     {
-        if (!ModelState.IsValid) return await InvalidAsync(id, "Check the article fields.", 400);
+        if (!ModelState.IsValid) return await InvalidAsync(id, "Check the post fields.", 400);
         try
         {
             if (save) Input.Version = await articles.SaveAsync(id, Input);

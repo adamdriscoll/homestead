@@ -13,6 +13,10 @@ public sealed class PreviewModel(ArticleService articles, HomesteadDbContext db,
     {
         var post = await articles.FindAsync(id); if (post is null) return NotFound();
         var snapshot = ArticleService.Snapshot(post, post.Slug ?? "draft", DateTime.UtcNow);
-        return Content(await renderer.RenderAsync(new(await db.SiteSettings.AsNoTracking().SingleAsync(), snapshot, [], true)), "text/html");
+        var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
+        var ids = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId }.OfType<Guid>().ToArray();
+        var branding = (await db.MediaAssets.AsNoTracking().Where(x => ids.Contains(x.Id)).ToArrayAsync())
+            .Select(x => new ArticleMedia(x.Id, x.StoredFilename, x.MimeType, settings.Title)).ToArray();
+        return Content(await renderer.RenderAsync(new(settings, snapshot, [], true, Branding: branding)), "text/html");
     }
 }

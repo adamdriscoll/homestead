@@ -1,3 +1,7 @@
+using System.ComponentModel.DataAnnotations.Schema;
+using System.Text.Json;
+using Homestead.Features.Settings;
+
 namespace Homestead.Data.Entities;
 
 public sealed class SiteSettings
@@ -15,4 +19,6 @@ public sealed class SiteSettings
     public Guid? AvatarMediaId { get; set; }
     public Guid? LogoMediaId { get; set; }
     public Guid? HeaderMediaId { get; set; }
+    public string ProfileLinksJson { get; set; } = "[]";
+    [NotMapped] public ProfileLink[] ProfileLinks => JsonSerializer.Deserialize<ProfileLink[]>(ProfileLinksJson) ?? [];
 }

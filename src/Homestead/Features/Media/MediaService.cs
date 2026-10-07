@@ -12,7 +12,16 @@ namespace Homestead.Features.Media;
 public sealed class MediaService(HomesteadDbContext db, ArticleService articles, PublicationLock writer, StoragePaths paths)
 {
     public const long MaximumBytes = 20 * 1024 * 1024;
-    public async Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText)
+    public Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText)
+        => StoreAsync(postId, file, altText, null);
+
+    public Task<ArticleMedia> UploadBrandingAsync(string slot, IFormFile file)
+    {
+        if (slot is not ("Avatar" or "Logo" or "Header")) throw new InvalidOperationException("Choose an avatar, logo, or header image.");
+        return StoreAsync(null, file, "", slot);
+    }
+
+    private async Task<ArticleMedia> StoreAsync(Guid? postId, IFormFile file, string? altText, string? slot)
     {
         var filename = file.FileName;
         if (filename.IndexOfAny(['/', '\\', ':']) >= 0 || filename.Any(char.IsControl) || filename.Length > 255)
@@ -54,10 +63,10 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
         string? destination = null;
         try
         {
-            var post = await articles.FindAsync(postId) ?? throw new KeyNotFoundException();
+            var post = postId is { } id ? await articles.FindAsync(id) ?? throw new KeyNotFoundException() : null;
             var asset = new MediaAsset
             {
-                StoredFilename = "image" + (extension == ".jpeg" ? ".jpg" : extension),
+                StoredFilename = Guid.NewGuid().ToString("N") + (extension == ".jpeg" ? ".jpg" : extension),
                 OriginalFilename = filename,
                 MimeType = mime,
                 Size = buffer.Length,
@@ -67,7 +76,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
             var directory = Path.Combine(paths.OriginalsPath, asset.Id.ToString("D")); Directory.CreateDirectory(directory);
             destination = Path.Combine(directory, asset.StoredFilename);
             await File.WriteAllBytesAsync(destination, buffer.ToArray());
-            db.PostMedia.Add(new PostMedia
+            if (post is not null) db.PostMedia.Add(new PostMedia
             {
                 Post = post,
                 MediaAsset = asset,
@@ -75,6 +84,17 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
                 SortOrder = post.Media.Count == 0 ? 0 : post.Media.Max(x => x.SortOrder) + 1,
                 AltText = altText
             });
+            else
+            {
+                db.MediaAssets.Add(asset);
+                var settings = await db.SiteSettings.SingleAsync();
+                switch (slot)
+                {
+                    case "Avatar": settings.AvatarMediaId = asset.Id; break;
+                    case "Logo": settings.LogoMediaId = asset.Id; break;
+                    case "Header": settings.HeaderMediaId = asset.Id; break;
+                }
+            }
             await db.SaveChangesAsync();
             return new ArticleMedia(asset.Id, asset.StoredFilename, mime, altText ?? "");
         }

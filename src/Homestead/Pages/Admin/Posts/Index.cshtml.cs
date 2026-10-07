@@ -22,9 +22,10 @@ public sealed class IndexModel(HomesteadDbContext db, ArticleService articles, A
         if (status is not null) query = query.Where(x => x.Status == status);
         Posts = await query.OrderByDescending(x => x.UpdatedAtUtc).ToListAsync();
     }
-    public async Task<IActionResult> OnPostNewAsync()
+    public async Task<IActionResult> OnPostNewAsync(PostType type = PostType.Article)
     {
-        var post = await articles.CreateAsync();
+        if (type is not (PostType.Article or PostType.Microblog)) return BadRequest();
+        var post = await articles.CreateAsync(type);
         return RedirectToPage("Edit", new { id = post.Id });
     }
     public async Task<IActionResult> OnPostRebuildAsync()

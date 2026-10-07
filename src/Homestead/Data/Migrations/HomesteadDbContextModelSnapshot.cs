@@ -403,6 +403,10 @@ namespace Homestead.Data.Migrations
                     b.Property<Guid?>("LogoMediaId")
                         .HasColumnType("TEXT");
 
+                    b.Property<string>("ProfileLinksJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("TimeZone")
                         .IsRequired()
                         .HasColumnType("TEXT");

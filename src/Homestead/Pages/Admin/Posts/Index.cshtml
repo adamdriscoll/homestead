@@ -7,6 +7,7 @@
     @if (Model.Site.RecoveryError is not null) { <p class="alert" role="alert">@Model.Site.RecoveryError</p> }
     <div class="flex flex-wrap gap-2">
         <form method="post" asp-page-handler="New"><button class="btn btn-primary">New article</button></form>
+        <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="Microblog" /><button class="btn">New note</button></form>
         <form method="post" asp-page-handler="Rebuild"><button class="btn">Rebuild site</button></form>
         <a class="btn" href="/">View public site</a>
     </div>
@@ -15,16 +16,16 @@
         @foreach (var status in new[] { "Draft", "Published", "Unpublished" })
         { <a class="btn" href="/admin/posts?status=@status">@status</a> }
     </nav>
-    @if (Model.Posts.Count == 0) { <p>No posts here yet. Start with a new article.</p> }
+    @if (Model.Posts.Count == 0) { <p>No posts here yet. Start with an article or a note.</p> }
     @foreach (var post in Model.Posts)
     {
         var live = Model.Site.Current?.Articles.SingleOrDefault(x => x.PostId == post.Id);
-        var pending = live is not null && (post.Status != Homestead.Data.Entities.PostStatus.Published || post.PublishedSnapshot?.SnapshotJson != System.Text.Json.JsonSerializer.Serialize(live));
+        var pending = Homestead.Features.Articles.ArticleService.IsPublicationPending(post, live);
         <article class="border border-base-300 rounded-lg p-4 space-y-2">
-            <h2 class="text-xl font-semibold"><a href="/admin/posts/@post.Id/edit">@(string.IsNullOrWhiteSpace(post.Draft?.Title) ? "Untitled article" : post.Draft.Title)</a></h2>
+            <h2 class="text-xl font-semibold"><a href="/admin/posts/@post.Id/edit">@(string.IsNullOrWhiteSpace(post.Draft?.Title) ? (post.Type == Homestead.Data.Entities.PostType.Microblog ? "Untitled note" : "Untitled article") : post.Draft.Title)</a></h2>
             <p>@post.Type · @post.Status · @(live is null ? "Not currently public" : "Currently public")</p>
             @if (live is not null && Homestead.Features.Articles.ArticleService.HasDraftChanges(post, live)) { <p>Unpublished edits</p> }
-            @if (pending || (live is null && post.Status == Homestead.Data.Entities.PostStatus.Published)) { <p role="status">Publication pending. @(live is not null ? "The previous article is still public." : "This article is not public.") Rebuild to apply saved changes.</p> }
+            @if (pending) { <p role="status">Publication pending. @(live is not null ? "The previous post is still public." : "This post is not public.") Rebuild to apply saved changes.</p> }
         </article>
     }
     @if (Model.Site.Current is { } generation) { <p class="text-sm">Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }

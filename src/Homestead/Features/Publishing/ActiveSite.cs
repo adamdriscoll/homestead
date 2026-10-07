@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.StaticFiles;
 namespace Homestead.Features.Publishing;
 
 public sealed record GenerationManifest(Guid GenerationId, DateTime ActivatedAtUtc, SiteSettings Settings,
-    ArticleSnapshot[] Articles, string[] Files);
+    ArticleSnapshot[] Articles, string[] Files, ArticleMedia[]? Branding = null);
 
 public sealed class ActiveSite(StoragePaths paths, ILogger<ActiveSite> logger)
 {
@@ -73,6 +73,8 @@ public sealed class ActiveSite(StoragePaths paths, ILogger<ActiveSite> logger)
             }
             await using var opened = stream;
             context.Response.ContentType = type; context.Response.ContentLength = stream.Length;
+            if (relative == "rss.xml") context.Response.ContentType = "application/rss+xml; charset=utf-8";
+            else if (relative == "sitemap.xml") context.Response.ContentType = "application/xml; charset=utf-8";
             context.Response.Headers.CacheControl = "no-cache";
             if (!HttpMethods.IsHead(context.Request.Method)) await stream.CopyToAsync(context.Response.Body, context.RequestAborted);
         }

@@ -20,6 +20,10 @@ Article tests also cover the complete publication lifecycle, autosave conflicts,
 upload signatures/decoding, HTML safety, isolated previews, concurrent publication,
 failed generation/retry, missing media, active-site recovery, and public requests
 that are forbidden from querying SQLite.
+Public-experience tests cover microblog text/photo combinations, mixed chronological
+feeds, tag-slug collisions, XML feeds, complete social metadata, branding replacement
+and failure/retry, safe profile links, and upgrades from Phase 2. The production
+Compose smoke also checks notes, static listings/About/tags, discovery, and restart.
 Domain tests exercise database constraints rather than an in-memory provider.
 The CI workflow also builds and tests the Linux container with Caddy.
 

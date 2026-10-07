@@ -2,7 +2,9 @@
 
 Phase 2 implements P01–P06's application functionality. A physical-phone demo and
 public VM deployment remain manual acceptance checks; browser viewport emulation
-does not replace the plan's required real-device demonstration. Phase 3 has not started.
+does not replace the plan's required real-device demonstration. Phase 3 functionality
+is now documented separately in [Phase 3](phase-3.md); the real-device gate remains
+unverified.
 
 ## Authoring
 

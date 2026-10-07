@@ -1,7 +1,14 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text.Json;
 using Homestead.Data.Entities;
 
 namespace Homestead.Features.Settings;
+
+public sealed class ProfileLink
+{
+    [StringLength(80)] public string? Label { get; set; }
+    [StringLength(2048)] public string? Url { get; set; }
+}
 
 public sealed class SettingsInput : IValidatableObject
 {
@@ -15,6 +22,7 @@ public sealed class SettingsInput : IValidatableObject
     [StringLength(500), Display(Name = "Author bio")] public string? AuthorBio { get; set; }
     [StringLength(300), Display(Name = "Footer text")] public string? FooterText { get; set; }
     [Required, Display(Name = "Accent preset")] public string AccentColor { get; set; } = "Porch";
+    public List<ProfileLink> ProfileLinks { get; set; } = [];
 
     public static bool IsCanonicalUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
         uri.Scheme is "http" or "https" && !string.IsNullOrEmpty(uri.Host) && string.IsNullOrEmpty(uri.UserInfo) &&
@@ -28,7 +36,17 @@ public sealed class SettingsInput : IValidatableObject
             yield return new("Choose an available accent preset.", [nameof(AccentColor)]);
         if (!IsTimeZone(TimeZone))
             yield return new("Choose a valid time zone identifier, such as America/Chicago or UTC.", [nameof(TimeZone)]);
+        if (ProfileLinks.Count > 5)
+            yield return new("Use at most five external profile links.", [nameof(ProfileLinks)]);
+        foreach (var link in ProfileLinks)
+            if ((!string.IsNullOrWhiteSpace(link.Label) || !string.IsNullOrWhiteSpace(link.Url)) &&
+                (string.IsNullOrWhiteSpace(link.Label) || !IsProfileUrl(link.Url)))
+                yield return new("Each profile needs a label and an absolute HTTP(S) URL without credentials.", [nameof(ProfileLinks)]);
     }
+
+    public static bool IsProfileUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+        uri.Scheme is "http" or "https" && !string.IsNullOrEmpty(uri.Host) && string.IsNullOrEmpty(uri.UserInfo) &&
+        !value.Contains('\\') && !value.Any(char.IsControl);
 
     private static bool IsTimeZone(string? value)
     {
@@ -47,7 +65,8 @@ public sealed class SettingsInput : IValidatableObject
         AboutMarkdown = s.AboutMarkdown,
         AuthorBio = s.AuthorBio,
         FooterText = s.FooterText,
-        AccentColor = s.AccentColor
+        AccentColor = s.AccentColor,
+        ProfileLinks = s.ProfileLinks.ToList()
     };
 
     public void ApplyTo(SiteSettings s)
@@ -61,5 +80,7 @@ public sealed class SettingsInput : IValidatableObject
         s.AuthorBio = AuthorBio ?? "";
         s.FooterText = FooterText ?? "";
         s.AccentColor = AccentColor;
+        s.ProfileLinksJson = JsonSerializer.Serialize(ProfileLinks.Where(x => !string.IsNullOrWhiteSpace(x.Url))
+            .Select(x => new ProfileLink { Label = x.Label?.Trim(), Url = x.Url?.Trim() }).ToArray());
     }
 }

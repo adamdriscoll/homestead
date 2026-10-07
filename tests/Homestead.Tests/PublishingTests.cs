@@ -66,7 +66,7 @@ public sealed class PublishingTests
         using (var visitor = app.Client())
         {
             _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author);
-            Assert.Contains("Stories will appear here soon", await visitor.GetStringAsync("/"));
+            Assert.Contains("No posts here yet", await visitor.GetStringAsync("/"));
             id = await Create(author);
             var uploaded = await Upload(author, id, "garden.png", photo, "image/png");
             Assert.Equal(HttpStatusCode.OK, uploaded.StatusCode);
@@ -277,6 +277,8 @@ public sealed class PublishingTests
         var id = await Create(client); _ = await Action(client, id, "Publish", Fields(0)); guard.Block = true;
         Assert.Contains("original", await client.GetStringAsync("/posts/a-weekend-at-home/"));
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/assets/site.css")).StatusCode);
+        foreach (var path in new[] { "/", "/articles/", "/notes/", "/reviews/", "/guides/", "/galleries/", "/about/", "/tags/home/", "/rss.xml", "/sitemap.xml", "/robots.txt" })
+            Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(path)).StatusCode);
         foreach (var path in new[] { "/homestead.db", "/site/current.json", "/keys/key.xml", "/media/originals/image.png", "/assets/../current.json", "/posts/%2e%2e/current.json", "/assets/site.css%5c..%5cindex.html" })
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync(path)).StatusCode);
     }
