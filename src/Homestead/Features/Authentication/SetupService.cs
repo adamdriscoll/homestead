@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using Homestead.Data;
 using Homestead.Data.Entities;
+using Homestead.Features.Publishing;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,7 @@ public sealed class SetupLock
     public SemaphoreSlim Semaphore { get; } = new(1, 1);
 }
 
-public sealed class SetupService(HomesteadDbContext db, UserManager<ApplicationUser> users, IConfiguration configuration, SetupLock setupLock)
+public sealed class SetupService(HomesteadDbContext db, UserManager<ApplicationUser> users, IConfiguration configuration, SetupLock setupLock, PublishingService publishing)
 {
     public Task<bool> IsCompleteAsync() => db.Users.AnyAsync();
 
@@ -30,7 +31,9 @@ public sealed class SetupService(HomesteadDbContext db, UserManager<ApplicationU
         try
         {
             if (await IsCompleteAsync()) return IdentityResult.Failed(new IdentityError { Description = "Setup is already complete." });
-            return await users.CreateAsync(new ApplicationUser { UserName = email, Email = email }, password);
+            var result = await users.CreateAsync(new ApplicationUser { UserName = email, Email = email }, password);
+            if (result.Succeeded) await publishing.RebuildAsync();
+            return result;
         }
         catch (DbUpdateException)
         {

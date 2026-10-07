@@ -3,7 +3,7 @@
 @{ ViewData["Title"] = "Dashboard"; }
 <div class="space-y-8">
     <div class="space-y-2"><p class="text-sm">YOUR HOMESTEAD</p><h1 class="text-3xl font-semibold">@Model.SiteTitle</h1><p>A little space for everything you want to share.</p></div>
-    <div class="alert" role="status">Your foundation is ready. Post editors and public publishing are coming in later phases.</div>
+    <div class="alert" role="status">Write an article, add a photo, and publish it to your public site.</div>
     <section aria-labelledby="create-title" class="space-y-4">
         <h2 id="create-title" class="text-xl font-semibold">Create something</h2>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -13,12 +13,22 @@
                     <div class="card-body">
                         <h3 class="card-title">@type</h3>
                         <p>@(type switch { Homestead.Data.Entities.PostType.Microblog => "A thought, a moment, a photo.", Homestead.Data.Entities.PostType.Article => "Room for a longer story.", Homestead.Data.Entities.PostType.Review => "Share what you think.", Homestead.Data.Entities.PostType.Guide => "Show how it is done.", _ => "A collection of moments." })</p>
-                        <button class="btn" type="button" disabled>Create @type.ToString().ToLowerInvariant() · coming soon</button>
+                        @if (type == Homestead.Data.Entities.PostType.Article)
+                        { <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New"><button class="btn">Create article</button></form> }
+                        else { <button class="btn" type="button" disabled>Create @type.ToString().ToLowerInvariant() · coming soon</button> }
                     </div>
                 </article>
             }
         </div>
     </section>
-    <section class="space-y-2"><h2 class="text-xl font-semibold">Recent posts</h2><p>Your posts will appear here when authoring is available.</p></section>
-    <section class="space-y-2"><h2 class="text-xl font-semibold">Public site</h2><p>No public generation yet. Static generation arrives in Phase 2.</p></section>
+    <section class="space-y-2"><h2 class="text-xl font-semibold">Recent posts</h2>
+        @foreach (var post in Model.RecentPosts) { <p><a class="underline" href="/admin/posts/@post.Id/edit">@(post.Draft?.Title ?? "Untitled article")</a> · @post.Status</p> }
+        <a class="btn" href="/admin/posts">All posts</a>
+    </section>
+    <section class="space-y-2"><h2 class="text-xl font-semibold">Public site</h2>
+        @if (Model.Site.Current is { } generation) { <p>Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }
+        @if (Model.Site.RecoveryError is not null) { <p role="alert">@Model.Site.RecoveryError</p> }
+        @if (Model.LatestBuild?.Status == Homestead.Data.Entities.GenerationStatus.Failed) { <p role="alert">The last build failed. The previous public site remains active. Rebuild from Posts to retry.</p> }
+        <a class="btn" href="/">View public site</a>
+    </section>
 </div>

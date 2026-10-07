@@ -210,6 +210,9 @@ namespace Homestead.Data.Migrations
                         .IsRequired()
                         .HasColumnType("TEXT");
 
+                    b.Property<Guid?>("CoverMediaId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("Summary")
                         .HasColumnType("TEXT");
 

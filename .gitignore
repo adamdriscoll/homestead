@@ -3,7 +3,7 @@
 **/node_modules/
 **/wwwroot/css/site.css
 src/Homestead/wwwroot/lib/
-src/Homestead/wwwroot/js/
+src/Homestead/wwwroot/js/site.js
 src/Homestead/wwwroot/favicon.ico
 .vs/
 .idea/

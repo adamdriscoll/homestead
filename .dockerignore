@@ -3,10 +3,12 @@
 **/obj
 **/node_modules
 **/wwwroot/lib
-**/wwwroot/js
+**/wwwroot/js/site.js
 **/wwwroot/favicon.ico
 **/wwwroot/css/site.css
 data
 **/*.db*
 **/.env
 TestResults
+.playwright-cli
+output/playwright

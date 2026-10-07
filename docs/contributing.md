@@ -16,6 +16,10 @@ dotnet ef migrations has-pending-model-changes --project src/Homestead --no-buil
 Integration tests use real migrated SQLite files in isolated temporary directories
 and ASP.NET Core's test host. They cover secure setup, single-account races,
 authentication, CSRF, private storage, settings, cookies, and restart behavior.
+Article tests also cover the complete publication lifecycle, autosave conflicts,
+upload signatures/decoding, HTML safety, isolated previews, concurrent publication,
+failed generation/retry, missing media, active-site recovery, and public requests
+that are forbidden from querying SQLite.
 Domain tests exercise database constraints rather than an in-memory provider.
 The CI workflow also builds and tests the Linux container with Caddy.
 
@@ -33,6 +37,6 @@ nonnull ratings are constrained to integers 1–5.
 
 Keep changes within the active phase of the [implementation plan](planning/IMPLEMENTATION.md).
 There is one application project, no SPA, and no runtime Node dependency. The public
-root contains compiled assets only. Private originals, SQLite, backups, and keys
+root contains compiled CSS, the plain editor script, and install-manifest/icons. Private originals, SQLite, backups, and keys
 must never be registered with static-file middleware. Do not add public Identity
 UI or registration scaffolding; administrator creation belongs solely to setup.

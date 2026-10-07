@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { mkdtempSync, writeFileSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
@@ -31,14 +31,14 @@ function docker(args, env = environment) {
 }
 const cookies = new Map();
 let port;
-function http(path, method = 'GET', fields) {
+function http(path, method = 'GET', fields, contentType = 'application/x-www-form-urlencoded') {
   return new Promise((resolveResponse, reject) => {
-    const body = fields ? new URLSearchParams(fields).toString() : undefined;
+    const body = fields ? Buffer.isBuffer(fields) ? fields : new URLSearchParams(fields).toString() : undefined;
     const req = httpsRequest({ hostname: 'localhost', port, path, method,
       // Only this isolated smoke test uses Caddy's ephemeral internal CA.
       rejectUnauthorized: false,
       headers: { Cookie: [...cookies].map(([key, value]) => `${key}=${value}`).join('; '),
-        ...(body ? { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) } : {}) }
+        ...(body ? { 'Content-Type': contentType, 'Content-Length': Buffer.byteLength(body) } : {}) }
     }, response => {
       for (const cookie of response.headers['set-cookie'] ?? []) {
         const first = cookie.split(';')[0]; const split = first.indexOf('=');
@@ -85,6 +85,35 @@ try {
     'Input.DisplayAuthor': 'Smoke author', 'Input.TimeZone': 'America/Chicago', 'Input.AccentColor': 'Forest',
     'Input.AboutMarkdown': '# Persisted About', 'Input.Description': 'Persisted description' };
   assert.equal((await form('/admin/settings', '/admin/settings', settings)).status, 302);
+  assert.equal((await http('/js/article-editor.js')).status, 200);
+  assert.equal((await http('/manifest.webmanifest')).status, 200);
+  const created = await form('/admin/posts', '/admin/posts?handler=New', {});
+  assert.equal(created.status, 302);
+  const editor = created.headers.location;
+  const editorPage = await http(editor);
+  const token = editorPage.text.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)[1];
+  const boundary = `homestead-${randomBytes(12).toString('hex')}`;
+  const photo = readFileSync(resolve('src/Homestead/wwwroot/icon-192.png'));
+  const multipart = Buffer.concat([
+    Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n${token}\r\n--${boundary}\r\nContent-Disposition: form-data; name="UploadAlt"\r\n\r\nA home icon\r\n--${boundary}\r\nContent-Disposition: form-data; name="Upload"; filename="home.png"\r\nContent-Type: image/png\r\n\r\n`),
+    photo, Buffer.from(`\r\n--${boundary}--\r\n`)
+  ]);
+  assert.equal((await http(editor + '?handler=Upload', 'POST', multipart, `multipart/form-data; boundary=${boundary}`)).status, 302);
+  const withImage = await http(editor);
+  const imageUrl = withImage.text.match(/data-insert-image="([^"]+)"/)[1];
+  assert.equal((await http(imageUrl)).status, 404);
+  const article = { 'Input.Title': 'Compose article', 'Input.BodyMarkdown': `Our original story.\n\n![Home](${imageUrl})`,
+    'Input.Summary': 'Written from our home', 'Input.Tags': 'Home, Smoke', 'Input.Version': '0' };
+  assert.equal((await form(editor, editor + '?handler=Publish', article)).status, 302);
+  assert.ok((await http(editor.replace('/edit', '/preview'))).text.includes('/admin/media/'));
+  const publicPath = '/posts/compose-article/';
+  const published = await http(publicPath);
+  assert.equal(published.status, 200); assert.ok(published.text.includes('https://changed.example.test/posts/compose-article/'));
+  assert.equal((await http(imageUrl)).status, 200);
+  assert.equal((await form(editor, editor + '?handler=Save', { ...article, 'Input.Version': '1', 'Input.BodyMarkdown': 'Private pending edits' })).status, 302);
+  assert.equal((await http(publicPath)).text, published.text);
+  assert.equal((await form(editor, editor + '?handler=Publish', { ...article, 'Input.Version': '2', 'Input.BodyMarkdown': `Updated story.\n\n![Home](${imageUrl})` })).status, 302);
+  assert.ok((await http(publicPath)).text.includes('Updated story.'));
   const id = docker([...base, 'ps', '-q', 'homestead']);
   assert.notEqual(docker(['exec', id, 'id', '-u']), '0');
   const keys = docker(['exec', id, 'sh', '-c', 'ls /data/keys']); assert.ok(keys.includes('.xml'));
@@ -95,10 +124,17 @@ try {
   const saved = await http('/admin/settings'); assert.equal(saved.status, 200);
   assert.ok(saved.text.includes('Compose persistent home')); assert.ok(saved.text.includes('https://changed.example.test'));
   assert.equal((await http('/setup')).status, 404);
+  assert.ok((await http(publicPath)).text.includes('Updated story.'));
+  assert.equal((await http(imageUrl)).status, 200);
+  assert.ok((await http(editor)).text.includes('Updated story.'));
   assert.equal(keys, docker(['exec', docker([...base, 'ps', '-q', 'homestead']), 'sh', '-c', 'ls /data/keys']));
   assert.equal((await form('/admin', '/account/logout', {})).status, 302);
   assert.equal((await http('/admin')).status, 302);
-  console.log('PASS: HTTPS setup/login/logout, private storage, CSS, non-root runtime, persisted DB/settings/session keys.');
+  assert.equal((await http(publicPath)).status, 200);
+  assert.equal((await http(imageUrl)).status, 200);
+  const privateImage = imageUrl.replace(/\/media\/([^/]+)\/[^/]+/, '/admin/media/$1');
+  assert.equal((await http(privateImage)).status, 302);
+  console.log('PASS: HTTPS setup/login/logout, article upload/preview/publish/update, private draft isolation, generated HTML/media, non-root runtime, and restart persistence.');
 } catch (error) {
   try { console.error(docker([...base, 'logs', '--tail', '60'])); } catch { /* original error wins */ }
   throw error;

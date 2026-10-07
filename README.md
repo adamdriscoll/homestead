@@ -6,10 +6,11 @@ Homestead v2 is a personal publishing platform for microblogs, articles, reviews
 guides, and photo galleries. The planned application uses ASP.NET Core on .NET 10,
 Razor Pages, and SQLite, with a static public website regenerated on publication.
 
-Phase 1 is implemented: a .NET 10 Razor Pages application with SQLite, secure
-single-administrator setup, sign-in/sign-out, a responsive dashboard, site settings,
-and a non-root Docker deployment. The dashboard has placeholders for all five post
-types. Authoring, media uploads, and static publication start in Phase 2.
+Phases 1 and 2 are implemented: secure single-administrator setup, site settings,
+a responsive Markdown article editor with autosave and conflict detection, private
+JPEG/PNG/WebP uploads, preview, and full static publication. Publish, update,
+unpublish, and delete replace the complete public site atomically; failures keep
+the previous site available. The other four editors arrive in later phases.
 
 ## Run locally
 
@@ -28,7 +29,9 @@ dotnet run --project src/Homestead --no-launch-profile --urls http://localhost:5
 
 Open [first-run setup](http://localhost:5080/setup) and enter the generated secret
 (inspect `$env:HOMESTEAD_SETUP_TOKEN` in your local terminal), email, and a strong
-password. Sign in, then open the dashboard and settings. Remove the setup token
+password. Sign in, open **Posts**, and choose **New article**. Write a title/body,
+upload a photo, preview, then publish. Later edits stay private until **Update
+published post**. Remove the setup token
 from your environment after setup; future startups use the saved administrator.
 
 The build compiles Tailwind/daisyUI CSS locally; there is no frontend server or
@@ -37,7 +40,9 @@ live in the configured data directory, outside the public assets.
 
 See [deployment instructions](docs/deploy.md) for Linux/Docker Compose,
 [contributing](docs/contributing.md) for quality checks, and
-[Phase 1 decisions and verification](docs/phase-1.md) for scope and acceptance evidence.
+[Phase 1 decisions and verification](docs/phase-1.md), and
+[Phase 2 publishing and verification](docs/phase-2.md) for acceptance evidence and
+the real-phone demo checklist.
 
 ## Planning documents
 

@@ -1,5 +1,6 @@
 @import "tailwindcss" source(none);
 @source "../Pages";
+@source "../Components";
 @source "../Program.cs";
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;

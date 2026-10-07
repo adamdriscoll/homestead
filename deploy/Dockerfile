@@ -3,6 +3,7 @@ WORKDIR /work
 COPY src/Homestead/package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY src/Homestead/Pages ./Pages
+COPY src/Homestead/Components ./Components
 COPY src/Homestead/Program.cs ./Program.cs
 COPY src/Homestead/Styles ./Styles
 RUN npm run build:css

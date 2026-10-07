@@ -2,7 +2,10 @@ using System.Net;
 using System.Threading.RateLimiting;
 using Homestead.Data;
 using Homestead.Data.Entities;
+using Homestead.Features.Articles;
 using Homestead.Features.Authentication;
+using Homestead.Features.Media;
+using Homestead.Features.Publishing;
 using Homestead.Infrastructure.Storage;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -44,6 +47,13 @@ builder.Services.AddAuthorization();
 builder.Services.AddRazorPages(options => options.Conventions.AuthorizeFolder("/Admin"));
 builder.Services.AddSingleton<SetupLock>();
 builder.Services.AddScoped<SetupService>();
+builder.Services.AddSingleton<PublicationLock>();
+builder.Services.AddSingleton<ActiveSite>();
+builder.Services.AddSingleton<SafeMarkdown>();
+builder.Services.AddScoped<ArticleService>();
+builder.Services.AddScoped<MediaService>();
+builder.Services.AddScoped<PublishingService>();
+builder.Services.AddScoped<IStaticPageRenderer, StaticPageRenderer>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
     options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto; options.ForwardLimit = 1;
@@ -80,6 +90,17 @@ await using (var scope = app.Services.CreateAsyncScope())
         app.Logger.LogInformation("First-run setup is available at /setup; a bootstrap secret is required.");
     }
     else app.Logger.LogInformation("Administrator exists; setup is closed.");
+    var active = scope.ServiceProvider.GetRequiredService<ActiveSite>();
+    active.Recover();
+    foreach (var build in await db.SiteGenerations.Where(x => x.Status == GenerationStatus.Building).ToListAsync())
+    {
+        build.Status = build.Id == active.Current?.GenerationId ? GenerationStatus.Succeeded : GenerationStatus.Failed;
+        build.ActivatedAtUtc = build.Id == active.Current?.GenerationId ? active.Current.ActivatedAtUtc : null;
+        build.Error = build.Status == GenerationStatus.Failed ? "Build interrupted. Rebuild to apply pending changes." : null;
+    }
+    await db.SaveChangesAsync();
+    if (await db.Users.AnyAsync() && !File.Exists(paths.CurrentPath))
+        await scope.ServiceProvider.GetRequiredService<PublishingService>().RebuildAsync();
 }
 app.UseForwardedHeaders();
 if (!app.Environment.IsDevelopment())
@@ -99,7 +120,8 @@ app.Use(async (context, next) =>
 {
     context.Response.Headers.XContentTypeOptions = "nosniff";
     context.Response.Headers["Referrer-Policy"] = "same-origin";
-    context.Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'";
+    var frameAncestors = context.Request.Path.StartsWithSegments("/admin/posts") && context.Request.Path.Value!.EndsWith("/preview", StringComparison.OrdinalIgnoreCase) ? "'self'" : "'none'";
+    context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
     if (context.Request.Path.StartsWithSegments("/admin") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/setup"))
         context.Response.Headers.CacheControl = "no-store";
     await next(context);
@@ -108,10 +130,18 @@ app.UseStaticFiles(); // Only compiled admin assets in wwwroot; /data is never r
 app.UseRouting(); app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
 app.MapRazorPages();
 app.MapGet("/health/live", () => Results.Text("Healthy"));
-app.MapGet("/health/ready", async (HomesteadDbContext db, CancellationToken ct) =>
-    await db.Database.CanConnectAsync(ct) ? Results.Text("Ready") : Results.StatusCode(503));
+app.MapGet("/health/ready", async (HomesteadDbContext db, ActiveSite active, CancellationToken ct) =>
+    active.RecoveryError is null && await db.Database.CanConnectAsync(ct) && (active.IsHealthy || !await db.Users.AnyAsync(ct))
+        ? Results.Text("Ready") : Results.StatusCode(503));
+app.MapGet("/admin/media/{id:guid}", async (Guid id, HomesteadDbContext db, StoragePaths storage) =>
+{
+    var asset = await db.MediaAssets.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
+    if (asset is null) return Results.NotFound();
+    var file = Path.Combine(storage.OriginalsPath, asset.Id.ToString("D"), asset.StoredFilename);
+    return File.Exists(file) ? Results.File(file, asset.MimeType) : Results.NotFound();
+}).RequireAuthorization();
 app.MapGet("/admin/media/{**path}", () => Results.NotFound()).RequireAuthorization();
-app.MapGet("/", () => Results.Content("<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>Homestead</title><link rel=\"stylesheet\" href=\"/css/site.css\"></head><body><main class=\"max-w-xl mx-auto p-8 space-y-6\"><h1 class=\"text-3xl font-semibold\">Welcome home.</h1><p>Your Homestead foundation is ready. Publishing arrives in Phase 2.</p><a class=\"btn\" href=\"/account/login\">Administrator sign in</a><a class=\"btn\" href=\"/setup\">First-run setup</a></main></body></html>", "text/html"));
+app.MapMethods("/{**path}", ["GET", "HEAD"], (HttpContext context, ActiveSite active) => active.ServeAsync(context));
 await app.RunAsync();
 
 public partial class Program;

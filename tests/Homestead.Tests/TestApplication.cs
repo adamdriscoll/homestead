@@ -21,7 +21,7 @@ public sealed class TemporaryData : IDisposable
     }
 }
 
-public sealed class TestApplication(string dataPath, string environment = "Development", string? setupToken = TestApplication.SetupToken)
+public sealed class TestApplication(string dataPath, string environment = "Development", string? setupToken = TestApplication.SetupToken, Action<IServiceCollection>? configureServices = null)
     : WebApplicationFactory<Program>
 {
     public const string SetupToken = "test-only-bootstrap-secret-32-characters";
@@ -31,7 +31,10 @@ public sealed class TestApplication(string dataPath, string environment = "Devel
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment(environment);
-        builder.ConfigureServices(services => services.AddSingleton<IStartupFilter, TestConnectionFilter>());
+        builder.ConfigureServices(services =>
+        {
+            services.AddSingleton<IStartupFilter, TestConnectionFilter>(); configureServices?.Invoke(services);
+        });
         builder.ConfigureAppConfiguration((_, configuration) => configuration.AddInMemoryCollection(new Dictionary<string, string?>
         {
             ["HOMESTEAD_DATA_PATH"] = dataPath,

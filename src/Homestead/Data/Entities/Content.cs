@@ -31,6 +31,7 @@ public sealed class PostDraft
     public string BodyMarkdown { get; set; } = "";
     public string? Summary { get; set; }
     public long Version { get; set; }
+    public Guid? CoverMediaId { get; set; }
 }
 
 public sealed class PostPublishedSnapshot

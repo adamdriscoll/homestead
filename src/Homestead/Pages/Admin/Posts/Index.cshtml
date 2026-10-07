@@ -1,0 +1,31 @@
+@page "/admin/posts"
+@model Homestead.Pages.Admin.Posts.IndexModel
+@{ ViewData["Title"] = "Posts"; }
+<div class="space-y-6">
+    <h1 class="text-3xl font-semibold">Your posts</h1>
+    @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
+    @if (Model.Site.RecoveryError is not null) { <p class="alert" role="alert">@Model.Site.RecoveryError</p> }
+    <div class="flex flex-wrap gap-2">
+        <form method="post" asp-page-handler="New"><button class="btn btn-primary">New article</button></form>
+        <form method="post" asp-page-handler="Rebuild"><button class="btn">Rebuild site</button></form>
+        <a class="btn" href="/">View public site</a>
+    </div>
+    <nav class="flex flex-wrap gap-2" aria-label="Post filters">
+        <a class="btn" href="/admin/posts">All</a>
+        @foreach (var status in new[] { "Draft", "Published", "Unpublished" })
+        { <a class="btn" href="/admin/posts?status=@status">@status</a> }
+    </nav>
+    @if (Model.Posts.Count == 0) { <p>No posts here yet. Start with a new article.</p> }
+    @foreach (var post in Model.Posts)
+    {
+        var live = Model.Site.Current?.Articles.SingleOrDefault(x => x.PostId == post.Id);
+        var pending = live is not null && (post.Status != Homestead.Data.Entities.PostStatus.Published || post.PublishedSnapshot?.SnapshotJson != System.Text.Json.JsonSerializer.Serialize(live));
+        <article class="border border-base-300 rounded-lg p-4 space-y-2">
+            <h2 class="text-xl font-semibold"><a href="/admin/posts/@post.Id/edit">@(string.IsNullOrWhiteSpace(post.Draft?.Title) ? "Untitled article" : post.Draft.Title)</a></h2>
+            <p>@post.Type · @post.Status · @(live is null ? "Not currently public" : "Currently public")</p>
+            @if (live is not null && Homestead.Features.Articles.ArticleService.HasDraftChanges(post, live)) { <p>Unpublished edits</p> }
+            @if (pending || (live is null && post.Status == Homestead.Data.Entities.PostStatus.Published)) { <p role="status">Publication pending. @(live is not null ? "The previous article is still public." : "This article is not public.") Rebuild to apply saved changes.</p> }
+        </article>
+    }
+    @if (Model.Site.Current is { } generation) { <p class="text-sm">Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }
+</div>

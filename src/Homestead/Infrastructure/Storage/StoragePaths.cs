@@ -7,6 +7,10 @@ public sealed class StoragePaths
     public string DataRoot { get; }
     public string DatabasePath => Path.Combine(DataRoot, "homestead.db");
     public string KeysPath => Path.Combine(DataRoot, "keys");
+    public string OriginalsPath => Path.Combine(DataRoot, "media", "originals");
+    public string SitePath => Path.Combine(DataRoot, "site");
+    public string BuildsPath => Path.Combine(SitePath, "builds");
+    public string CurrentPath => Path.Combine(SitePath, "current.json");
     public string InitialBaseUrl { get; }
 
     public StoragePaths(IConfiguration configuration, IWebHostEnvironment environment)
