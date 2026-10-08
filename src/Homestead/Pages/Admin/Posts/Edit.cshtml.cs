@@ -20,7 +20,7 @@ public sealed class EditModel(ArticleService articles, MediaService media, Publi
     [TempData] public string? StatusMessage { get; set; }
     public Post Post { get; private set; } = null!;
     public ArticleSnapshot? Live => active.Current?.Articles.SingleOrDefault(x => x.PostId == Post.Id);
-    public string TypeLabel => Post.Type == PostType.Microblog ? "note" : Post.Type.ToString().ToLowerInvariant();
+    public string TypeLabel => Post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", _ => Post.Type.ToString().ToLowerInvariant() };
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         var post = await articles.FindAsync(id); if (post is null) return NotFound();

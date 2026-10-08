@@ -82,7 +82,7 @@ TLS verification is skipped only for these test instances' internal Caddy CAs.
 
 The suite exercises browser setup/login/logout, autosave and stale-tab conflicts,
 private preview, publication/update/unpublish/delete, Markdown formatting and inline
-image uploads, gallery batch uploads/captions/order, all five post types, and public
+image uploads, gallery batch uploads/captions/order, all six post types, and public
 navigation and article forms without JavaScript. Mobile emulation does not replace
 the physical-phone acceptance checks in release readiness.
 
@@ -121,7 +121,7 @@ Domain tests exercise database constraints rather than an in-memory provider.
 Five-type tests cover every publication lifecycle, structured draft isolation,
 review validation, step/photo ordering, captions and alt text, foreign-media/step
 rejection, safe Markdown, conflict detection, batch uploads, and failed build retry.
-The Compose smoke publishes all five types and checks gallery batch uploads.
+The Compose smoke publishes all six types and checks locations and gallery batch uploads.
 The CI workflow also builds and tests the Linux container with Caddy.
 Portability tests build the exported Hugo project with the real CLI and restore
 checksum-verified backups. Reliability tests inject activation and database
@@ -148,8 +148,16 @@ dotnet ef migrations add ChangeName --project src/Homestead --output-dir Data/Mi
 The initial migration creates a SQLite trigger to lock the first publication slug
 and timestamp. Preserve it explicitly in any future migration that rebuilds the
 `Posts` table; [SQLite migrations have provider-specific limitations](https://learn.microsoft.com/en-us/ef/core/providers/sqlite/limitations).
+The location/check-in upgrade restores it in a separate migration, after EF's
+deferred SQLite table rebuilds have completed. Adding SQL to the same migration
+can recreate the trigger before the rebuild and then silently drop it again.
 All persisted timestamps use UTC; nullable ratings allow incomplete drafts, and
 nonnull ratings are constrained to integers 1–5.
+Location coordinates are nullable, must be supplied together, and are constrained
+to latitude -90–90 and longitude -180–180. `LocationTests` and the existing
+lifecycle/portability fixtures cover locations and check-ins, draft isolation,
+validation, stable URLs, and legacy snapshots. Browser tests cover check-in
+autosave, private preview, and public navigation without JavaScript.
 
 Choose work from [GitHub issues](https://github.com/PoshTools/homestead/issues),
 and define scope and acceptance before implementing deferred proposals. See

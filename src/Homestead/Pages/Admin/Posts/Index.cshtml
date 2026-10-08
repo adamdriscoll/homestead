@@ -10,6 +10,7 @@
         <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="Microblog" /><button class="btn">New note</button></form>
         @foreach (var type in new[] { "Review", "Guide", "Gallery" })
         { <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="@type" /><button class="btn">New @type.ToLowerInvariant()</button></form> }
+        <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="Checkin" /><button class="btn">New check-in</button></form>
         <form method="post" asp-page-handler="Rebuild"><button class="btn">Rebuild site</button></form>
         <a class="btn" href="/">View public site</a>
     </div>
@@ -24,8 +25,8 @@
         var live = Model.Site.Current?.Articles.SingleOrDefault(x => x.PostId == post.Id);
         var pending = Homestead.Features.Articles.ArticleService.IsPublicationPending(post, live);
         <article class="border border-base-300 rounded-lg p-4 space-y-2">
-            <h2 class="text-xl font-semibold"><a href="/admin/posts/@post.Id/edit">@(post.Review?.Subject is { Length: > 0 } subject ? subject : string.IsNullOrWhiteSpace(post.Draft?.Title) ? $"Untitled {(post.Type == Homestead.Data.Entities.PostType.Microblog ? "note" : post.Type.ToString().ToLowerInvariant())}" : post.Draft.Title)</a></h2>
-            <p>@post.Type · @post.Status · @(live is null ? "Not currently public" : "Currently public")</p>
+            <h2 class="text-xl font-semibold"><a href="/admin/posts/@post.Id/edit">@Homestead.Pages.Admin.Posts.IndexModel.DraftTitle(post)</a></h2>
+            <p>@(post.Type == Homestead.Data.Entities.PostType.Checkin ? "Check-in" : post.Type.ToString()) · @post.Status · @(live is null ? "Not currently public" : "Currently public")</p>
             @if (live is not null && Homestead.Features.Articles.ArticleService.HasDraftChanges(post, live)) { <p>Unpublished edits</p> }
             @if (pending) { <p role="status">Publication pending. @(live is not null ? "The previous post is still public." : "This post is not public.") Rebuild to apply saved changes.</p> }
         </article>

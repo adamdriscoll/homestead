@@ -135,7 +135,8 @@ try {
     ['Guide', 'compose-guide', { 'Input.Title': 'Compose guide', 'Input.BodyMarkdown': 'Make yourself at home.',
       'Input.Steps[0].Id': '85895aa3-2ee7-4698-acee-14554be33490', 'Input.Steps[0].BodyMarkdown': 'Open the **door**.',
       'Input.Steps[1].Id': 'fa194c9a-3f88-45fc-9c3a-066903db75f3', 'Input.Steps[1].BodyMarkdown': 'Put the kettle on.' }],
-    ['Gallery', 'compose-gallery', { 'Input.Title': 'Compose gallery', 'Input.BodyMarkdown': 'Home in pictures.' }]
+    ['Gallery', 'compose-gallery', { 'Input.Title': 'Compose gallery', 'Input.BodyMarkdown': 'Home in pictures.' }],
+    ['Checkin', 'checkin-compose-shop', { 'Input.LocationName': 'Compose shop', 'Input.LocationAddress': '123 Main Street', 'Input.Latitude': '41.88', 'Input.Longitude': '-87.63' }]
   ]) {
     const createdType = await form('/admin/posts', '/admin/posts?handler=New', { type });
     assert.equal(createdType.status, 302);
@@ -166,8 +167,12 @@ try {
     if (type === 'Review') assert.ok(output.text.includes('5/5'));
     if (type === 'Guide') assert.ok(output.text.includes('<ol'));
     if (type === 'Gallery') assert.ok(output.text.includes('<figcaption>The second view</figcaption>'));
+    if (type === 'Checkin') {
+      assert.ok(output.text.includes('Location: Compose shop'));
+      assert.ok((await http('/checkins/')).text.includes('123 Main Street'));
+    }
   }
-  for (const path of ['/', '/notes/', '/articles/', '/reviews/', '/guides/', '/galleries/', '/about/', '/tags/home/']) {
+  for (const path of ['/', '/notes/', '/articles/', '/reviews/', '/guides/', '/galleries/', '/checkins/', '/about/', '/tags/home/']) {
     const page = await http(path); assert.equal(page.status, 200);
     assert.ok(page.text.includes('property="og:image"')); assert.match(page.text, /type="application\/rss(?:\+|&#x2B;)xml"/i);
     assert.ok(!page.text.includes('<script'), 'Public pages work without authoring JavaScript');
@@ -175,7 +180,7 @@ try {
   assert.ok((await http('/notes/')).text.includes('A porch note'));
   assert.ok((await http('/about/')).text.includes('Persisted About'));
   assert.ok((await http('/rss.xml')).text.includes('A porch note'));
-  for (const slug of ['compose-coffee', 'compose-guide', 'compose-gallery']) assert.equal((await http(`/posts/${slug}/`)).status, 200);
+  for (const slug of ['compose-coffee', 'compose-guide', 'compose-gallery', 'checkin-compose-shop']) assert.equal((await http(`/posts/${slug}/`)).status, 200);
   assert.ok((await http('/sitemap.xml')).text.includes('https://changed.example.test/posts/a-porch-note/'));
   assert.ok((await http('/robots.txt')).text.includes('Sitemap: https://changed.example.test/sitemap.xml'));
   assert.equal((await http('/assets/social-default.png')).status, 200);
@@ -236,7 +241,7 @@ try {
     assert.equal((await http('/setup')).status, 404);
     assert.ok((await http(publicPath)).text.includes('Updated story.'));
     assert.equal((await http(imageUrl)).status, 200);
-    for (const slug of ['compose-coffee', 'compose-guide', 'compose-gallery']) assert.equal((await http(`/posts/${slug}/`)).status, 200);
+    for (const slug of ['compose-coffee', 'compose-guide', 'compose-gallery', 'checkin-compose-shop']) assert.equal((await http(`/posts/${slug}/`)).status, 200);
   } finally {
     docker([...base, 'up', '-d', '--no-build', '--force-recreate', 'homestead'], { ...environment, HOMESTEAD_SETUP_TOKEN: '' });
     await ready();
@@ -266,7 +271,7 @@ try {
   assert.equal((await http(imageUrl)).status, 200);
   const privateImage = imageUrl.replace(/\/media\/([^/]+)\/[^/]+/, '/admin/media/$1');
   assert.equal((await http(privateImage)).status, 302);
-  console.log('PASS: HTTPS authoring, all five types, exports, full offline backup restore/rebuild, draft isolation, non-root runtime, and restart persistence.');
+  console.log('PASS: HTTPS authoring, all six types, locations, exports, full offline backup restore/rebuild, draft isolation, non-root runtime, and restart persistence.');
 } catch (error) {
   try { console.error(docker([...base, 'logs', '--tail', '60'])); } catch { /* original error wins */ }
   throw error;

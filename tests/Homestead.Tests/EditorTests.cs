@@ -18,6 +18,7 @@ public sealed class EditorTests
     [InlineData(PostType.Review)]
     [InlineData(PostType.Guide)]
     [InlineData(PostType.Gallery)]
+    [InlineData(PostType.Checkin)]
     public async Task Removed_inline_images_leave_preview_and_next_publication_but_remain_private_for_undo(PostType type)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path);
@@ -29,7 +30,7 @@ public sealed class EditorTests
         var post = await articles.CreateAsync(type);
         var image = await Photo(media, post.Id, true);
         var manual = await Photo(media, post.Id, false);
-        var input = new ArticleInput { Title = "Editor example", Subject = "Example", Rating = 4, BodyMarkdown = $"Text ![sky]({image.Url})" };
+        var input = new ArticleInput { Title = "Editor example", Subject = "Example", Rating = 4, LocationName = "Example place", BodyMarkdown = $"Text ![sky]({image.Url})" };
         if (type == PostType.Guide) input.Steps.Add(new() { BodyMarkdown = "Follow instructions" });
         input.Version = await articles.SaveAsync(post.Id, input);
         Assert.True((await publisher.TransitionAsync(post.Id, "publish", input.Version)).Succeeded);

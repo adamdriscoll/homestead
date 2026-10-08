@@ -197,7 +197,7 @@ namespace Homestead.Data.Migrations
 
                             t.HasCheckConstraint("CK_Post_Status", "Status BETWEEN 0 AND 3");
 
-                            t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 4");
+                            t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 5");
                         });
                 });
 
@@ -213,6 +213,20 @@ namespace Homestead.Data.Migrations
                     b.Property<Guid?>("CoverMediaId")
                         .HasColumnType("TEXT");
 
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("REAL");
+
+                    b.Property<string>("LocationAddress")
+                        .HasMaxLength(1000)
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LocationName")
+                        .HasMaxLength(300)
+                        .HasColumnType("TEXT");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("REAL");
+
                     b.Property<string>("Summary")
                         .HasColumnType("TEXT");
 
@@ -225,7 +239,10 @@ namespace Homestead.Data.Migrations
 
                     b.HasKey("PostId");
 
-                    b.ToTable("PostDrafts");
+                    b.ToTable("PostDrafts", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_Draft_Coordinates", "(Latitude IS NULL AND Longitude IS NULL) OR (Latitude IS NOT NULL AND Longitude IS NOT NULL AND Latitude BETWEEN -90 AND 90 AND Longitude BETWEEN -180 AND 180)");
+                        });
                 });
 
             modelBuilder.Entity("Homestead.Data.Entities.PostMedia", b =>

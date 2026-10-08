@@ -4,13 +4,20 @@ A self-hostable home for your digital life.
 
 Homestead is a personal publishing platform for one author. Share a short note,
 write an article or review, explain something in a step-by-step guide, or collect
-photos in a gallery. Author from a phone or desktop with Markdown, photo uploads,
-autosave, and private previews.
+photos in a gallery, or check in at a place you visited. Author from a phone or
+desktop with Markdown, photo uploads, autosave, and private previews.
 
 Your public website is made of static files. Publishing regenerates the home feed,
 post pages, type listings, tags, About page, RSS, sitemap, and sharing metadata as
 one complete site. Draft edits stay private until you publish an update. If a build
 fails, the previous site stays available and the administrator can retry.
+
+Every post can include a location: a place name, address, and optional paired
+latitude/longitude. Choose **New check-in** for a visit; only the place name is
+required to publish, with optional title, text, and photos. Location details appear
+on public posts, listings, RSS, and exports after publication. Draft changes stay
+private, including changes to a published location. Clear the location fields and
+publish an update to remove a location from other post types.
 
 The Porch, Journal, and Ledger public themes support light/dark appearance, accent
 presets, author profiles, and avatar, logo, and header images. Install custom ZIP

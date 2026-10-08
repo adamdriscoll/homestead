@@ -27,7 +27,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             {
                 if (PostValidation.PublicationError(post) is { } error) return new(false, error);
                 var now = DateTime.UtcNow;
-                var title = post.Type == PostType.Review ? post.Review!.Subject : post.Draft.Title;
+                var title = post.Type == PostType.Review ? post.Review!.Subject : post.Type == PostType.Checkin && string.IsNullOrWhiteSpace(post.Draft.Title) ? $"checkin-{post.Draft.LocationName}" : post.Draft.Title;
                 var slug = post.Slug ?? (string.IsNullOrWhiteSpace(title)
                     ? $"{(post.Type == PostType.Microblog ? "note" : "gallery")}-{now:yyyy-MM-dd}-{post.Id.ToString("N")[..8]}" : Slugs.Create(title)); var root = slug; var suffix = 2;
                 while (await db.Posts.AnyAsync(x => x.Slug == slug && x.Id != id)) slug = $"{root}-{suffix++}";
@@ -114,7 +114,8 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             await Page("/", "Welcome home.", posts);
             foreach (var (type, path, heading) in new[] { (PostType.Article, "/articles/", "Articles"),
                 (PostType.Microblog, "/notes/", "Notes"), (PostType.Review, "/reviews/", "Reviews"),
-                (PostType.Guide, "/guides/", "Guides"), (PostType.Gallery, "/galleries/", "Galleries") })
+                (PostType.Guide, "/guides/", "Guides"), (PostType.Gallery, "/galleries/", "Galleries"),
+                (PostType.Checkin, "/checkins/", "Check-ins") })
                 await Page(path, heading, posts.Where(x => x.Type == type).ToArray());
             await Page("/about/", "About", []);
             foreach (var tag in posts.SelectMany(post => post.Tags.Select(name => (Name: name, Slug: post.TagSlug(name))))

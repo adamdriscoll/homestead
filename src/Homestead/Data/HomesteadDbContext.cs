@@ -37,7 +37,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.HasIndex(x => x.Slug).IsUnique();
             e.ToTable("Posts", t =>
             {
-                t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 4");
+                t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 5");
                 t.HasCheckConstraint("CK_Post_Status", "Status BETWEEN 0 AND 3");
                 t.HasCheckConstraint("CK_Post_PublishedSlug", "FirstPublishedAtUtc IS NULL OR (Slug IS NOT NULL AND length(trim(Slug)) > 0)");
                 t.HasTrigger("TR_Post_LockedPublication");
@@ -48,6 +48,10 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.HasKey(x => x.PostId);
             e.HasOne(x => x.Post).WithOne(x => x.Draft).HasForeignKey<PostDraft>(x => x.PostId);
             e.Property(x => x.Version).IsConcurrencyToken();
+            e.Property(x => x.LocationName).HasMaxLength(300);
+            e.Property(x => x.LocationAddress).HasMaxLength(1000);
+            e.ToTable("PostDrafts", t => t.HasCheckConstraint("CK_Draft_Coordinates",
+                "(Latitude IS NULL AND Longitude IS NULL) OR (Latitude IS NOT NULL AND Longitude IS NOT NULL AND Latitude BETWEEN -90 AND 90 AND Longitude BETWEEN -180 AND 180)"));
         });
         builder.Entity<PostPublishedSnapshot>(e =>
         {

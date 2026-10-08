@@ -47,7 +47,7 @@
                                     {
                                         var active = currentPage == route || (route == "/Admin/Posts/Index" && currentPage.StartsWith("/Admin/Posts/", StringComparison.Ordinal));
                                         <li>
-                                            <a asp-page="@route" class="min-h-11 @(active ? "bg-base-200 text-base-content font-medium" : "")" aria-current="@(active ? "page" : null)">
+                                            <a asp-page="@route" class="min-h-11 content-center @(active ? "bg-base-200 text-base-content font-medium" : "")" aria-current="@(active ? "page" : null)">
                                                 <svg class="size-4 fill-current text-base-content/60" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#@icon"></use></svg>
                                                 <span>@label</span>
                                                 <svg class="size-3 fill-current text-base-content/40 ml-auto" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#chevron-right"></use></svg>
@@ -56,6 +56,15 @@
                                     }
                                 </ul>
                             }
+                            <ul class="menu w-full py-2 border-b border-base-300">
+                                <li>
+                                    <a href="/" class="min-h-11 content-center">
+                                        <svg class="size-4 fill-current text-base-content/60" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#eye"></use></svg>
+                                        <span>View public site</span>
+                                        <svg class="size-3 fill-current text-base-content/40 ml-auto" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#chevron-right"></use></svg>
+                                    </a>
+                                </li>
+                            </ul>
                         </nav>
                         <div class="flex flex-wrap items-center justify-between gap-2 px-2 py-3">
                             <partial name="_AdminAppearance" />

@@ -88,7 +88,7 @@ public sealed class ThemeTests
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); _ = await Note(client);
         var settings = Settings(theme); settings["Input.ThemePrimaryColor"] = "#123456";
         Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", settings)).StatusCode);
-        var routes = new[] { "/", "/notes/", "/articles/", "/reviews/", "/guides/", "/galleries/", "/about/", "/posts/garden-note/" };
+        var routes = new[] { "/", "/notes/", "/articles/", "/reviews/", "/guides/", "/galleries/", "/checkins/", "/about/", "/posts/garden-note/" };
         foreach (var path in routes)
         {
             var html = await client.GetStringAsync(path);
@@ -117,10 +117,11 @@ public sealed class ThemeTests
         {
             _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author); postId = await Note(author);
             var before = app.Services.GetRequiredService<ActiveSite>().Current!.GenerationId;
-            Assert.Equal(HttpStatusCode.Redirect, (await Upload(author, Package())).StatusCode);
+            var package = Package();
+            Assert.Equal(HttpStatusCode.Redirect, (await Upload(author, package)).StatusCode);
             Assert.Equal(before, app.Services.GetRequiredService<ActiveSite>().Current!.GenerationId);
             var themes = app.Services.GetRequiredService<ThemeService>(); id = themes.Installed().Single(x => x.Id.StartsWith("custom-", StringComparison.Ordinal)).Id;
-            Assert.Equal(HttpStatusCode.Redirect, (await Upload(author, Package())).StatusCode);
+            Assert.Equal(HttpStatusCode.Redirect, (await Upload(author, package)).StatusCode);
             Assert.Single(themes.Installed(), x => x.Id.StartsWith("custom-", StringComparison.Ordinal));
             var fields = Settings(id); fields["Input.ThemeBackgroundColor"] = "#f8f8f8"; fields["Input.ThemeTextColor"] = "#123456";
             Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(author, "/admin/settings", fields)).StatusCode);

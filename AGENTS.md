@@ -2,8 +2,8 @@
 
 ## Scope and sources of truth
 
-Homestead is a single-author, self-hosted publishing application with five fixed
-post types: microblog (called a note in the UI), article, review, guide, and gallery.
+Homestead is a single-author, self-hosted publishing application with six fixed
+post types: microblog (called a note in the UI), article, review, guide, gallery, and checkin (check-in in the UI).
 Keep focused Markdown editors, private drafts, portable content, and a static
 public website. Prefer concrete services within the existing application.
 
@@ -36,7 +36,7 @@ keep layouts semantic, responsive, and usable by keyboard and touch.
   health, private media, and the public static fallback.
 - `Data/`: EF Core SQLite entities, constraints, migrations, and UTC conversion.
 - `Features/Articles/`: shared editing, snapshots, validation, and slugs for all
-  five types despite the historical namespace name.
+  six types despite the historical namespace name.
 - `Features/Publishing/`: Markdown, rendering/discovery, serialized builds,
   atomic activation, and active-site serving/recovery.
 - `Features/Media/` and `Features/Export/`: originals, static/Hugo ZIPs, backup/restore.
@@ -79,7 +79,7 @@ Pointer activation stays authoritative even if the final database build-record
 write fails; startup reconciles interrupted records. Damaged active output fails
 readiness and offers an explicit rebuild. Retain three successful generations.
 
-`ArticleSnapshot` and `GenerationManifest.Articles` carry all five types. Preserve
+`ArticleSnapshot` and `GenerationManifest.Articles` carry all six types. Preserve
 legacy JSON compatibility: absent type means article and additive fields have
 defaults. Legacy tag maps resolve through stored tags so colliding names such as
 C++/C# retain distinct URLs.
@@ -91,10 +91,15 @@ first publication with an ID tie-breaker; updates keep the original date/URL.
 
 Incomplete drafts are valid; publish requirements differ by type: notes need text
 or a photo, articles title/body, reviews subject/text and integer rating 1–5,
-guides title and instructions in every included step, galleries a photo. Draft
-ratings may be null. Untitled notes/galleries have date/ID fallbacks. Media/step
-IDs must belong to the post. Preserve step IDs and transactional reordering that
-respects unique sort constraints; removing a guide step moves photos to its intro.
+guides title and instructions in every included step, galleries a photo, and
+check-ins a place name with optional title, text, and photos. Draft ratings may
+be null. Untitled notes/galleries have date/ID fallbacks; untitled check-ins use
+their place name. Media/step IDs must belong to the post. Preserve step IDs and
+transactional reordering that respects unique sort constraints; removing a guide
+step moves photos to its intro.
+All types can have draft location name/address and paired finite coordinates
+(latitude -90–90, longitude -180–180). Capture locations in published snapshots;
+absent snapshot location means none. Location-only edits must count as draft changes.
 
 ## Privacy, security, and configuration
 
@@ -137,7 +142,7 @@ and must serve independently of Homestead. Hugo ZIPs include all nondeleted post
 with drafts/unpublished work marked `draft: true`; pending edits get a separate
 private working bundle beside the published bundle. Preserve stable IDs/URLs,
 tags, structured fields, ordering, captions, and rewritten local media references.
-Ship layouts that actually build all five types. Deleted posts are omitted even
+Ship layouts that actually build all six types. Deleted posts are omitted even
 if a failed deletion left an old page active on Homestead.
 
 Backups capture SQLite through its online backup API plus every recorded original
@@ -149,7 +154,7 @@ Never downgrade a migrated database in place.
 
 Tests use real migrated SQLite files and isolated temporary data via
 `TestApplication`; use these fixtures rather than EF's in-memory provider. Select
-regressions for affected domain/auth/settings, five-type lifecycle, draft privacy,
+regressions for affected domain/auth/settings, six-type lifecycle, draft privacy,
 snapshots/upgrades, generation/recovery failure, or portability. Check desired vs.
 active state as well as success. Use contributing's build/test/format/model checks
 and report only checks actually run, migration/config impact, and remaining issues.

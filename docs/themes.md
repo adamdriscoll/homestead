@@ -72,7 +72,7 @@ v2/theme.css
   "variants": [
     {
       "engineVersion": 1,
-      "postTypes": ["microblog", "article", "review", "guide", "gallery"],
+      "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin"],
       "styles": ["v1/theme.css"],
       "scripts": ["v1/theme.js"],
       "supportsColors": true,
@@ -89,7 +89,10 @@ v2/theme.css
 ```
 
 One variant per engine version is allowed. Homestead chooses only the current
-engine variant and rejects packages that lack it or omit any current post type.
+engine variant and rejects packages that lack it or omit any original post type.
+Check-ins use `checkin` in new manifests. Existing engine 1 packages declaring the
+original five types remain compatible: shared Razor regions render check-ins and
+locations using the existing semantic markup. No engine-version change is needed.
 Engine 1 calls notes `microblog` in the manifest. Other variants can bundle files
 for future or earlier engines; they do not alter which styles or scripts load.
 All referenced current styles/scripts/layouts must exist. `styles` needs at least
@@ -103,8 +106,8 @@ Homestead compiles its public Razor components with the application.
 [`SiteDocument.razor`](../src/Homestead/Components/Public/SiteDocument.razor)
 renders the document head, header, main content, and footer;
 [`PostContent.razor`](../src/Homestead/Components/Public/PostContent.razor)
-renders all five post types. This keeps escaping, metadata, media resolution,
-previews, and no-JavaScript navigation consistent across themes.
+renders all six post types and optional locations. This keeps escaping, metadata,
+media resolution, previews, and no-JavaScript navigation consistent across themes.
 
 Custom packages arrange those rendered regions using a constrained HTML layout.
 They do not execute server-side code. Include each slot exactly once:

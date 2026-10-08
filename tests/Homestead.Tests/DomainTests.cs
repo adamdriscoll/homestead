@@ -7,6 +7,20 @@ namespace Homestead.Tests;
 
 public sealed class DomainTests
 {
+    [Theory]
+    [InlineData(91d, 0d)]
+    [InlineData(0d, 181d)]
+    [InlineData(-91d, 0d)]
+    [InlineData(0d, -181d)]
+    [InlineData(0d, null)]
+    [InlineData(null, 0d)]
+    public async Task Coordinates_are_paired_and_checked_in_the_database(double? latitude, double? longitude)
+    {
+        using var data = new TemporaryData(); await using var db = await Database(data);
+        db.Posts.Add(new Post { Draft = new() { Latitude = latitude, Longitude = longitude } });
+        await Assert.ThrowsAsync<DbUpdateException>(() => db.SaveChangesAsync());
+    }
+
     private static async Task<HomesteadDbContext> Database(TemporaryData data)
     {
         Directory.CreateDirectory(data.Path);

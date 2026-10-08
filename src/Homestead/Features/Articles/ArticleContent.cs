@@ -24,6 +24,10 @@ public sealed class ArticleInput
     public List<Guid> RemovedMediaIds { get; set; } = [];
     public Dictionary<Guid, string> Captions { get; set; } = [];
     public Dictionary<Guid, Guid?> StepImages { get; set; } = [];
+    [StringLength(300)] public string? LocationName { get; set; }
+    [StringLength(1000)] public string? LocationAddress { get; set; }
+    [Range(-90d, 90d)] public double? Latitude { get; set; }
+    [Range(-180d, 180d)] public double? Longitude { get; set; }
 
     public static ArticleInput From(Post post) => new()
     {
@@ -32,6 +36,10 @@ public sealed class ArticleInput
         Summary = post.Draft.Summary,
         Version = post.Draft.Version,
         CoverMediaId = post.Draft.CoverMediaId,
+        LocationName = post.Draft.LocationName,
+        LocationAddress = post.Draft.LocationAddress,
+        Latitude = post.Draft.Latitude,
+        Longitude = post.Draft.Longitude,
         Tags = string.Join(", ", post.Tags.Select(x => x.Tag.Name)),
         AltText = post.Media.ToDictionary(x => x.MediaAssetId, x => x.AltText ?? ""),
         Subject = post.Review?.Subject,
@@ -52,6 +60,15 @@ public sealed class GuideStepInput
 
 public sealed record ReviewSnapshot(string Subject, int? Rating, string? ExternalUrl);
 public sealed record GuideStepSnapshot(Guid Id, string BodyMarkdown);
+public sealed record LocationSnapshot(string? Name, string? Address, double? Latitude, double? Longitude)
+{
+    public static LocationSnapshot? From(PostDraft draft) =>
+        draft.LocationName is null && draft.LocationAddress is null && draft.Latitude is null && draft.Longitude is null
+            ? null : new(draft.LocationName, draft.LocationAddress, draft.Latitude, draft.Longitude);
+    [JsonIgnore]
+    public string? Coordinates => Latitude is { } latitude && Longitude is { } longitude
+        ? $"{latitude.ToString("G", CultureInfo.InvariantCulture)}, {longitude.ToString("G", CultureInfo.InvariantCulture)}" : null;
+}
 
 public sealed record ArticleMedia(Guid Id, string Filename, string MimeType, string AltText)
 {
@@ -70,6 +87,9 @@ public sealed record ArticleSnapshot(int SchemaVersion, Guid PostId, string Slug
     public Dictionary<string, string> TagSlugs { get; init; } = [];
     public ReviewSnapshot? Review { get; init; }
     public GuideStepSnapshot[] Steps { get; init; } = [];
+    public LocationSnapshot? Location { get; init; }
+    [JsonIgnore]
+    public string TypeLabel => Type switch { PostType.Microblog => "Note", PostType.Checkin => "Check-in", _ => Type.ToString() };
     [JsonIgnore]
     public string DisplayTitle => string.IsNullOrWhiteSpace(Title)
         ? Type switch
@@ -77,6 +97,7 @@ public sealed record ArticleSnapshot(int SchemaVersion, Guid PostId, string Slug
             PostType.Microblog => $"Note · {PublishedAtUtc:yyyy-MM-dd}",
             PostType.Review => string.IsNullOrWhiteSpace(Review?.Subject) ? "Untitled review" : Review.Subject,
             PostType.Gallery => $"Gallery · {PublishedAtUtc:yyyy-MM-dd}",
+            PostType.Checkin => string.IsNullOrWhiteSpace(Location?.Name) ? $"Check-in · {PublishedAtUtc:yyyy-MM-dd}" : $"Check-in at {Location.Name}",
             _ => $"Untitled {Type.ToString().ToLowerInvariant()}"
         } : Title;
     public string TagSlug(string name) => TagSlugs.GetValueOrDefault(name) ?? Slugs.Create(name);

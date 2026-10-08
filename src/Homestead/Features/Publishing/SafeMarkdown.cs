@@ -15,7 +15,7 @@ public sealed class SafeMarkdown
         static string Encode(string? text) => System.Net.WebUtility.HtmlEncode(text ?? "");
         string Photo(ArticleMedia image) => $"<figure><img src=\"{Encode(preview ? image.PrivateUrl : canonicalBaseUrl is null ? image.Url : canonicalBaseUrl.TrimEnd('/') + image.Url)}\" alt=\"{Encode(image.AltText)}\" class=\"w-full rounded-lg\" loading=\"lazy\">" +
             (string.IsNullOrWhiteSpace(image.Caption) ? "" : $"<figcaption>{Encode(image.Caption)}</figcaption>") + "</figure>";
-        var html = post.Summary is { Length: > 0 } ? $"<p>{Encode(post.Summary)}</p>" : "";
+        var html = RenderLocation(post.Location) + (post.Summary is { Length: > 0 } ? $"<p>{Encode(post.Summary)}</p>" : "");
         if (post.Type == Data.Entities.PostType.Review && post.Review is { } review)
         {
             html += $"<p><strong>{Encode(review.Subject)}</strong> · {review.Rating}/5</p>";
@@ -35,9 +35,16 @@ public sealed class SafeMarkdown
             }
             html += "</ol>";
         }
-        else if (post.Type is Data.Entities.PostType.Microblog or Data.Entities.PostType.Review or Data.Entities.PostType.Gallery)
+        else if (post.Type is Data.Entities.PostType.Microblog or Data.Entities.PostType.Review or Data.Entities.PostType.Gallery or Data.Entities.PostType.Checkin)
             html += "<div class=\"grid gap-3 sm:grid-cols-2\">" + string.Concat(PhotosOutsideBody(post).Select(Photo)) + "</div>";
         return html;
+    }
+
+    public static string RenderLocation(LocationSnapshot? location)
+    {
+        if (location is null) return "";
+        var details = new[] { location.Name, location.Address, location.Coordinates }.Where(x => !string.IsNullOrWhiteSpace(x));
+        return "<p>Location: " + string.Join(" · ", details.Select(System.Net.WebUtility.HtmlEncode)) + "</p>";
     }
 
     public ArticleMedia[] ReferencedMedia(ArticleSnapshot article)

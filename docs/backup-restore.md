@@ -130,4 +130,4 @@ affected credentials as well.
 | Public rebuild failure | Inspect logs and original media; use **Maintenance → Rebuild site**. Drafts stay private. |
 
 The regression suite and production Compose smoke exercise fresh-volume restore,
-original checksums, all five types, persisted keys/account, settings, and rebuild.
+original checksums, all six types, locations, persisted keys/account, settings, and rebuild.

@@ -18,7 +18,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
 
     public async Task<Post> CreateAsync(PostType type = PostType.Article)
     {
-        if (!Enum.IsDefined(type)) throw new InvalidOperationException("Choose one of the five post types.");
+        if (!Enum.IsDefined(type)) throw new InvalidOperationException("Choose a supported post type.");
         var post = new Post { Type = type, Draft = new PostDraft() };
         db.Posts.Add(post); await db.SaveChangesAsync(); return post;
     }
@@ -31,6 +31,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
             db.ChangeTracker.Clear();
             var post = await FindAsync(id) ?? throw new KeyNotFoundException();
             if (post.Draft!.Version != input.Version) throw new DraftConflictException();
+            if (PostValidation.LocationError(input) is { } locationError) throw new InvalidOperationException(locationError);
             if (input.CoverMediaId is { } cover && !post.Media.Any(x => x.MediaAssetId == cover))
                 throw new InvalidOperationException("Choose a cover image uploaded to this article.");
             if (input.AltText.Values.Any(x => x?.Length > 1000)) throw new InvalidOperationException("Image descriptions must be at most 1000 characters.");
@@ -85,6 +86,9 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
             }
             post.Draft.Title = input.Title; post.Draft.BodyMarkdown = input.BodyMarkdown ?? "";
             post.Draft.Summary = input.Summary; post.Draft.CoverMediaId = input.CoverMediaId;
+            post.Draft.LocationName = string.IsNullOrWhiteSpace(input.LocationName) ? null : input.LocationName.Trim();
+            post.Draft.LocationAddress = string.IsNullOrWhiteSpace(input.LocationAddress) ? null : input.LocationAddress.Trim();
+            post.Draft.Latitude = input.Latitude; post.Draft.Longitude = input.Longitude;
             post.Draft.Version++; post.UpdatedAtUtc = DateTime.UtcNow;
             foreach (var media in post.Media)
             {
@@ -123,6 +127,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         { Caption = x.Caption, GuideStepId = x.GuideStepId }).ToArray())
     {
         Type = post.Type,
+        Location = LocationSnapshot.From(post.Draft),
         TagSlugs = post.Tags.ToDictionary(x => x.Tag.Name, x => x.Tag.Slug),
         Review = post.Review is { } review ? new(review.Subject, review.Rating, review.ExternalUrl) : null,
         Steps = post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).ToArray()
@@ -140,10 +145,11 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
     public static bool HasDraftChanges(Post post, ArticleSnapshot live) => post.Draft is { } draft &&
         ((draft.Title ?? "") != live.Title || draft.BodyMarkdown != live.BodyMarkdown || draft.Summary != live.Summary ||
          draft.CoverMediaId != live.CoverMediaId ||
+         LocationSnapshot.From(draft) != live.Location ||
          !post.Tags.Select(x => x.Tag.Name).Order(StringComparer.Ordinal).SequenceEqual(live.Tags.Order(StringComparer.Ordinal)) ||
          live.Media.Any(x => post.Media.SingleOrDefault(m => m.MediaAssetId == x.Id) is not { } media ||
              (media.AltText ?? "") != x.AltText || media.Caption != x.Caption || media.GuideStepId != x.GuideStepId) ||
-         (post.Type is PostType.Microblog or PostType.Review or PostType.Gallery or PostType.Guide &&
+         (post.Type is PostType.Microblog or PostType.Review or PostType.Gallery or PostType.Guide or PostType.Checkin &&
           !DraftMedia(post).OrderBy(x => x.SortOrder).Select(x => x.MediaAssetId).SequenceEqual(live.Media.Select(x => x.Id))) ||
          (post.Type == PostType.Review && new ReviewSnapshot(post.Review?.Subject ?? "", post.Review?.Rating, post.Review?.ExternalUrl) != live.Review) ||
          (post.Type == PostType.Guide && !post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).SequenceEqual(live.Steps)));

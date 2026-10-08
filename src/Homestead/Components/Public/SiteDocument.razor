@@ -56,7 +56,7 @@
         {
             <article class="space-y-6">
                 <h1 class="text-4xl font-semibold break-words">@article.DisplayTitle</h1>
-                <p>@Page.Settings.DisplayAuthor · @(article.Type == PostType.Microblog ? "Note" : article.Type.ToString()) · <time datetime="@article.PublishedAtUtc.ToString("O")">@Date(article)</time></p>
+                <p>@Page.Settings.DisplayAuthor · @article.TypeLabel · <time datetime="@article.PublishedAtUtc.ToString("O")">@Date(article)</time></p>
                 <PostContent Post="article" Preview="Page.Preview" />
                 @Tags(article)
             </article>
@@ -78,11 +78,12 @@
             {
                 <article class="card border border-base-300">
                     <div class="card-body">
-                        <p class="text-sm">@(post.Type == PostType.Microblog ? "Note" : post.Type.ToString()) · <time datetime="@post.PublishedAtUtc.ToString("O")">@Date(post)</time></p>
+                        <p class="text-sm">@post.TypeLabel · <time datetime="@post.PublishedAtUtc.ToString("O")">@Date(post)</time></p>
                         <h2 class="card-title break-words"><a href="@($"/posts/{post.Slug}/")">@post.DisplayTitle</a></h2>
-                        @if (post.Type == PostType.Microblog) { <PostContent Post="post" /> }
+                        @if (post.Type is PostType.Microblog or PostType.Checkin) { <PostContent Post="post" /> }
                         else
                         {
+                            @((MarkupString)SafeMarkdown.RenderLocation(post.Location))
                             @if (post.Type == PostType.Review && post.Review is { } review)
                             { <p><strong>@review.Subject</strong> · @review.Rating/5</p> }
                             @if (post.Type == PostType.Guide) { <p>@post.Steps.Length steps</p> }
@@ -117,7 +118,7 @@
     [Parameter] public string Region { get; set; } = "main";
     [Parameter, EditorRequired] public PublicPage Page { get; set; } = null!;
     private static readonly (string, string)[] Navigation = [("/", "Home"), ("/notes/", "Notes"), ("/articles/", "Articles"),
-        ("/reviews/", "Reviews"), ("/guides/", "Guides"), ("/galleries/", "Galleries"), ("/about/", "About")];
+        ("/reviews/", "Reviews"), ("/guides/", "Guides"), ("/galleries/", "Galleries"), ("/checkins/", "Check-ins"), ("/about/", "About")];
     private string Title => Page.Article is { } post ? $"{post.DisplayTitle} · {Page.Settings.Title}"
         : Page.Path == "/" ? Page.Settings.Title : $"{Page.Heading} · {Page.Settings.Title}";
     private string Description => Page.Article is { } post ? DiscoveryFiles.Description(post)

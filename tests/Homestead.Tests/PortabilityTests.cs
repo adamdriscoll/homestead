@@ -113,13 +113,14 @@ public sealed class PortabilityTests
             using var zip = new ZipArchive(archive); Directory.CreateDirectory(output.Path); zip.ExtractToDirectory(output.Path);
         }
         var markdown = Directory.GetFiles(Path.Combine(output.Path, "content", "posts"), "index.md", SearchOption.AllDirectories).Select(File.ReadAllText).ToArray();
-        Assert.Equal(8, markdown.Length); // five public, one draft, one working copy, one unpublished
+        Assert.Equal(9, markdown.Length); // six public, one draft, one working copy, one unpublished
         Assert.Contains(markdown, x => x.Contains("PRIVATE PENDING EDITS") && x.Contains("\"draft\": true"));
         Assert.Contains(markdown, x => x.Contains("PRIVATE UNPUBLISHED") && x.Contains("\"homestead_unpublished\": true"));
         Assert.DoesNotContain(markdown, x => x.Contains("DELETED CONTENT"));
         Assert.Contains(markdown, x => x.Contains("\"rating\": 5"));
         Assert.Contains(markdown, x => x.Contains("Step 2") && x.Contains("Second instruction"));
         Assert.Contains(markdown, x => x.Contains("Gallery caption 日本語"));
+        Assert.Contains(markdown, x => x.Contains("\"type\": \"checkin\"") && x.Contains("\"latitude\": 41.88") && x.Contains("\"name\": \"Fixture place\""));
         var command = Environment.GetEnvironmentVariable("HOMESTEAD_HUGO") ?? "hugo";
         using var process = Process.Start(new ProcessStartInfo(command)
         {
@@ -137,6 +138,9 @@ public sealed class PortabilityTests
             Assert.True(File.Exists(page), post.Slug);
             var html = File.ReadAllText(page);
             Assert.DoesNotContain("PRIVATE", html); Assert.DoesNotContain("/admin/", html);
+            Assert.Contains("Location: Fixture place", html);
+            Assert.DoesNotContain("<script>location", html);
+            Assert.DoesNotContain("href=\"https://location.example.test\"", html);
             Assert.Equal(!hideCredit, html.Contains("Made at home with", StringComparison.Ordinal));
             Assert.Equal(!hideCredit, html.Contains("href=\"https://github.com/PoshTools/homestead\"", StringComparison.Ordinal));
             foreach (var image in post.Media) Assert.True(File.Exists(Path.Combine(output.Path, "public", "posts", post.Slug, image.Filename)));
@@ -196,7 +200,8 @@ public sealed class PortabilityTests
         foreach (var (relative, hash) in mediaHashes)
             Assert.Equal(hash, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(restored.Path, relative)))));
         Assert.NotEmpty(Directory.GetFiles(Path.Combine(restored.Path, "keys")));
-        Assert.Equal(5, fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Length);
+        Assert.Equal(6, fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Length);
+        Assert.Equal("Fixture place", fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Single(x => x.Type == PostType.Checkin).Location!.Name);
         Assert.DoesNotContain("PRIVATE DRAFT", await client.GetStringAsync("/"));
         Assert.DoesNotContain("Made at home with", await client.GetStringAsync("/"));
         await Assert.ThrowsAsync<InvalidOperationException>(() => BackupService.RestoreAsync(archivePath, restored.Path));
@@ -264,6 +269,10 @@ public sealed class PortabilityTests
                 Subject = "Fixture review",
                 Rating = 5,
                 ExternalUrl = "https://example.test/coffee",
+                LocationName = "Fixture place",
+                LocationAddress = "123 Café Street <script>location</script> [link](https://location.example.test)\n# heading",
+                Latitude = 41.88,
+                Longitude = -87.63,
                 Steps = [new() { Id = step, BodyMarkdown = "First instruction" }, new() { BodyMarkdown = "Second instruction" }],
                 Captions = new() { [asset.Id] = "Gallery caption 日本語" },
                 StepImages = type == PostType.Guide ? new() { [asset.Id] = step } : [],

@@ -10,7 +10,8 @@
         "article",
         "review",
         "guide",
-        "gallery"
+        "gallery",
+        "checkin"
       ],
       "styles": [
         "theme.css"

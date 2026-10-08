@@ -27,6 +27,5 @@
         @if (Model.Site.Current is { } generation) { <p>Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }
         @if (Model.Site.RecoveryError is not null) { <p role="alert">@Model.Site.RecoveryError</p> }
         @if (Model.LatestBuild?.Status == Homestead.Data.Entities.GenerationStatus.Failed) { <p role="alert">The last build failed. The previous public site remains active. Rebuild from Posts to retry.</p> }
-        <a class="btn" href="/">View public site</a>
     </section>
 </div>

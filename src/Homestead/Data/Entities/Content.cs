@@ -1,6 +1,6 @@
 namespace Homestead.Data.Entities;
 
-public enum PostType { Microblog, Article, Review, Guide, Gallery }
+public enum PostType { Microblog, Article, Review, Guide, Gallery, Checkin }
 public enum PostStatus { Draft, Published, Unpublished, Deleted }
 public enum MediaRole { Inline, Cover, Gallery, GuideStep }
 public enum GenerationStatus { Building, Succeeded, Failed }
@@ -32,6 +32,10 @@ public sealed class PostDraft
     public string? Summary { get; set; }
     public long Version { get; set; }
     public Guid? CoverMediaId { get; set; }
+    public string? LocationName { get; set; }
+    public string? LocationAddress { get; set; }
+    public double? Latitude { get; set; }
+    public double? Longitude { get; set; }
 }
 
 public sealed class PostPublishedSnapshot

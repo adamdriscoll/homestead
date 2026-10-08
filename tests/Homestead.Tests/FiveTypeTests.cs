@@ -48,6 +48,10 @@ public sealed class FiveTypeTests
         ["Input.BodyMarkdown"] = marker + " **body**" + (type == PostType.Article ? $"\n\n![Garden]({image.Url})" : ""),
         ["Input.Tags"] = marker + " tag",
         ["Input.Subject"] = marker + " subject",
+        ["Input.LocationName"] = marker + " place",
+        ["Input.LocationAddress"] = marker + " address",
+        ["Input.Latitude"] = "41.88",
+        ["Input.Longitude"] = "-87.63",
         ["Input.Rating"] = "4",
         ["Input.ExternalUrl"] = "https://example.test/item?x=1&y=2",
         ["Input.AltText[" + image.Id + "]"] = marker + " alt",
@@ -64,6 +68,7 @@ public sealed class FiveTypeTests
     [InlineData(PostType.Review, "/reviews/")]
     [InlineData(PostType.Guide, "/guides/")]
     [InlineData(PostType.Gallery, "/galleries/")]
+    [InlineData(PostType.Checkin, "/checkins/")]
     public async Task Every_type_completes_lifecycle_with_snapshot_discovery_and_media_isolation(PostType type, string listing)
     {
         using var data = new TemporaryData();
@@ -91,6 +96,8 @@ public sealed class FiveTypeTests
             var path = $"/posts/{live.Slug}/";
             var html = await visitor.GetStringAsync(path);
             Assert.Contains("Original", html); Assert.Contains(image.Url, html); Assert.DoesNotContain("<script", html);
+            Assert.Contains("Location: Original place", html); Assert.Contains("Original address", html);
+            Assert.Equal(new LocationSnapshot("Original place", "Original address", 41.88, -87.63), live.Location);
             Assert.Contains("https://example.test" + path, html); Assert.Contains("og:image", html); Assert.Contains("twitter:card", html);
             Assert.DoesNotContain("Unpublished edits", await author.GetStringAsync($"/admin/posts/{id}/edit"));
             Assert.Contains("Original", await visitor.GetStringAsync(listing));
@@ -137,6 +144,7 @@ public sealed class FiveTypeTests
     [InlineData(PostType.Review)]
     [InlineData(PostType.Guide)]
     [InlineData(PostType.Gallery)]
+    [InlineData(PostType.Checkin)]
     public async Task Incomplete_specialized_drafts_save_preview_and_fail_publication(PostType type)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
@@ -230,6 +238,7 @@ public sealed class FiveTypeTests
     [InlineData(PostType.Review)]
     [InlineData(PostType.Guide)]
     [InlineData(PostType.Gallery)]
+    [InlineData(PostType.Checkin)]
     public async Task Specialized_edits_conflict_reject_foreign_media_and_keep_markdown_safe(PostType type)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
@@ -260,6 +269,7 @@ public sealed class FiveTypeTests
     [InlineData(PostType.Review)]
     [InlineData(PostType.Guide)]
     [InlineData(PostType.Gallery)]
+    [InlineData(PostType.Checkin)]
     public async Task Specialized_build_failures_keep_snapshots_and_retry_atomically(PostType type)
     {
         using var data = new TemporaryData(); var failure = new RenderFailure();

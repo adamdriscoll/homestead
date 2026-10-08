@@ -12,6 +12,11 @@ public sealed class IndexModel(HomesteadDbContext db, ArticleService articles, A
 {
     public List<Post> Posts { get; private set; } = [];
     public ActiveSite Site => active;
+    public static string DraftTitle(Post post) =>
+        post.Type == PostType.Review && !string.IsNullOrWhiteSpace(post.Review?.Subject) ? post.Review.Subject :
+        !string.IsNullOrWhiteSpace(post.Draft?.Title) ? post.Draft.Title :
+        post.Type == PostType.Checkin && !string.IsNullOrWhiteSpace(post.Draft?.LocationName) ? $"Check-in at {post.Draft.LocationName}" :
+        $"Untitled {post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", _ => post.Type.ToString().ToLowerInvariant() }}";
     [TempData] public string? StatusMessage { get; set; }
     public async Task OnGetAsync(PostStatus? status)
     {

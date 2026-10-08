@@ -62,8 +62,8 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
         }
         await ArchiveFiles.TextAsync(zip, "README.md", $"# Homestead Hugo export\n\nTested with Hugo {SupportedHugoVersion} (standard or extended). Run `hugo` in this directory; serve `public/`.\n\n" +
             "All nondeleted posts are included. Active published snapshots build by default. Drafts, unpublished posts, pending publications, and separate working bundles containing unpublished edits use `draft: true`. Use `hugo --buildDrafts` only to preview private work.\n\n" +
-            "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), and ordered `steps` (id/body_markdown/images). Steps and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
-            "Raw HTML is disabled. This minimal layout renders all five types and carries the selected theme assets, layout, and colors. The original package files are in homestead-theme/. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
+            "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), `location` (name/address/latitude/longitude), and ordered `steps` (id/body_markdown/images). Locations, steps, and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
+            "Raw HTML is disabled. This minimal layout renders all six types and carries the selected theme assets, layout, and colors. The original package files are in homestead-theme/. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
 
         async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug)
         {
@@ -93,6 +93,7 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
                 summary = snapshot.Summary,
                 cover = snapshot.Media.SingleOrDefault(x => x.Id == snapshot.CoverMediaId)?.Filename,
                 images,
+                location = snapshot.Location is { } location ? new { name = location.Name, address = location.Address, latitude = location.Latitude, longitude = location.Longitude } : null,
                 review = snapshot.Review is { } review ? new { subject = review.Subject, rating = review.Rating, external_url = review.ExternalUrl } : null,
                 steps = snapshot.Steps.Select(step => new
                 {
@@ -106,6 +107,9 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             static string Escape(string? text) => (text ?? "").Replace("\\", "\\\\").Replace("[", "\\[").Replace("]", "\\]")
                 .Replace("*", "\\*").Replace("_", "\\_").Replace("<", "&lt;").Replace(">", "&gt;").Replace("{{", "&#123;&#123;");
             string Photo(ArticleMedia image) => $"\n\n![{Escape(image.AltText)}]({image.Filename})\n\n{Escape(image.Caption)}\n";
+            if (snapshot.Location is { } place)
+                body = "Location: " + string.Join(" · ", new[] { place.Name, place.Address, place.Coordinates }.Where(x => !string.IsNullOrWhiteSpace(x)).Select(text =>
+                    Escape(text).Replace("`", "\\`").Replace("#", "\\#").Replace("!", "\\!").Replace("(", "\\(").Replace(")", "\\)").Replace("\r", " ").Replace("\n", " "))) + "\n\n" + body;
             if (snapshot.Review is { } details)
                 body = $"**{Escape(details.Subject)}** — {details.Rating}/5\n\n" +
                     (PostValidation.IsExternalUrl(details.ExternalUrl) && !string.IsNullOrWhiteSpace(details.ExternalUrl)

@@ -14,7 +14,8 @@ public sealed class ThemeService(StoragePaths paths, IWebHostEnvironment environ
     public const int MaximumExpandedBytes = 20 * 1024 * 1024;
     public static IReadOnlyList<string> BuiltInIds { get; } = ["porch", "journal", "ledger"];
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    private static readonly string[] PostTypes = ["microblog", "article", "review", "guide", "gallery"];
+    // Engine 1 packages declaring the original types also render check-ins through shared regions.
+    private static readonly string[] RequiredPostTypes = ["microblog", "article", "review", "guide", "gallery"];
 
     public ThemePackage Resolve(string id)
     {
@@ -131,9 +132,9 @@ public sealed class ThemeService(StoragePaths paths, IWebHostEnvironment environ
             throw new InvalidDataException("Theme manifest requires formatVersion 1, name, version, and distinct engine variants.");
         var variant = manifest.Variants.SingleOrDefault(v => v.EngineVersion == ThemePackage.EngineVersion)
             ?? throw new InvalidDataException($"Theme does not support engine version {ThemePackage.EngineVersion}.");
-        if (variant.PostTypes is null || !PostTypes.All(type => variant.PostTypes.Contains(type, StringComparer.Ordinal)) ||
+        if (variant.PostTypes is null || !RequiredPostTypes.All(type => variant.PostTypes.Contains(type, StringComparer.Ordinal)) ||
             variant.Styles is not { Length: > 0 and <= 16 } || variant.Scripts is not { Length: <= 16 })
-            throw new InvalidDataException("Theme must declare styles, scripts, and support for all five post types.");
+            throw new InvalidDataException("Theme must declare styles, scripts, and support for the original five post types.");
         foreach (var (items, extension) in new[] { (variant.Styles, ".css"), (variant.Scripts, ".js") })
             if (items.Any(file => file is null || !ThemePackage.IsAssetPath(file) || !file.EndsWith(extension, StringComparison.Ordinal) || !files.ContainsKey(file)) ||
                 items.Distinct(StringComparer.OrdinalIgnoreCase).Count() != items.Length)

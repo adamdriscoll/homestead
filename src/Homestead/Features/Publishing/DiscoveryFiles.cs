@@ -17,6 +17,8 @@ public static partial class DiscoveryFiles
         if (post.Type == PostType.Guide) source += "\n" + string.Join("\n", post.Steps.Select(x => x.BodyMarkdown));
         var text = string.IsNullOrWhiteSpace(post.Summary) ? Markdig.Markdown.ToPlainText(source) : post.Summary;
         text = Whitespace().Replace(text, " ").Trim();
+        if (text.Length == 0 && post.Type == PostType.Checkin)
+            text = $"Check-in at {post.Location?.Name}";
         return text.Length == 0 ? $"{(post.Type == PostType.Gallery ? "A photo gallery" : "A photo note")} · {post.PublishedAtUtc:MMMM d, yyyy}" : text[..Math.Min(280, text.Length)];
     }
 
