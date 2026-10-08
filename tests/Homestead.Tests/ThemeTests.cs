@@ -88,17 +88,23 @@ public sealed class ThemeTests
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); _ = await Note(client);
         var settings = Settings(theme); settings["Input.ThemePrimaryColor"] = "#123456";
         Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", settings)).StatusCode);
-        foreach (var path in new[] { "/", "/notes/", "/articles/", "/reviews/", "/guides/", "/galleries/", "/about/", "/posts/garden-note/" })
+        var routes = new[] { "/", "/notes/", "/articles/", "/reviews/", "/guides/", "/galleries/", "/about/", "/posts/garden-note/" };
+        foreach (var path in routes)
         {
             var html = await client.GetStringAsync(path);
             Assert.Contains($"data-public-theme=\"{theme}\"", html);
             Assert.Contains("/assets/theme/theme.css", html); Assert.Contains("id=\"main\"", html);
             Assert.Contains("https://example.test" + path, html);
+            Assert.Contains("Made at home with", html);
+            Assert.Contains("href=\"https://github.com/PoshTools/homestead\"", html);
         }
         Assert.Contains("--color-primary:#123456", await client.GetStringAsync("/assets/theme-colors.css"));
         var admin = await client.GetStringAsync("/admin");
         Assert.DoesNotContain("data-public-theme", admin); Assert.DoesNotContain("/assets/theme/", admin);
         Assert.Contains("admin-appearance", admin);
+        settings["Input.HideHomesteadCredit"] = "true";
+        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", settings)).StatusCode);
+        foreach (var path in routes) Assert.DoesNotContain("Made at home with", await client.GetStringAsync(path));
     }
 
     [Fact]
@@ -121,6 +127,7 @@ public sealed class ThemeTests
             var html = await visitor.GetStringAsync("/");
             Assert.Contains("class=\"garden-layout\"", html); Assert.Contains("/assets/theme/v1/theme.js", html);
             Assert.Contains("Shared content with {{footer}} text", html);
+            Assert.Contains("Made at home with", html);
             Assert.Contains("window.themeLoaded", await visitor.GetStringAsync("/assets/theme/v1/theme.js"));
             Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("/assets/theme/theme.json")).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("/assets/theme/v1/layout.html")).StatusCode);
@@ -128,6 +135,7 @@ public sealed class ThemeTests
             var preview = await author.GetAsync($"/admin/posts/{postId}/preview");
             var previewHtml = await preview.Content.ReadAsStringAsync();
             Assert.Contains("garden-layout", previewHtml); Assert.DoesNotContain("<script", previewHtml);
+            Assert.Contains("Made at home with", previewHtml);
             Assert.Contains($"/admin/themes/{id}/v1/theme.css", previewHtml);
             Assert.Contains("script-src 'none'", preview.Headers.GetValues("Content-Security-Policy").Single());
             Assert.Equal("no-store", preview.Headers.CacheControl!.ToString());
@@ -135,10 +143,15 @@ public sealed class ThemeTests
             Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync($"/admin/themes/{id}/v1/theme.css")).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync($"/admin/themes/{id}/v1/theme.js")).StatusCode);
             Assert.Equal(id, app.Services.GetRequiredService<ActiveSite>().Current!.Theme!.Id);
+            fields["Input.HideHomesteadCredit"] = "true";
+            Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(author, "/admin/settings", fields)).StatusCode);
+            Assert.DoesNotContain("Made at home with", await visitor.GetStringAsync("/"));
+            Assert.DoesNotContain("Made at home with", await author.GetStringAsync($"/admin/posts/{postId}/preview"));
         }
         using var restarted = new TestApplication(data.Path, setupToken: null); using var client = restarted.Client();
         Assert.Contains("garden-layout", await client.GetStringAsync("/"));
         Assert.Equal(id, restarted.Services.GetRequiredService<ActiveSite>().Current!.Theme!.Id);
+        Assert.DoesNotContain("Made at home with", await client.GetStringAsync("/"));
     }
 
     [Theory]
@@ -199,8 +212,12 @@ public sealed class ThemeTests
         using var client = app.Client(); _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
         var active = app.Services.GetRequiredService<ActiveSite>(); var before = active.Current!.GenerationId;
         var home = await client.GetStringAsync("/"); var css = await client.GetStringAsync("/assets/theme/theme.css");
+        Assert.Contains("Made at home with", home);
         failure.Enabled = true;
-        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", Settings("ledger"))).StatusCode);
+        var fields = Settings("ledger"); fields["Input.HideHomesteadCredit"] = "true";
+        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", fields)).StatusCode);
+        await app.WithDatabase(async db => Assert.True((await db.SiteSettings.SingleAsync()).HideHomesteadCredit));
+        Assert.False(active.Current!.Settings.HideHomesteadCredit);
         Assert.Equal(before, active.Current!.GenerationId); Assert.Equal(home, await client.GetStringAsync("/"));
         Assert.Equal(css, await client.GetStringAsync("/assets/theme/theme.css"));
         Assert.Contains("Currently public: Porch", await client.GetStringAsync("/admin/settings"));
@@ -214,6 +231,8 @@ public sealed class ThemeTests
         failure.Enabled = false;
         Assert.True((await scope.ServiceProvider.GetRequiredService<PublishingService>().RebuildAsync()).Succeeded);
         Assert.NotEqual(before, active.Current!.GenerationId); Assert.Equal("ledger", active.Current.Theme!.Id);
+        Assert.True(active.Current.Settings.HideHomesteadCredit);
+        Assert.DoesNotContain("Made at home with", await client.GetStringAsync("/"));
     }
 
     [Fact]

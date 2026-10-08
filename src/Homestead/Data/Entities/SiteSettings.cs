@@ -15,6 +15,7 @@ public sealed class SiteSettings
     public string AboutMarkdown { get; set; } = "";
     public string AuthorBio { get; set; } = "";
     public string FooterText { get; set; } = "";
+    public bool HideHomesteadCredit { get; set; }
     public string AccentColor { get; set; } = "Porch";
     public string ThemeId { get; set; } = "porch";
     public string ThemePrimaryColor { get; set; } = "";

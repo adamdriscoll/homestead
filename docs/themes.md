@@ -18,6 +18,12 @@ Settings are saved before building. A successful build atomically activates all
 theme changes. If it fails, the previous complete site stays public; Settings
 shows the active theme and the rebuild failure. Use **Rebuild site** to retry.
 
+Every public theme shows “Made at home with Homestead” in the shared footer,
+with Homestead linking to the project repository. To remove it, check
+**Settings → About → Hide Homestead credit** and save. The preference also
+applies to private previews and Hugo exports; static exports keep the currently
+active footer.
+
 ## Install a custom theme
 
 Upload a ZIP in **Settings → Install a custom public theme**, then select the

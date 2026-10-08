@@ -89,13 +89,15 @@ public sealed class PortabilityTests
         }
     }
 
-    [Fact]
-    public async Task Hugo_archive_builds_all_types_and_keeps_private_work_out_of_default_build()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Hugo_archive_builds_all_types_and_keeps_private_work_out_of_default_build(bool hideCredit)
     {
         using var data = new TemporaryData(); using var output = new TemporaryData();
         using var app = new TestApplication(data.Path); using var author = app.Client();
         _ = await TestApplication.Setup(author); await Fixture(app);
-        await app.WithDatabase(async db => { var settings = await db.SiteSettings.SingleAsync(); settings.Title = "Café 🏡 \"Home\""; await db.SaveChangesAsync(); });
+        await app.WithDatabase(async db => { var settings = await db.SiteSettings.SingleAsync(); settings.Title = "Café 🏡 \"Home\""; settings.HideHomesteadCredit = hideCredit; await db.SaveChangesAsync(); });
         var active = app.Services.GetRequiredService<ActiveSite>().Current!;
         await using var scope = app.Services.CreateAsyncScope();
         var articles = scope.ServiceProvider.GetRequiredService<ArticleService>();
@@ -135,6 +137,8 @@ public sealed class PortabilityTests
             Assert.True(File.Exists(page), post.Slug);
             var html = File.ReadAllText(page);
             Assert.DoesNotContain("PRIVATE", html); Assert.DoesNotContain("/admin/", html);
+            Assert.Equal(!hideCredit, html.Contains("Made at home with", StringComparison.Ordinal));
+            Assert.Equal(!hideCredit, html.Contains("href=\"https://github.com/PoshTools/homestead\"", StringComparison.Ordinal));
             foreach (var image in post.Media) Assert.True(File.Exists(Path.Combine(output.Path, "public", "posts", post.Slug, image.Filename)));
         }
         var allPublic = string.Join("\n", Directory.GetFiles(Path.Combine(output.Path, "public"), "*.html", SearchOption.AllDirectories).Select(File.ReadAllText));
@@ -168,7 +172,7 @@ public sealed class PortabilityTests
         using (var author = app.Client())
         {
             _ = await TestApplication.Setup(author); await Fixture(app);
-            await app.WithDatabase(async db => { var settings = await db.SiteSettings.SingleAsync(); settings.Title = "Restored café 日本語"; settings.AboutMarkdown = "Private ownership"; await db.SaveChangesAsync(); });
+            await app.WithDatabase(async db => { var settings = await db.SiteSettings.SingleAsync(); settings.Title = "Restored café 日本語"; settings.AboutMarkdown = "Private ownership"; settings.HideHomesteadCredit = true; await db.SaveChangesAsync(); });
             await using var scope = app.Services.CreateAsyncScope();
             await using var backup = await scope.ServiceProvider.GetRequiredService<BackupService>().CreateAsync();
             await using (var file = File.Create(archivePath)) await backup.CopyToAsync(file);
@@ -186,6 +190,7 @@ public sealed class PortabilityTests
         {
             Assert.Equal(ids.Order(), (await db.Posts.Select(x => x.Id).ToArrayAsync()).Order());
             Assert.Equal("Restored café 日本語", (await db.SiteSettings.SingleAsync()).Title);
+            Assert.True((await db.SiteSettings.SingleAsync()).HideHomesteadCredit);
             Assert.Contains("PRIVATE DRAFT", (await db.PostDrafts.ToArrayAsync()).Select(x => x.BodyMarkdown));
         });
         foreach (var (relative, hash) in mediaHashes)
@@ -193,6 +198,7 @@ public sealed class PortabilityTests
         Assert.NotEmpty(Directory.GetFiles(Path.Combine(restored.Path, "keys")));
         Assert.Equal(5, fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Length);
         Assert.DoesNotContain("PRIVATE DRAFT", await client.GetStringAsync("/"));
+        Assert.DoesNotContain("Made at home with", await client.GetStringAsync("/"));
         await Assert.ThrowsAsync<InvalidOperationException>(() => BackupService.RestoreAsync(archivePath, restored.Path));
     }
 

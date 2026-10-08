@@ -1,11 +1,47 @@
 using System.Net;
+using System.Text.RegularExpressions;
+using Homestead.Features.Publishing;
 using Homestead.Features.Settings;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Homestead.Tests;
 
 public sealed class SettingsTests
 {
+    [Fact]
+    public async Task Homestead_credit_can_be_hidden_and_shown_and_the_preference_survives_restart()
+    {
+        using var data = new TemporaryData();
+        using (var app = new TestApplication(data.Path))
+        using (var client = app.Client())
+        {
+            _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+            Assert.Contains("Made at home with", await client.GetStringAsync("/"));
+            foreach (var hide in new[] { true, false, true })
+            {
+                var fields = Fields(); fields["Input.HideHomesteadCredit"] = hide.ToString();
+                Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", fields)).StatusCode);
+                await app.WithDatabase(async db => Assert.Equal(hide, (await db.SiteSettings.SingleAsync()).HideHomesteadCredit));
+                var active = app.Services.GetRequiredService<ActiveSite>().Current!;
+                Assert.Equal(hide, active.Settings.HideHomesteadCredit);
+                foreach (var file in active.Files.Where(x => x.EndsWith(".html", StringComparison.Ordinal)))
+                {
+                    var html = await client.GetStringAsync("/" + file);
+                    Assert.Equal(!hide, html.Contains("Made at home with", StringComparison.Ordinal));
+                    Assert.Equal(!hide, html.Contains("href=\"https://github.com/PoshTools/homestead\"", StringComparison.Ordinal));
+                    Assert.Contains("Welcome", html); Assert.Contains("RSS feed", html);
+                }
+                var settingsHtml = await client.GetStringAsync("/admin/settings");
+                var checkbox = Regex.Match(settingsHtml, "<input[^>]*id=\"Input_HideHomesteadCredit\"[^>]*>").Value;
+                Assert.NotEmpty(checkbox); Assert.Equal(hide, checkbox.Contains("checked=", StringComparison.Ordinal));
+            }
+        }
+        using var restarted = new TestApplication(data.Path, setupToken: null); using var visitor = restarted.Client();
+        Assert.DoesNotContain("Made at home with", await visitor.GetStringAsync("/"));
+        Assert.True(restarted.Services.GetRequiredService<ActiveSite>().Current!.Settings.HideHomesteadCredit);
+    }
+
     [Theory]
     [InlineData("general", "general")]
     [InlineData("theme", "theme")]

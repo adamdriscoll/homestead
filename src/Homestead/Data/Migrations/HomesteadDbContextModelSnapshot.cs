@@ -403,6 +403,9 @@ namespace Homestead.Data.Migrations
                     b.Property<Guid?>("HeaderMediaId")
                         .HasColumnType("TEXT");
 
+                    b.Property<bool>("HideHomesteadCredit")
+                        .HasColumnType("INTEGER");
+
                     b.Property<Guid?>("LogoMediaId")
                         .HasColumnType("TEXT");
 

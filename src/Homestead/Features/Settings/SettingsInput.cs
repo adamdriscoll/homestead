@@ -22,6 +22,7 @@ public sealed class SettingsInput : IValidatableObject
     [StringLength(50000), Display(Name = "About (Markdown)")] public string? AboutMarkdown { get; set; }
     [StringLength(500), Display(Name = "Author bio")] public string? AuthorBio { get; set; }
     [StringLength(300), Display(Name = "Footer text")] public string? FooterText { get; set; }
+    [Display(Name = "Hide Homestead credit")] public bool HideHomesteadCredit { get; set; }
     [Required, Display(Name = "Accent preset")] public string AccentColor { get; set; } = "Porch";
     [Required, StringLength(80), Display(Name = "Public theme")] public string ThemeId { get; set; } = "porch";
     [StringLength(7), Display(Name = "Primary color")] public string? ThemePrimaryColor { get; set; }
@@ -73,6 +74,7 @@ public sealed class SettingsInput : IValidatableObject
         AboutMarkdown = s.AboutMarkdown,
         AuthorBio = s.AuthorBio,
         FooterText = s.FooterText,
+        HideHomesteadCredit = s.HideHomesteadCredit,
         AccentColor = s.AccentColor,
         ThemeId = s.ThemeId,
         ThemePrimaryColor = s.ThemePrimaryColor,
@@ -91,6 +93,7 @@ public sealed class SettingsInput : IValidatableObject
         s.AboutMarkdown = AboutMarkdown ?? "";
         s.AuthorBio = AuthorBio ?? "";
         s.FooterText = FooterText ?? "";
+        s.HideHomesteadCredit = HideHomesteadCredit;
         s.AccentColor = AccentColor;
         s.ThemeId = ThemeId;
         s.ThemePrimaryColor = ThemePrimaryColor ?? "";

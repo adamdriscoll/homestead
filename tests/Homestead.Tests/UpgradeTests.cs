@@ -24,6 +24,7 @@ public sealed class UpgradeTests
         var settings = await db.SiteSettings.SingleAsync();
         Assert.Equal("Existing home", settings.Title); Assert.Equal("# Original About", settings.AboutMarkdown);
         Assert.Equal("[]", settings.ProfileLinksJson); Assert.Empty(settings.ProfileLinks);
+        Assert.False(settings.HideHomesteadCredit);
         Assert.False(db.Database.HasPendingModelChanges());
     }
 }

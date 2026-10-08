@@ -107,6 +107,10 @@
             { <a class="underline py-3 break-words" href="@profile.Url" rel="me noopener noreferrer">@profile.Label</a> }
             <a class="underline py-3" href="/rss.xml">RSS feed</a>
         </nav>
+        @if (!Page.Settings.HideHomesteadCredit)
+        {
+            <p class="text-sm">Made at home with <a class="link" href="https://github.com/PoshTools/homestead">Homestead</a></p>
+        }
     </footer>
 }
 @code {
