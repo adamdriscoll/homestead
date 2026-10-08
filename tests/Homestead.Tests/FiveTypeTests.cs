@@ -14,11 +14,10 @@ namespace Homestead.Tests;
 
 public sealed class FiveTypeTests
 {
-    private static async Task<Guid> Create(HttpClient client, PostType type)
+    private static async Task<Guid> Create(TestApplication app, PostType type)
     {
-        var response = await TestApplication.Submit(client, "/admin/posts", new() { ["type"] = type.ToString() }, "/admin/posts?handler=New");
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        return Guid.Parse(response.Headers.Location!.ToString().Split('/')[3]);
+        await using var scope = app.Services.CreateAsyncScope();
+        return (await scope.ServiceProvider.GetRequiredService<ArticleService>().CreateAsync(type)).Id;
     }
 
     private static async Task<ArticleMedia> Photo(TestApplication app, Guid id)
@@ -78,7 +77,7 @@ public sealed class FiveTypeTests
         using (var visitor = app.Client())
         {
             _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author);
-            id = await Create(author, type); image = await Photo(app, id);
+            id = await Create(app, type); image = await Photo(app, id);
             Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync(image.PrivateUrl)).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(image.Url)).StatusCode);
             var fields = Fixture(type, 0, "Original", image, step);
@@ -148,7 +147,7 @@ public sealed class FiveTypeTests
     public async Task Incomplete_specialized_drafts_save_preview_and_fail_publication(PostType type)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client, type);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app, type);
         var fields = new Dictionary<string, string> { ["Input.Version"] = "0", ["Input.Title"] = "Incomplete" };
         if (type == PostType.Guide) { fields["Input.Steps[0].Id"] = Guid.NewGuid().ToString(); fields["Input.Steps[0].BodyMarkdown"] = ""; }
         Assert.Equal(HttpStatusCode.Redirect, (await Action(client, id, "Save", fields)).StatusCode);
@@ -171,7 +170,7 @@ public sealed class FiveTypeTests
     public async Task Invalid_reviews_never_publish(string subject, string rating, string body, string url)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client, PostType.Review);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app, PostType.Review);
         var result = await Action(client, id, "Publish", new() { ["Input.Version"] = "0", ["Input.Subject"] = subject, ["Input.Rating"] = rating, ["Input.BodyMarkdown"] = body, ["Input.ExternalUrl"] = url });
         Assert.Contains(result.StatusCode, new[] { HttpStatusCode.BadRequest, HttpStatusCode.Redirect });
         Assert.Empty(app.Services.GetRequiredService<ActiveSite>().Current!.Articles);
@@ -183,7 +182,7 @@ public sealed class FiveTypeTests
     public async Task Ordered_content_photos_captions_and_removal_persist_without_javascript(PostType type)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client, type);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app, type);
         var first = await Photo(app, id); var second = await Photo(app, id); var step = Guid.NewGuid(); var nextStep = Guid.NewGuid();
         var fields = Fixture(type, 0, "First", first, step);
         fields["Input.MediaOrder[1]"] = second.Id.ToString(); fields[$"Input.Captions[{second.Id}]"] = "Second <script>caption</script>";
@@ -243,7 +242,7 @@ public sealed class FiveTypeTests
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-        var id = await Create(client, type); var other = await Create(client, PostType.Guide);
+        var id = await Create(app, type); var other = await Create(app, PostType.Guide);
         var own = await Photo(app, id); var foreign = await Photo(app, other); var step = Guid.NewGuid();
         var fields = Fixture(type, 0, "Safe", own, step);
         if (type == PostType.Guide) fields["Input.Steps[0].BodyMarkdown"] = "<script>evil()</script> [bad](javascript:alert(1))";
@@ -276,7 +275,7 @@ public sealed class FiveTypeTests
         using var app = new TestApplication(data.Path, configureServices: services =>
         { services.AddSingleton(failure); services.AddScoped<IStaticPageRenderer, FailingRenderer>(); });
         using var client = app.Client(); _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-        var id = await Create(client, type); var image = await Photo(app, id); var step = Guid.NewGuid();
+        var id = await Create(app, type); var image = await Photo(app, id); var step = Guid.NewGuid();
         Assert.Equal(HttpStatusCode.Redirect, (await Action(client, id, "Publish", Fixture(type, 0, "Original", image, step))).StatusCode);
         var live = app.Services.GetRequiredService<ActiveSite>().Current!;
         var html = await client.GetStringAsync($"/posts/{live.Articles.Single().Slug}/"); var rss = await client.GetStringAsync("/rss.xml");
@@ -294,7 +293,7 @@ public sealed class FiveTypeTests
     public async Task Gallery_batch_upload_without_javascript_warns_about_alt_text_and_keeps_images_private()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client, PostType.Gallery);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app, PostType.Gallery);
         var path = $"/admin/posts/{id}/edit"; var html = await client.GetStringAsync(path);
         var token = WebUtility.HtmlDecode(Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
         using var form = new MultipartFormDataContent(); form.Add(new StringContent(token), "__RequestVerificationToken");
@@ -317,7 +316,7 @@ public sealed class FiveTypeTests
     public async Task Removing_a_guide_step_keeps_its_photo_in_the_introduction()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client, PostType.Guide);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app, PostType.Guide);
         var image = await Photo(app, id); var step = Guid.NewGuid(); var fields = Fixture(PostType.Guide, 0, "Guide", image, step);
         Assert.Equal(HttpStatusCode.Redirect, (await Action(client, id, "Save", fields)).StatusCode);
         fields["Input.Version"] = "1"; fields["command"] = "remove-step:0";
@@ -334,7 +333,7 @@ public sealed class FiveTypeTests
     public async Task Partial_batch_failure_preserves_saved_draft_and_reports_private_successes()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client, PostType.Gallery);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app, PostType.Gallery);
         var path = $"/admin/posts/{id}/edit";
         Assert.Equal(HttpStatusCode.Redirect, (await Action(client, id, "Save", new() { ["Input.Version"] = "0", ["Input.Title"] = "Saved gallery", ["Input.BodyMarkdown"] = "Saved introduction" })).StatusCode);
         var editor = await client.GetStringAsync(path);

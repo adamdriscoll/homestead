@@ -48,7 +48,7 @@ export async function signIn(page, site) {
 export async function newPost(page, type = 'article') {
   await page.goto('/admin/posts');
   await page.getByRole('button', { name: `New ${type}`, exact: true }).click();
-  await expect(page).toHaveURL(/\/admin\/posts\/[\da-f-]+\/edit$/);
+  await expect(page).toHaveURL(/\/admin\/posts\/[\da-f-]+\/edit\?newPostType=\w+$/);
   await expect(page.getByRole('heading', { name: `Your ${type}`, exact: true })).toBeVisible();
 }
 

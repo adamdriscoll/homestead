@@ -8,7 +8,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Homestead.Pages.Admin.Posts;
 
-public sealed class IndexModel(HomesteadDbContext db, ArticleService articles, ActiveSite active, PublishingService publishing) : PageModel
+public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, PublishingService publishing) : PageModel
 {
     public List<Post> Posts { get; private set; } = [];
     public ActiveSite Site => active;
@@ -28,11 +28,10 @@ public sealed class IndexModel(HomesteadDbContext db, ArticleService articles, A
         if (status is not null) query = query.Where(x => x.Status == status);
         Posts = await query.OrderByDescending(x => x.UpdatedAtUtc).ToListAsync();
     }
-    public async Task<IActionResult> OnPostNewAsync(PostType type = PostType.Article)
+    public IActionResult OnPostNew(PostType type = PostType.Article)
     {
         if (!ModelState.IsValid || !Enum.IsDefined(type)) return BadRequest();
-        var post = await articles.CreateAsync(type);
-        return RedirectToPage("Edit", new { id = post.Id });
+        return RedirectToPage("Edit", new { id = Guid.NewGuid(), newPostType = type });
     }
     public async Task<IActionResult> OnPostRebuildAsync()
     {

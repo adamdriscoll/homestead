@@ -41,7 +41,6 @@ test('inline image upload and formatting appear in preview and become public onl
 
 test('gallery batch upload saves descriptions, captions and photo order', async ({ owner: page, context }) => {
   await newPost(page, 'gallery');
-  await page.getByLabel('Title (optional)', { exact: true }).fill('Browser gallery');
   await page.getByRole('tab', { name: 'Images', exact: true }).click();
   const photo = resolve(repoRoot, 'src/Homestead/wwwroot/icon-192.png');
   await page.getByLabel('Photos (JPEG', { exact: false }).setInputFiles([photo, photo]);
@@ -50,6 +49,9 @@ test('gallery batch upload saves descriptions, captions and photo order', async 
   await expect(images).toHaveCount(2);
   await expect(page.getByLabel('Photos (JPEG', { exact: false })).toHaveValue('');
   await saved(page);
+  await page.getByRole('tab', { name: 'Write', exact: true }).click();
+  await page.getByLabel('Title (optional)', { exact: true }).fill('Browser gallery');
+  await page.getByRole('tab', { name: 'Images', exact: true }).click();
   await images.nth(0).getByLabel('Image description (alt text)').fill('First home');
   await images.nth(0).getByLabel('Caption (optional)').fill('First view');
   await images.nth(1).getByLabel('Image description (alt text)').fill('Second home');

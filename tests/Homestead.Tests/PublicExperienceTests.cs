@@ -13,11 +13,10 @@ namespace Homestead.Tests;
 
 public sealed class PublicExperienceTests
 {
-    private static async Task<Guid> Create(HttpClient client, PostType type = PostType.Microblog)
+    private static async Task<Guid> Create(TestApplication app, PostType type = PostType.Microblog)
     {
-        var response = await TestApplication.Submit(client, "/admin/posts", new() { ["type"] = type.ToString() }, "/admin/posts?handler=New");
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        return Guid.Parse(response.Headers.Location!.ToString().Split('/')[3]);
+        await using var scope = app.Services.CreateAsyncScope();
+        return (await scope.ServiceProvider.GetRequiredService<ArticleService>().CreateAsync(type)).Id;
     }
     private static Dictionary<string, string> Fields(long version, string body, string title = "", string tags = "") => new()
     { ["Input.Version"] = version.ToString(), ["Input.BodyMarkdown"] = body, ["Input.Title"] = title, ["Input.Tags"] = tags };
@@ -55,7 +54,7 @@ public sealed class PublicExperienceTests
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path);
         using var author = app.Client(); using var visitor = app.Client();
         _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author);
-        var id = await Create(author); string? imageUrl = null;
+        var id = await Create(app); string? imageUrl = null;
         if (photo)
         {
             var uploaded = await Upload(author, $"/admin/posts/{id}/edit"); Assert.Equal(HttpStatusCode.OK, uploaded.StatusCode);
@@ -97,7 +96,7 @@ public sealed class PublicExperienceTests
     public async Task Blank_notes_and_title_only_notes_cannot_publish_and_unknown_types_cannot_be_created()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var author = app.Client();
-        _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author); var id = await Create(author);
+        _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author); var id = await Create(app);
         await Action(author, id, "Publish", Fields(0, "   ", "Title only"));
         Assert.Empty(app.Services.GetRequiredService<ActiveSite>().Current!.Articles);
         Assert.Contains("needs text or at least one photo", await author.GetStringAsync($"/admin/posts/{id}/edit"));
@@ -110,7 +109,7 @@ public sealed class PublicExperienceTests
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-        var article = await Create(client, PostType.Article); var note = await Create(client);
+        var article = await Create(app, PostType.Article); var note = await Create(app);
         await Action(client, article, "Publish", Fields(0, "Original article & <unsafe>", "First & <story>", "C++, Home"));
         await Action(client, note, "Publish", Fields(0, "Original note", "Later note", "C#, Home"));
         var home = WebUtility.HtmlDecode(await client.GetStringAsync("/"));
@@ -168,7 +167,7 @@ public sealed class PublicExperienceTests
         using (var client = app.Client())
         {
             _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-            var id = await Create(client); await Action(client, id, "Publish", Fields(0, "Hello", "Note"));
+            var id = await Create(app); await Action(client, id, "Publish", Fields(0, "Hello", "Note"));
             Assert.Equal(HttpStatusCode.Redirect, (await Upload(client, "/admin/settings", "Header")).StatusCode);
             var active = app.Services.GetRequiredService<ActiveSite>(); var before = active.Current!.GenerationId;
             var oldHeader = active.Current.Branding!.Single();
@@ -257,7 +256,7 @@ public sealed class PublicExperienceTests
     public async Task Multiple_photos_and_article_cover_use_unique_files_and_complete_social_metadata()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app);
         var photoUrls = new List<string>();
         for (var i = 0; i < 2; i++)
         {
@@ -276,7 +275,7 @@ public sealed class PublicExperienceTests
         XNamespace rssContent = "http://purl.org/rss/1.0/modules/content/";
         var noteContent = XDocument.Parse(await client.GetStringAsync("/rss.xml")).Descendants(rssContent + "encoded").Single().Value;
         Assert.Contains("href=\"https://example.test/about/\"", noteContent);
-        var articleId = await Create(client, PostType.Article);
+        var articleId = await Create(app, PostType.Article);
         var response = await Upload(client, $"/admin/posts/{articleId}/edit");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         using var json = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
@@ -299,7 +298,7 @@ public sealed class PublicExperienceTests
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-        var first = await Create(client, PostType.Article); var second = await Create(client, PostType.Article);
+        var first = await Create(app, PostType.Article); var second = await Create(app, PostType.Article);
         await Action(client, first, "Publish", Fields(0, "First story", "First article", "C++"));
         await Action(client, second, "Publish", Fields(0, "Second story", "Second article", "C#"));
         await app.WithDatabase(async db =>

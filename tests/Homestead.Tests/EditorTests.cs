@@ -19,6 +19,116 @@ public sealed class EditorTests
     [InlineData(PostType.Guide)]
     [InlineData(PostType.Gallery)]
     [InlineData(PostType.Checkin)]
+    public async Task Opening_a_new_editor_and_saving_whitespace_does_not_store_a_draft(PostType type)
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+        var created = await TestApplication.Submit(client, "/admin/posts", new() { ["type"] = type.ToString() }, "/admin/posts?handler=New");
+        var path = created.Headers.Location!.ToString();
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(path)).StatusCode);
+        await app.WithDatabase(async db => { Assert.Empty(await db.Posts.ToListAsync()); Assert.Empty(await db.PostDrafts.ToListAsync()); });
+        client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+        var response = await TestApplication.Submit(client, path, new()
+        {
+            ["NewPostType"] = type.ToString(),
+            ["Input.Version"] = "0",
+            ["Input.Title"] = "  ",
+            ["Input.BodyMarkdown"] = " \n ",
+            ["Input.Summary"] = " ",
+            ["Input.Subject"] = " ",
+            ["Input.Tags"] = " , ",
+            ["Input.LocationName"] = " "
+        }, path.Split('?')[0] + "?handler=Save");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await app.WithDatabase(async db => { Assert.Empty(await db.Posts.ToListAsync()); Assert.Empty(await db.PostDrafts.ToListAsync()); });
+        Assert.DoesNotContain("Untitled", await client.GetStringAsync("/admin/posts"));
+    }
+
+    [Theory]
+    [InlineData(PostType.Article, "Input.Title", "A title")]
+    [InlineData(PostType.Article, "Input.Summary", "A summary")]
+    [InlineData(PostType.Microblog, "Input.BodyMarkdown", "A thought")]
+    [InlineData(PostType.Review, "Input.Subject", "A subject")]
+    [InlineData(PostType.Review, "Input.Rating", "3")]
+    [InlineData(PostType.Review, "Input.ExternalUrl", "https://example.test/item")]
+    [InlineData(PostType.Guide, "Input.Steps[0].BodyMarkdown", "An instruction")]
+    [InlineData(PostType.Gallery, "Input.Title", "A gallery")]
+    [InlineData(PostType.Checkin, "Input.LocationName", "A place")]
+    [InlineData(PostType.Checkin, "Input.LocationAddress", "An address")]
+    [InlineData(PostType.Microblog, "Input.Tags", "A tag")]
+    public async Task First_content_saves_once_stale_tabs_conflict_and_clearing_a_saved_draft_preserves_it(PostType type, string field, string value)
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+        var created = await TestApplication.Submit(client, "/admin/posts", new() { ["type"] = type.ToString() }, "/admin/posts?handler=New");
+        var path = created.Headers.Location!.ToString(); var savedPath = path.Split('?')[0];
+        var fields = new Dictionary<string, string> { ["NewPostType"] = type.ToString(), ["Input.Version"] = "0", [field] = value };
+        if (type == PostType.Guide) fields["Input.Steps[0].Id"] = Guid.NewGuid().ToString();
+        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, path, fields, savedPath + "?handler=Save")).StatusCode);
+        await app.WithDatabase(async db =>
+        {
+            Assert.Equal(type, (await db.Posts.SingleAsync()).Type);
+            Assert.Equal(1, (await db.PostDrafts.SingleAsync()).Version);
+        });
+        Assert.Equal(HttpStatusCode.Conflict, (await TestApplication.Submit(client, path, fields, savedPath + "?handler=Save")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, savedPath, new() { ["Input.Version"] = "1" }, savedPath + "?handler=Save")).StatusCode);
+        await app.WithDatabase(async db =>
+        {
+            Assert.Single(await db.Posts.ToListAsync());
+            var draft = await db.PostDrafts.SingleAsync(); Assert.Equal(2, draft.Version); Assert.Equal("", draft.BodyMarkdown);
+        });
+    }
+
+    [Fact]
+    public async Task Empty_guide_steps_and_invalid_publication_do_not_create_drafts()
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+        var created = await TestApplication.Submit(client, "/admin/posts", new() { ["type"] = "Guide" }, "/admin/posts?handler=New");
+        var path = created.Headers.Location!.ToString(); var savedPath = path.Split('?')[0];
+        var fields = new Dictionary<string, string> { ["NewPostType"] = "Guide", ["Input.Version"] = "0", ["command"] = "add-step" };
+        var arranged = await TestApplication.Submit(client, path, fields, savedPath + "?handler=Arrange");
+        Assert.Equal(HttpStatusCode.OK, arranged.StatusCode);
+        Assert.Contains("Step 1 instructions", await arranged.Content.ReadAsStringAsync());
+        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, path, fields, savedPath + "?handler=Publish")).StatusCode);
+        await app.WithDatabase(async db => { Assert.Empty(await db.Posts.ToListAsync()); Assert.Empty(await db.GuideSteps.ToListAsync()); });
+    }
+
+    [Theory]
+    [InlineData(PostType.Microblog)]
+    [InlineData(PostType.Gallery)]
+    [InlineData(PostType.Checkin)]
+    public async Task First_photo_creates_a_draft_only_after_a_successful_upload(PostType type)
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+        var created = await TestApplication.Submit(client, "/admin/posts", new() { ["type"] = type.ToString() }, "/admin/posts?handler=New");
+        var path = created.Headers.Location!.ToString(); var html = await client.GetStringAsync(path);
+        var token = WebUtility.HtmlDecode(Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
+        client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
+        using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+        foreach (var valid in new[] { false, true })
+        {
+            using var form = new MultipartFormDataContent(); form.Add(new StringContent(token), "__RequestVerificationToken");
+            var file = new ByteArrayContent(valid ? bytes.ToArray() : "broken image"u8.ToArray()); file.Headers.ContentType = new("image/png"); form.Add(file, "Upload", "photo.png");
+            Assert.Equal(valid ? HttpStatusCode.OK : HttpStatusCode.BadRequest, (await client.PostAsync(path + "&handler=Upload", form)).StatusCode);
+            await app.WithDatabase(async db =>
+            {
+                Assert.Equal(valid ? 1 : 0, await db.Posts.CountAsync()); Assert.Equal(valid ? 1 : 0, await db.PostDrafts.CountAsync());
+                Assert.Equal(valid ? 1 : 0, await db.MediaAssets.CountAsync());
+            });
+        }
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync(path.Split('?')[0])).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(PostType.Article)]
+    [InlineData(PostType.Microblog)]
+    [InlineData(PostType.Review)]
+    [InlineData(PostType.Guide)]
+    [InlineData(PostType.Gallery)]
+    [InlineData(PostType.Checkin)]
     public async Task Removed_inline_images_leave_preview_and_next_publication_but_remain_private_for_undo(PostType type)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path);
@@ -99,7 +209,7 @@ public sealed class EditorTests
         using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
         var file = new ByteArrayContent(bytes.ToArray()); file.Headers.ContentType = new("image/png"); form.Add(file, "Upload", "clipboard.png");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync(path + "?handler=Upload", form)).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.PostAsync(path + "&handler=Upload", form)).StatusCode);
         await app.WithDatabase(async db => Assert.True((await db.PostMedia.SingleAsync()).InlineOnly));
         Assert.Contains("<symbol id=\"bold\"", await client.GetStringAsync("/icons/toolbar.svg"));
     }

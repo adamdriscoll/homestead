@@ -73,8 +73,8 @@ public sealed class ThemeTests
     {
         var created = await TestApplication.Submit(client, "/admin/posts", new() { ["type"] = "Microblog" }, "/admin/posts?handler=New");
         var id = Guid.Parse(created.Headers.Location!.ToString().Split('/')[3]);
-        _ = await TestApplication.Submit(client, $"/admin/posts/{id}/edit", new()
-        { ["Input.Version"] = "0", ["Input.BodyMarkdown"] = "Shared content with {{footer}} text", ["Input.Title"] = "Garden note" }, $"/admin/posts/{id}/edit?handler=Publish");
+        _ = await TestApplication.Submit(client, created.Headers.Location.ToString(), new()
+        { ["NewPostType"] = "Microblog", ["Input.Version"] = "0", ["Input.BodyMarkdown"] = "Shared content with {{footer}} text", ["Input.Title"] = "Garden note" }, $"/admin/posts/{id}/edit?handler=Publish");
         return id;
     }
 

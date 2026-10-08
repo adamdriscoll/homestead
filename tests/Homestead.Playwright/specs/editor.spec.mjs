@@ -1,5 +1,28 @@
 import { test, expect, newPost, saved, publish } from '../support/fixtures.mjs';
 
+test('untouched editors and empty previews leave no drafts', async ({ owner: page }) => {
+  for (const type of ['article', 'note', 'review', 'guide', 'gallery', 'check-in']) {
+    await newPost(page, type);
+    await expect(page.locator('#save-status')).toHaveAttribute('data-state', 'empty');
+    await page.getByRole('tab', { name: 'Preview', exact: true }).click();
+    await expect(page.getByRole('alert')).toContainText('Add content to preview');
+    await page.goto('/admin/posts');
+    await expect(page.getByText('No posts here yet. Choose a post type to start.')).toBeVisible();
+  }
+  await newPost(page);
+  await page.getByLabel('Body').fill('   ');
+  await expect(page.locator('#save-status')).toHaveAttribute('data-state', 'empty');
+  await page.goto('/admin/posts');
+  await expect(page.getByText('No posts here yet. Choose a post type to start.')).toBeVisible();
+  await newPost(page, 'guide');
+  await page.getByRole('button', { name: 'Add step', exact: true }).click();
+  await expect(page.getByRole('textbox', { name: 'Step 1 instructions (Markdown)', exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByRole('heading', { name: 'Your guide', exact: true })).toBeVisible();
+  await page.goto('/admin/posts');
+  await expect(page.getByText('No posts here yet. Choose a post type to start.')).toBeVisible();
+});
+
 test('autosave, private preview, publication, update, unpublish and confirmed deletion', async ({ owner: page, context }) => {
   await newPost(page);
   const editorURL = page.url();

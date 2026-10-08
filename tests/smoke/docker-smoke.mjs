@@ -72,6 +72,9 @@ async function form(pagePath, postPath, fields, binary = false) {
   assert.ok(token, 'Antiforgery token must be present');
   return http(postPath, 'POST', { ...fields, __RequestVerificationToken: token[1] }, 'application/x-www-form-urlencoded', binary);
 }
+function editorHandler(path, handler) {
+  return path + (path.includes('?') ? '&' : '?') + 'handler=' + handler;
+}
 try {
   console.log('Starting isolated production Compose deployment with local HTTPS.');
   docker([...base, 'up', '-d', '--no-build']);
@@ -108,28 +111,28 @@ try {
     Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n${token}\r\n--${boundary}\r\nContent-Disposition: form-data; name="UploadAlt"\r\n\r\nA home icon\r\n--${boundary}\r\nContent-Disposition: form-data; name="Upload"; filename="home.png"\r\nContent-Type: image/png\r\n\r\n`),
     photo, Buffer.from(`\r\n--${boundary}--\r\n`)
   ]);
-  assert.equal((await http(editor + '?handler=Upload', 'POST', multipart, `multipart/form-data; boundary=${boundary}`)).status, 302);
+  assert.equal((await http(editorHandler(editor, 'Upload'), 'POST', multipart, `multipart/form-data; boundary=${boundary}`)).status, 302);
   const withImage = await http(editor);
   const imageUrl = withImage.text.match(/data-insert-image="([^"]+)"/)[1];
   assert.equal((await http(imageUrl)).status, 404);
   const article = { 'Input.Title': 'Compose article', 'Input.BodyMarkdown': `Our original story.\n\n![Home](${imageUrl})`,
     'Input.Summary': 'Written from our home', 'Input.Tags': 'Home, Smoke', 'Input.Version': '0' };
-  assert.equal((await form(editor, editor + '?handler=Publish', article)).status, 302);
+  assert.equal((await form(editor, editorHandler(editor, 'Publish'), article)).status, 302);
   assert.ok((await http(editor.replace('/edit', '/preview'))).text.includes('/admin/media/'));
   const publicPath = '/posts/compose-article/';
   const published = await http(publicPath);
   assert.equal(published.status, 200); assert.ok(published.text.includes('https://changed.example.test/posts/compose-article/'));
   assert.equal((await http(imageUrl)).status, 200);
-  assert.equal((await form(editor, editor + '?handler=Save', { ...article, 'Input.Version': '1', 'Input.BodyMarkdown': 'Private pending edits' })).status, 302);
+  assert.equal((await form(editor, editorHandler(editor, 'Save'), { ...article, 'Input.Version': '1', 'Input.BodyMarkdown': 'Private pending edits' })).status, 302);
   assert.equal((await http(publicPath)).text, published.text);
-  assert.equal((await form(editor, editor + '?handler=Publish', { ...article, 'Input.Version': '2', 'Input.BodyMarkdown': `Updated story.\n\n![Home](${imageUrl})` })).status, 302);
+  assert.equal((await form(editor, editorHandler(editor, 'Publish'), { ...article, 'Input.Version': '2', 'Input.BodyMarkdown': `Updated story.\n\n![Home](${imageUrl})` })).status, 302);
   assert.ok((await http(publicPath)).text.includes('Updated story.'));
   const noteCreated = await form('/admin/posts', '/admin/posts?handler=New', { type: 'Microblog' });
   assert.equal(noteCreated.status, 302);
   const noteEditor = noteCreated.headers.location;
   const noteFields = { 'Input.Title': 'A porch note', 'Input.BodyMarkdown': 'A quiet afternoon & a cup of tea.',
     'Input.Tags': 'Home, Moments', 'Input.Version': '0' };
-  assert.equal((await form(noteEditor, noteEditor + '?handler=Publish', noteFields)).status, 302);
+  assert.equal((await form(noteEditor, editorHandler(noteEditor, 'Publish'), noteFields)).status, 302);
   for (const [type, slug, fields] of [
     ['Review', 'compose-coffee', { 'Input.Subject': 'Compose coffee', 'Input.Rating': '5', 'Input.BodyMarkdown': 'A **warm** cup.', 'Input.ExternalUrl': 'https://example.test/coffee' }],
     ['Guide', 'compose-guide', { 'Input.Title': 'Compose guide', 'Input.BodyMarkdown': 'Make yourself at home.',
@@ -150,7 +153,7 @@ try {
           Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="Uploads"; filename="${filename}"\r\nContent-Type: image/png\r\n\r\n`), photo, Buffer.from('\r\n')
         ]), Buffer.from(`--${boundary}--\r\n`)
       ]);
-      assert.equal((await http(typeEditor + '?handler=Upload', 'POST', batch, `multipart/form-data; boundary=${boundary}`)).status, 302);
+      assert.equal((await http(editorHandler(typeEditor, 'Upload'), 'POST', batch, `multipart/form-data; boundary=${boundary}`)).status, 302);
       const galleryEditor = await http(typeEditor);
       assert.ok(galleryEditor.text.includes('Some photos are missing alt text'));
       const images = [...galleryEditor.text.matchAll(/data-media="([^"]+)"/g)].map(match => match[1]);
@@ -160,7 +163,7 @@ try {
       fields[`Input.Captions[${secondId}]`] = 'The second view'; fields[`Input.AltText[${secondId}]`] = 'A home';
       fields['Input.MediaOrder[0]'] = secondId; fields['Input.MediaOrder[1]'] = images[0].split('/')[2];
     }
-    assert.equal((await form(typeEditor, typeEditor + '?handler=Publish', { ...fields, 'Input.Version': '0', 'Input.Tags': 'Home' })).status, 302);
+    assert.equal((await form(typeEditor, editorHandler(typeEditor, 'Publish'), { ...fields, 'Input.Version': '0', 'Input.Tags': 'Home' })).status, 302);
     const output = await http(`/posts/${slug}/`); assert.equal(output.status, 200);
     assert.ok((await http('/rss.xml')).text.includes(`/posts/${slug}/`));
     assert.ok((await http('/sitemap.xml')).text.includes(`/posts/${slug}/`));
@@ -260,7 +263,7 @@ try {
   assert.ok((await http(editor)).text.includes('Updated story.'));
   assert.ok((await http('/posts/a-porch-note/')).text.includes('A quiet afternoon'));
   assert.ok((await http('/rss.xml')).text.includes('A porch note'));
-  assert.equal((await form(noteEditor, noteEditor + '?handler=Unpublish', { ...noteFields, 'Input.Version': '1' })).status, 302);
+  assert.equal((await form(noteEditor, editorHandler(noteEditor, 'Unpublish'), { ...noteFields, 'Input.Version': '1' })).status, 302);
   assert.equal((await http('/posts/a-porch-note/')).status, 404);
   assert.ok(!(await http('/rss.xml')).text.includes('A porch note'));
   assert.ok(!(await http('/sitemap.xml')).text.includes('/posts/a-porch-note/'));

@@ -12,8 +12,8 @@ namespace Homestead.Features.Media;
 public sealed class MediaService(HomesteadDbContext db, ArticleService articles, PublicationLock writer, StoragePaths paths)
 {
     public const long MaximumBytes = 20 * 1024 * 1024;
-    public Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText, bool inlineOnly = false)
-        => StoreAsync(postId, file, altText, null, inlineOnly);
+    public Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText, bool inlineOnly = false, PostType? newPostType = null)
+        => StoreAsync(postId, file, altText, null, inlineOnly, newPostType);
 
     public Task<ArticleMedia> UploadBrandingAsync(string slot, IFormFile file)
     {
@@ -21,7 +21,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
         return StoreAsync(null, file, "", slot);
     }
 
-    private async Task<ArticleMedia> StoreAsync(Guid? postId, IFormFile file, string? altText, string? slot, bool inlineOnly = false)
+    private async Task<ArticleMedia> StoreAsync(Guid? postId, IFormFile file, string? altText, string? slot, bool inlineOnly = false, PostType? newPostType = null)
     {
         var filename = file.FileName;
         if (filename.IndexOfAny(['/', '\\', ':']) >= 0 || filename.Any(char.IsControl) || filename.Length > 255)
@@ -63,7 +63,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
         string? destination = null;
         try
         {
-            var post = postId is { } id ? await articles.FindAsync(id) ?? throw new KeyNotFoundException() : null;
+            var post = postId is { } id ? await articles.FindOrNewAsync(id, newPostType) ?? throw new KeyNotFoundException() : null;
             var asset = new MediaAsset
             {
                 StoredFilename = Guid.NewGuid().ToString("N") + (extension == ".jpeg" ? ".jpg" : extension),
@@ -76,6 +76,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
             var directory = Path.Combine(paths.OriginalsPath, asset.Id.ToString("D")); Directory.CreateDirectory(directory);
             destination = Path.Combine(directory, asset.StoredFilename);
             await File.WriteAllBytesAsync(destination, buffer.ToArray());
+            if (post is not null && db.Entry(post).State == EntityState.Detached) db.Posts.Add(post);
             if (post is not null) db.PostMedia.Add(new PostMedia
             {
                 Post = post,

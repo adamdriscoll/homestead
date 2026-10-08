@@ -18,18 +18,32 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
 
     public async Task<Post> CreateAsync(PostType type = PostType.Article)
     {
-        if (!Enum.IsDefined(type)) throw new InvalidOperationException("Choose a supported post type.");
-        var post = new Post { Type = type, Draft = new PostDraft() };
+        var post = NewEditor(type);
         db.Posts.Add(post); await db.SaveChangesAsync(); return post;
     }
 
-    public async Task<long> SaveAsync(Guid id, ArticleInput input)
+    public static Post NewEditor(PostType type, Guid? id = null)
+    {
+        if (!Enum.IsDefined(type)) throw new InvalidOperationException("Choose a supported post type.");
+        return new Post { Id = id ?? Guid.NewGuid(), Type = type, Draft = new PostDraft() };
+    }
+
+    // Reserve an editor ID without writing anything. Deleted posts cannot be recreated.
+    public async Task<Post?> FindOrNewAsync(Guid id, PostType? newPostType)
+    {
+        var post = await FindAsync(id);
+        if (post is not null || newPostType is null || id == Guid.Empty || await db.Posts.AnyAsync(x => x.Id == id)) return post;
+        return NewEditor(newPostType.Value, id);
+    }
+
+    public async Task<long> SaveAsync(Guid id, ArticleInput input, PostType? newPostType = null)
     {
         await writer.Semaphore.WaitAsync();
         try
         {
             db.ChangeTracker.Clear();
-            var post = await FindAsync(id) ?? throw new KeyNotFoundException();
+            var post = await FindOrNewAsync(id, newPostType) ?? throw new KeyNotFoundException();
+            var isNew = db.Entry(post).State == EntityState.Detached;
             if (post.Draft!.Version != input.Version) throw new DraftConflictException();
             if (PostValidation.LocationError(input) is { } locationError) throw new InvalidOperationException(locationError);
             if (input.CoverMediaId is { } cover && !post.Media.Any(x => x.MediaAssetId == cover))
@@ -51,7 +65,9 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
             var names = (input.Tags ?? "").Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
                 .Select(x => x.Normalize()).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
             if (names.Length > 20 || names.Any(x => x.Length > 80)) throw new InvalidOperationException("Use up to 20 tags, each at most 80 characters.");
+            if (isNew && !HasContent(post.Type, input, names)) return 0;
             await using var transaction = await db.Database.BeginTransactionAsync();
+            if (isNew) db.Posts.Add(post);
             var removedMedia = post.Media.Where(x => input.RemovedMediaIds.Contains(x.MediaAssetId)).ToArray();
             db.PostMedia.RemoveRange(removedMedia);
             foreach (var image in removedMedia) post.Media.Remove(image);
@@ -117,6 +133,15 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         }
         finally { writer.Semaphore.Release(); }
     }
+
+    private static bool HasContent(PostType type, ArticleInput input, string[] tags) =>
+        !string.IsNullOrWhiteSpace(input.BodyMarkdown) || tags.Length > 0 ||
+        !string.IsNullOrWhiteSpace(input.LocationName) || !string.IsNullOrWhiteSpace(input.LocationAddress) ||
+        input.Latitude is not null || input.Longitude is not null ||
+        (type != PostType.Review && !string.IsNullOrWhiteSpace(input.Title)) ||
+        (type == PostType.Article && !string.IsNullOrWhiteSpace(input.Summary)) ||
+        (type == PostType.Review && (!string.IsNullOrWhiteSpace(input.Subject) || input.Rating is not null || !string.IsNullOrWhiteSpace(input.ExternalUrl))) ||
+        (type == PostType.Guide && input.Steps.Any(x => !string.IsNullOrWhiteSpace(x.BodyMarkdown)));
 
     public static ArticleSnapshot Snapshot(Post post, string slug, DateTime now) => new(1, post.Id, slug,
         post.Draft!.Title ?? "", post.Draft.BodyMarkdown, post.Draft.Summary,

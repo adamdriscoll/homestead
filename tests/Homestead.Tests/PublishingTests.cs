@@ -13,11 +13,10 @@ namespace Homestead.Tests;
 
 public sealed class PublishingTests
 {
-    private static async Task<Guid> Create(HttpClient client)
+    private static async Task<Guid> Create(TestApplication app)
     {
-        var response = await TestApplication.Submit(client, "/admin/posts", [], "/admin/posts?handler=New");
-        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
-        return Guid.Parse(response.Headers.Location!.ToString().Split('/')[3]);
+        await using var scope = app.Services.CreateAsyncScope();
+        return (await scope.ServiceProvider.GetRequiredService<ArticleService>().CreateAsync()).Id;
     }
 
     private static Dictionary<string, string> Fields(long version, string title = "A weekend at home", string body = "# Morning\n\nAn **original** story.") => new()
@@ -67,7 +66,7 @@ public sealed class PublishingTests
         {
             _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author);
             Assert.Contains("No posts here yet", await visitor.GetStringAsync("/"));
-            id = await Create(author);
+            id = await Create(app);
             var uploaded = await Upload(author, id, "garden.png", photo, "image/png");
             Assert.Equal(HttpStatusCode.OK, uploaded.StatusCode);
             using var metadata = JsonDocument.Parse(await uploaded.Content.ReadAsStringAsync());
@@ -119,7 +118,7 @@ public sealed class PublishingTests
     public async Task Incomplete_drafts_save_stale_tabs_conflict_and_invalid_publication_stays_private()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app);
         Assert.Equal(HttpStatusCode.Redirect, (await Action(client, id, "Save", Fields(0, "", ""))).StatusCode);
         Assert.Equal(HttpStatusCode.Conflict, (await Action(client, id, "Save", Fields(0, "Stale", "Lost edits"))).StatusCode);
         Assert.Equal(HttpStatusCode.Redirect, (await Action(client, id, "Publish", Fields(1, "", ""))).StatusCode);
@@ -143,7 +142,7 @@ public sealed class PublishingTests
     public async Task Unsafe_unsupported_and_spoofed_uploads_are_rejected_without_media_records(string filename, string mime, string message)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app);
         var bytes = filename == "photo.jpg" ? Photo() : "not an image"u8.ToArray();
         var result = await Upload(client, id, filename, bytes, mime);
         Assert.Equal(HttpStatusCode.BadRequest, result.StatusCode); Assert.Contains(message, await result.Content.ReadAsStringAsync());
@@ -165,7 +164,7 @@ public sealed class PublishingTests
         }))
         using (var client = app.Client())
         {
-            _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); id = await Create(client);
+            _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); id = await Create(app);
             _ = await Action(client, id, "Publish", Fields(0));
             var original = await client.GetStringAsync("/posts/a-weekend-at-home/");
             var pointer = await File.ReadAllTextAsync(Path.Combine(data.Path, "site", "current.json"));
@@ -181,7 +180,7 @@ public sealed class PublishingTests
         Assert.Contains("original", await author.GetStringAsync("/posts/a-weekend-at-home/"));
         _ = await TestApplication.Login(author);
         // Publishing an unrelated article applies ALL saved desired changes, including failed removals.
-        var other = await Create(author); _ = await Action(author, other, "Publish", Fields(0, "Another article", "Other body"));
+        var other = await Create(restarted); _ = await Action(author, other, "Publish", Fields(0, "Another article", "Other body"));
         if (action == "publish") Assert.Contains("Desired newer article", await author.GetStringAsync("/posts/a-weekend-at-home/"));
         else Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync("/posts/a-weekend-at-home/")).StatusCode);
     }
@@ -190,7 +189,7 @@ public sealed class PublishingTests
     public async Task Missing_original_during_build_keeps_active_image_and_pointer_unchanged()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app);
         var uploaded = await Upload(client, id, "garden.png", Photo(), "image/png");
         using var metadata = JsonDocument.Parse(await uploaded.Content.ReadAsStringAsync()); var url = metadata.RootElement.GetProperty("url").GetString()!;
         _ = await Action(client, id, "Publish", Fields(0, body: $"Original photo\n\n![Garden]({url})"));
@@ -209,7 +208,7 @@ public sealed class PublishingTests
     public async Task Supported_images_decode_and_record_dimensions(string extension, string mime)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app);
         using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 4);
         using var bytes = new MemoryStream();
         SixLabors.ImageSharp.Formats.IImageEncoder encoder = extension == "webp" ? new SixLabors.ImageSharp.Formats.Webp.WebpEncoder() : new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder();
@@ -225,7 +224,7 @@ public sealed class PublishingTests
     public async Task Oversized_and_truncated_images_do_not_create_originals()
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(client);
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app);
         var oversized = await Upload(client, id, "large.png", new byte[20 * 1024 * 1024 + 1], "image/png");
         Assert.Equal(HttpStatusCode.BadRequest, oversized.StatusCode); Assert.Contains("20 MB", await oversized.Content.ReadAsStringAsync());
         var truncated = await Upload(client, id, "broken.png", Photo()[..32], "image/png");
@@ -253,7 +252,7 @@ public sealed class PublishingTests
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-        var first = await Create(client); var second = await Create(client);
+        var first = await Create(app); var second = await Create(app);
         _ = await Action(client, first, "Save", Fields(0)); _ = await Action(client, second, "Save", Fields(0));
         async Task Publish(Guid id)
         {
@@ -274,7 +273,7 @@ public sealed class PublishingTests
         using var app = new TestApplication(data.Path, configureServices: services =>
             services.AddDbContext<HomesteadDbContext>((_, options) => options.AddInterceptors(guard)));
         using var client = app.Client(); _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-        var id = await Create(client); _ = await Action(client, id, "Publish", Fields(0)); guard.Block = true;
+        var id = await Create(app); _ = await Action(client, id, "Publish", Fields(0)); guard.Block = true;
         Assert.Contains("original", await client.GetStringAsync("/posts/a-weekend-at-home/"));
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/assets/site.css")).StatusCode);
         foreach (var path in new[] { "/", "/articles/", "/notes/", "/reviews/", "/guides/", "/galleries/", "/about/", "/tags/home/", "/rss.xml", "/sitemap.xml", "/robots.txt" })

@@ -31,6 +31,7 @@
 
   function setStatus(state, message) {
     const states = {
+      empty: ['Not saved', 'badge-neutral', 'pen'],
       saved: ['Saved', 'badge-success', 'circle-check'],
       saving: ['Saving…', 'badge-info', 'spinner'],
       unsaved: ['Unsaved', 'badge-warning', 'circle-exclamation'],
@@ -38,14 +39,21 @@
       conflict: ['Conflict', 'badge-error', 'triangle-exclamation']
     };
     const [label, color, icon] = states[state];
-    status.classList.remove('badge-success', 'badge-info', 'badge-warning', 'badge-error'); status.classList.add(color);
+    status.classList.remove('badge-neutral', 'badge-success', 'badge-info', 'badge-warning', 'badge-error'); status.classList.add(color);
     status.dataset.state = state; statusText.textContent = label;
     status.querySelector('use').setAttribute('href', `/icons/toolbar.svg#${icon}`);
     status.querySelector('svg').classList.toggle('animate-spin', state === 'saving');
     status.querySelector('svg').classList.add('motion-reduce:animate-none');
     saveError.hidden = !message; saveError.textContent = message || '';
   }
-  setStatus('saved');
+  setStatus(form.dataset.newPost === 'true' ? 'empty' : 'saved');
+  function persisted(editorUrl) {
+    if (form.dataset.newPost !== 'true') return;
+    form.dataset.newPost = 'false';
+    document.querySelector('#post-state').textContent = 'Draft · Not currently public';
+    document.querySelectorAll('input[name="NewPostType"]').forEach(input => input.remove());
+    history.replaceState(null, '', editorUrl);
+  }
   function setUploadStatus(message, inline = false) {
     uploadStatus.textContent = message;
     inlineUploadStatus.textContent = message; inlineUploadStatus.hidden = !inline;
@@ -76,7 +84,8 @@
         if (!response.ok) { conflict = response.status === 409; throw new Error(data.message || 'Save failed.'); }
         version.value = data.version;
         saved = saving;
-        setStatus(saved === revision ? 'saved' : 'unsaved');
+        if (data.persisted) persisted(data.editorUrl);
+        setStatus(saved === revision ? (data.persisted ? 'saved' : 'empty') : 'unsaved');
         return true;
       } catch (error) { setStatus(conflict ? 'conflict' : 'error', error.message || 'Save failed. Check your connection and try again.'); return false; }
     });
@@ -141,6 +150,7 @@
     const request = ++previewRequest;
     await uploadTask;
     if (!await save()) return false;
+    if (form.dataset.newPost === 'true') { setStatus('empty', 'Add content to preview this post.'); return false; }
     if (request !== previewRequest) return false;
     preview.src = form.dataset.previewUrl + '?revision=' + version.value;
     selectTab(previewTab);
@@ -222,6 +232,7 @@
       if (response.redirected) throw new Error('Sign in again before uploading.');
       const image = await response.json();
       if (!response.ok) throw new Error(image.message || 'Upload failed.');
+      persisted(image.editorUrl);
       addImage(image, file.name, !!target);
       if (target) {
         const position = target.value.indexOf(marker);
