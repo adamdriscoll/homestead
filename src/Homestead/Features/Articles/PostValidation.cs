@@ -12,14 +12,14 @@ public static class PostValidation
     {
         PostType.Article when string.IsNullOrWhiteSpace(post.Draft!.Title) || string.IsNullOrWhiteSpace(post.Draft.BodyMarkdown)
             => "An article needs a title and body before publication.",
-        PostType.Microblog when string.IsNullOrWhiteSpace(post.Draft!.BodyMarkdown) && post.Media.Count == 0
+        PostType.Microblog when string.IsNullOrWhiteSpace(post.Draft!.BodyMarkdown) && !ArticleService.DraftMedia(post).Any()
             => "A note needs text or at least one photo before publication.",
         PostType.Review when string.IsNullOrWhiteSpace(post.Review?.Subject) || post.Review.Rating is not (>= 1 and <= 5) || string.IsNullOrWhiteSpace(post.Draft!.BodyMarkdown)
             => "A review needs a subject, an integer rating from 1 to 5, and review text before publication.",
         PostType.Review when !IsExternalUrl(post.Review?.ExternalUrl) => "Use an absolute HTTP or HTTPS URL without credentials for the reviewed subject.",
         PostType.Guide when string.IsNullOrWhiteSpace(post.Draft!.Title) || post.Steps.Count == 0 || post.Steps.Any(x => string.IsNullOrWhiteSpace(x.BodyMarkdown))
             => "A guide needs a title and at least one step, with instructions in every step, before publication.",
-        PostType.Gallery when post.Media.Count == 0 => "A gallery needs at least one photo before publication.",
+        PostType.Gallery when !ArticleService.DraftMedia(post).Any() => "A gallery needs at least one photo before publication.",
         _ => null
     };
 }

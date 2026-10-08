@@ -12,8 +12,8 @@ namespace Homestead.Features.Media;
 public sealed class MediaService(HomesteadDbContext db, ArticleService articles, PublicationLock writer, StoragePaths paths)
 {
     public const long MaximumBytes = 20 * 1024 * 1024;
-    public Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText)
-        => StoreAsync(postId, file, altText, null);
+    public Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText, bool inlineOnly = false)
+        => StoreAsync(postId, file, altText, null, inlineOnly);
 
     public Task<ArticleMedia> UploadBrandingAsync(string slot, IFormFile file)
     {
@@ -21,7 +21,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
         return StoreAsync(null, file, "", slot);
     }
 
-    private async Task<ArticleMedia> StoreAsync(Guid? postId, IFormFile file, string? altText, string? slot)
+    private async Task<ArticleMedia> StoreAsync(Guid? postId, IFormFile file, string? altText, string? slot, bool inlineOnly = false)
     {
         var filename = file.FileName;
         if (filename.IndexOfAny(['/', '\\', ':']) >= 0 || filename.Any(char.IsControl) || filename.Length > 255)
@@ -81,6 +81,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
                 Post = post,
                 MediaAsset = asset,
                 Role = post.Type == PostType.Gallery ? MediaRole.Gallery : post.Type == PostType.Guide ? MediaRole.GuideStep : MediaRole.Inline,
+                InlineOnly = inlineOnly,
                 SortOrder = post.Media.Count == 0 ? 0 : post.Media.Max(x => x.SortOrder) + 1,
                 AltText = altText
             });

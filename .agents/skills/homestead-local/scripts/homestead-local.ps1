@@ -2,7 +2,7 @@
 [CmdletBinding()]
 param(
     [ValidateSet('Sandbox', 'Persistent')][string]$Environment = 'Sandbox',
-    [ValidateSet('Start', 'Upgrade', 'Backup', 'Rollback', 'Reset', 'Stop', 'Status', 'Logs', 'Token', 'CompleteSetup', 'TrustCertificate')]
+    [ValidateSet('Start', 'Upgrade', 'Recover', 'Backup', 'Rollback', 'Reset', 'Stop', 'Status', 'Logs', 'Token', 'CompleteSetup', 'TrustCertificate')]
     [string]$Action = 'Status',
     [string]$RepoPath = (Get-Location).Path,
     [string]$StateRoot,
@@ -14,7 +14,8 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 if ($Action -eq 'Reset' -and $Environment -ne 'Sandbox') { throw 'Reset is limited to Sandbox.' }
-if ($Image -and $Action -notin @('Start', 'Upgrade', 'Reset')) { throw 'Image applies only to Start, Upgrade, or Reset.' }
+if ($Action -eq 'Recover' -and $Environment -ne 'Persistent') { throw 'Recover is limited to Persistent.' }
+if ($Image -and $Action -notin @('Start', 'Upgrade', 'Recover', 'Reset')) { throw 'Image applies only to Start, Upgrade, Recover, or Reset.' }
 $RepoPath = (Resolve-Path -LiteralPath $RepoPath).Path
 if (!(Test-Path -LiteralPath (Join-Path $RepoPath 'deploy/Dockerfile'))) { throw 'RepoPath must be a Homestead checkout.' }
 if (!$StateRoot) { $StateRoot = Join-Path $RepoPath '.homestead-local' }
@@ -120,7 +121,16 @@ function Resolve-Image {
     }
     return ((Invoke-Docker @('image', 'inspect', '--format', '{{.Id}}', $reference)) -join '').Trim()
 }
-function New-Backup {
+function Has-SavedImage {
+    & docker image inspect $script:state.Image *> $null
+    return $LASTEXITCODE -eq 0
+}
+function Require-SavedImage {
+    if (!(Has-SavedImage)) {
+        throw "Saved image $($script:state.Image) is unavailable. Data volume $($script:state.Volume) is preserved. Use -Action Recover to build current source and start on a copy of the data."
+    }
+}
+function New-Backup([switch]$WithoutImage) {
     Invoke-Docker @('image', 'inspect', 'caddy:2.10.2-alpine') | Out-Null
     Invoke-Docker @('volume', 'inspect', $script:state.Volume) | Out-Null
     $id = App-Id
@@ -130,8 +140,11 @@ function New-Backup {
     }
     $backup = Join-Path (Join-Path $directory 'backups') ("$([DateTime]::UtcNow.ToString('yyyyMMddTHHmmssfffZ'))-$([guid]::NewGuid().ToString('N').Substring(0, 8))")
     New-Item -ItemType Directory -Path $backup -Force | Out-Null
-    $pin = "homestead-local:backup-$hash-$mode-$([guid]::NewGuid().ToString('N').Substring(0, 12))"
-    Invoke-Docker @('image', 'tag', $script:state.Image, $pin) | Out-Null
+    $pin = $null
+    if (!$WithoutImage) {
+        $pin = "homestead-local:backup-$hash-$mode-$([guid]::NewGuid().ToString('N').Substring(0, 12))"
+        Invoke-Docker @('image', 'tag', $script:state.Image, $pin) | Out-Null
+    }
     Compose @('stop', 'homestead') | Out-Host
     Invoke-Docker @('run', '--rm', '--user', '0', '--entrypoint', 'sh', '--mount', "type=volume,src=$($script:state.Volume),dst=/source,readonly", '--mount', "type=bind,src=$backup,dst=/backup", 'caddy:2.10.2-alpine', '-c', 'cd /source && tar -cpf /backup/data.tar .') | Out-Host
     Save-Json @{
@@ -142,6 +155,12 @@ function New-Backup {
     Save-State
     Write-Host "Backup: $backup"
     return $backup
+}
+function Restore-BackupVolume([string]$Backup) {
+    $restored = "${project}_restore_$([guid]::NewGuid().ToString('N'))"
+    Invoke-Docker @('volume', 'create', $restored) | Out-Null
+    Invoke-Docker @('run', '--rm', '--user', '0', '--entrypoint', 'sh', '--mount', "type=volume,src=$restored,dst=/restore", '--mount', "type=bind,src=$Backup,dst=/backup,readonly", 'caddy:2.10.2-alpine', '-c', 'cd /restore && tar -xpf /backup/data.tar') | Out-Host
+    return $restored
 }
 function Show-Status {
     [pscustomobject]@{
@@ -175,9 +194,11 @@ try {
         'Start' {
             if ($Environment -eq 'Sandbox' -or !$script:state.Image) { $script:state.Image = Resolve-Image }
             elseif ($Image) { throw 'Use Upgrade to replace an initialized persistent image.' }
+            else { Require-SavedImage }
             Save-State; Start-App; Show-Status
         }
         'Upgrade' {
+            Require-SavedImage
             $next = Resolve-Image
             Write-Compose
             $wasRunning = Is-Running
@@ -186,7 +207,25 @@ try {
             $script:state.Image = $next
             Save-State; Start-App; Show-Status
         }
+        'Recover' {
+            if (Has-SavedImage) { throw 'Saved image is still available. Use -Action Upgrade for a paired image/data backup.' }
+            Write-Host 'Saved image is unavailable. Recovery will preserve the original volume and start current source on a copy.'
+            Write-Host 'The recovery archive has no paired image; image/data rollback requires recovering the exact old image separately.'
+            $next = Resolve-Image
+            Write-Compose
+            $wasRunning = Is-Running
+            try {
+                $backup = New-Backup -WithoutImage
+                $restored = Restore-BackupVolume $backup
+            }
+            catch { if ($wasRunning) { Compose @('start', 'homestead') | Out-Host }; throw }
+            Write-Host "Preserved original data volume: $($script:state.Volume)"
+            $script:state.Image = $next
+            $script:state.Volume = $restored
+            Save-State; Start-App; Show-Status
+        }
         'Backup' {
+            Require-SavedImage
             Write-Compose
             $wasRunning = Is-Running
             try { $null = New-Backup }
@@ -200,10 +239,10 @@ try {
             if ($metadata.Project -ne $project) { throw 'Backup belongs to another environment.' }
             $archive = Join-Path $BackupPath 'data.tar'
             if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash -ne $metadata.ArchiveSha256) { throw 'Backup checksum mismatch.' }
-            Invoke-Docker @('image', 'inspect', $metadata.ImagePin) | Out-Null
-            $restored = "${project}_restore_$([guid]::NewGuid().ToString('N'))"
-            Invoke-Docker @('volume', 'create', $restored) | Out-Null
-            Invoke-Docker @('run', '--rm', '--user', '0', '--entrypoint', 'sh', '--mount', "type=volume,src=$restored,dst=/restore", '--mount', "type=bind,src=$BackupPath,dst=/backup,readonly", 'caddy:2.10.2-alpine', '-c', 'cd /restore && tar -xpf /backup/data.tar') | Out-Host
+            if (!$metadata.ImagePin) { throw 'This recovery archive has no paired image. Current and original data volumes are preserved; recover the exact old image before restoring its data.' }
+            & docker image inspect $metadata.ImagePin *> $null
+            if ($LASTEXITCODE -ne 0) { throw "Backup image $($metadata.ImagePin) is unavailable. Current data is preserved; restore the pinned image before rollback." }
+            $restored = Restore-BackupVolume $BackupPath
             Write-Compose
             Compose @('stop', 'homestead') | Out-Host
             Write-Host "Preserved newer data volume: $($script:state.Volume)"

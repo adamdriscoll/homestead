@@ -3,6 +3,7 @@
 @source "../Components";
 @source "../Program.cs";
 @source "../Features/Publishing/SafeMarkdown.cs";
+@source "../wwwroot/js/article-editor.js";
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
   logs: false;

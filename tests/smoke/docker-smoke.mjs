@@ -94,6 +94,8 @@ try {
     'Input.AboutMarkdown': '# Persisted About', 'Input.Description': 'Persisted description' };
   assert.equal((await form('/admin/settings', '/admin/settings', settings)).status, 302);
   assert.equal((await http('/js/article-editor.js')).status, 200);
+  const toolbarIcons = await http('/icons/toolbar.svg');
+  assert.equal(toolbarIcons.status, 200); assert.match(toolbarIcons.text, /<symbol id="bold"/);
   assert.equal((await http('/manifest.webmanifest')).status, 200);
   const created = await form('/admin/posts', '/admin/posts?handler=New', {});
   assert.equal(created.status, 302);

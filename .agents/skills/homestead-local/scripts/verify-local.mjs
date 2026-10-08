@@ -122,6 +122,33 @@ try {
   assert.throws(() => run('Reset', 'Persistent'));
   assert.throws(() => run('Start', 'Persistent', '-Image', candidate));
   assert.throws(() => run('Rollback', 'Persistent', '-BackupPath', join(root, 'sandbox')));
+  // Reproduce a pruned saved image without deleting any shared Docker images.
+  run('Stop');
+  const beforeMissing = state('Persistent');
+  const missing = { ...beforeMissing, Image: `sha256:${'0'.repeat(64)}` };
+  writeFileSync(join(root, 'persistent', 'state.json'), JSON.stringify(missing));
+  assert.throws(() => run('Upgrade', 'Persistent', '-Image', candidate), /Saved image .* is unavailable.*Recover/s);
+  assert.throws(() => run('Start'), /Saved image .* is unavailable.*Recover/s);
+  assert.throws(() => run('Backup'), /Saved image .* is unavailable.*Recover/s);
+  assert.deepEqual(state('Persistent'), missing, 'Rejected upgrade must preserve saved state');
+  const originalDatabaseHash = docker('run', '--rm', '--user', '0', '--entrypoint', 'sh', '--mount', `type=volume,src=${beforeMissing.Volume},dst=/data,readonly`,
+    'caddy:2.10.2-alpine', '-c', 'sha256sum /data/homestead.db');
+  run('Recover', 'Persistent', '-Image', candidate);
+  const recovered = state('Persistent');
+  assert.notEqual(recovered.Volume, beforeMissing.Volume, 'Recovery must use a copy of the data');
+  assert.equal(recovered.Image, docker('image', 'inspect', '--format', '{{.Id}}', candidate));
+  const recoveryBackup = JSON.parse(readFileSync(join(recovered.LastBackup, 'metadata.json'), 'utf8'));
+  assert.equal(recoveryBackup.ImagePin, null, 'Do not claim an unavailable image is pinned');
+  assert.equal(recoveryBackup.State.Image, missing.Image);
+  assert.equal(recoveryBackup.State.Volume, beforeMissing.Volume);
+  await verifyContent();
+  assert.throws(() => run('Rollback'), /no paired image.*preserved/s);
+  assert.deepEqual(state('Persistent'), recovered, 'Unavailable rollback must leave the recovered app running');
+  await verifyContent();
+  assert.equal(docker('run', '--rm', '--user', '0', '--entrypoint', 'sh', '--mount', `type=volume,src=${beforeMissing.Volume},dst=/data,readonly`,
+    'caddy:2.10.2-alpine', '-c', 'sha256sum /data/homestead.db'), originalDatabaseHash, 'Original database must remain unchanged');
+  assert.throws(() => run('Recover', 'Persistent', '-Image', candidate), /still available.*Upgrade/s);
+  console.log('Verified missing-image preflight, recovery on copied data, retained content/session, preserved original, and honest rollback refusal.');
   console.log('PASS: isolated sandbox reset; persistent restart, setup-token removal, backup, upgrade, session/settings/draft/publication/media retention, paired image/data rollback, and preservation of newer data.');
 } finally {
   // Delete only volumes and backup pins belonging to these verified temporary project identities.

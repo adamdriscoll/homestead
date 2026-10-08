@@ -118,7 +118,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         post.Draft!.Title ?? "", post.Draft.BodyMarkdown, post.Draft.Summary,
         post.FirstPublishedAtUtc ?? now, now, post.Draft.Version,
         post.Tags.Select(x => x.Tag.Name).ToArray(), post.Draft.CoverMediaId,
-        post.Media.OrderBy(x => x.SortOrder).Select(x => new ArticleMedia(x.MediaAssetId,
+        DraftMedia(post).OrderBy(x => x.SortOrder).Select(x => new ArticleMedia(x.MediaAssetId,
             x.MediaAsset.StoredFilename, x.MediaAsset.MimeType, x.AltText ?? "")
         { Caption = x.Caption, GuideStepId = x.GuideStepId }).ToArray())
     {
@@ -128,6 +128,15 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         Steps = post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).ToArray()
     };
 
+    // Pasted images belong to Markdown, not the implicit photo grid. Keep the private
+    // attachment for undo/reinsertion and backup, but omit unused uploads from all snapshots.
+    public static IEnumerable<PostMedia> DraftMedia(Post post)
+    {
+        var urls = SafeMarkdown.ImageUrls(new[] { post.Draft!.BodyMarkdown }.Concat(post.Steps.Select(x => x.BodyMarkdown)));
+        return post.Media.Where(x => !x.InlineOnly || x.MediaAssetId == post.Draft.CoverMediaId ||
+            urls.Contains($"/media/{x.MediaAssetId:D}/{x.MediaAsset.StoredFilename}"));
+    }
+
     public static bool HasDraftChanges(Post post, ArticleSnapshot live) => post.Draft is { } draft &&
         ((draft.Title ?? "") != live.Title || draft.BodyMarkdown != live.BodyMarkdown || draft.Summary != live.Summary ||
          draft.CoverMediaId != live.CoverMediaId ||
@@ -135,7 +144,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
          live.Media.Any(x => post.Media.SingleOrDefault(m => m.MediaAssetId == x.Id) is not { } media ||
              (media.AltText ?? "") != x.AltText || media.Caption != x.Caption || media.GuideStepId != x.GuideStepId) ||
          (post.Type is PostType.Microblog or PostType.Review or PostType.Gallery or PostType.Guide &&
-          !post.Media.OrderBy(x => x.SortOrder).Select(x => x.MediaAssetId).SequenceEqual(live.Media.Select(x => x.Id))) ||
+          !DraftMedia(post).OrderBy(x => x.SortOrder).Select(x => x.MediaAssetId).SequenceEqual(live.Media.Select(x => x.Id))) ||
          (post.Type == PostType.Review && new ReviewSnapshot(post.Review?.Subject ?? "", post.Review?.Rating, post.Review?.ExternalUrl) != live.Review) ||
          (post.Type == PostType.Guide && !post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).SequenceEqual(live.Steps)));
 

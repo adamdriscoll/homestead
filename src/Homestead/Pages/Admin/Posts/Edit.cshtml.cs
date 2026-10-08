@@ -15,6 +15,7 @@ public sealed class EditModel(ArticleService articles, MediaService media, Publi
     [BindProperty] public IFormFile? Upload { get; set; }
     [BindProperty] public List<IFormFile> Uploads { get; set; } = [];
     [BindProperty] public string? UploadAlt { get; set; }
+    [BindProperty] public bool InlineUpload { get; set; }
     [BindProperty] public bool ConfirmDelete { get; set; }
     [TempData] public string? StatusMessage { get; set; }
     public Post Post { get; private set; } = null!;
@@ -46,7 +47,7 @@ public sealed class EditModel(ArticleService articles, MediaService media, Publi
             var files = Upload is null ? Uploads : [Upload];
             if (files.Count == 0 || files.Count > 5) return await InvalidUploadAsync(id, "Choose between one and five photos per upload.");
             ArticleMedia? image = null;
-            foreach (var file in files) { image = await media.UploadAsync(id, file, UploadAlt); completed++; }
+            foreach (var file in files) { image = await media.UploadAsync(id, file, UploadAlt, InlineUpload); completed++; }
             if (WantsJson) return new JsonResult(new { image!.Id, image.Url, image.PrivateUrl, image.AltText });
             StatusMessage = $"{files.Count} photo(s) uploaded. Review descriptions and photo placement before publishing.";
             return RedirectToPage(new { id });

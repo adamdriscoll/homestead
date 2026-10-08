@@ -5,8 +5,10 @@ RUN npm ci --no-audit --no-fund
 COPY src/Homestead/Pages ./Pages
 COPY src/Homestead/Components ./Components
 COPY src/Homestead/Program.cs ./Program.cs
+COPY src/Homestead/wwwroot/js/article-editor.js ./wwwroot/js/article-editor.js
 COPY src/Homestead/Features/Publishing/SafeMarkdown.cs ./Features/Publishing/SafeMarkdown.cs
 COPY src/Homestead/Styles ./Styles
+COPY src/Homestead/build-icons.mjs ./build-icons.mjs
 RUN npm run build:css
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -16,6 +18,7 @@ COPY src/Homestead/Homestead.csproj src/Homestead/
 RUN dotnet restore src/Homestead/Homestead.csproj
 COPY src/Homestead/ src/Homestead/
 COPY --from=styles /work/wwwroot/css/site.css src/Homestead/wwwroot/css/site.css
+COPY --from=styles /work/wwwroot/icons/ src/Homestead/wwwroot/icons/
 RUN dotnet publish src/Homestead/Homestead.csproj -c Release --no-restore -p:BuildFrontend=false -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

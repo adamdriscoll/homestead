@@ -15,8 +15,14 @@ $StateRoot = [IO.Path]::GetFullPath($StateRoot)
 $runner = Join-Path $RepoPath '.agents/skills/homestead-local/scripts/homestead-local.ps1'
 $stateFile = Join-Path $StateRoot 'persistent/state.json'
 $action = if (Test-Path -LiteralPath $stateFile) { 'Upgrade' } else { 'Start' }
+if ($action -eq 'Upgrade') {
+    $savedState = Get-Content -LiteralPath $stateFile -Raw | ConvertFrom-Json
+    & docker image inspect $savedState.Image *> $null
+    if ($LASTEXITCODE -ne 0) { $action = 'Recover' }
+}
 
 # Upgrade builds current source and backs up existing persistent data before replacement.
+# If Docker has removed the saved image, Recover archives data and uses a new copy.
 $runnerParameters = @{
     RepoPath = $RepoPath; StateRoot = $StateRoot
     Environment = 'Persistent'; Action = $action

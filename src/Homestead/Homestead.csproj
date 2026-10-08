@@ -13,6 +13,8 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
     <Content Remove="package*.json;Styles/**;wwwroot/js/site.js;wwwroot/favicon.ico;wwwroot/css/site.css" />
     <Content Include="wwwroot/css/site.css" CopyToPublishDirectory="PreserveNewest" />
+    <Content Remove="wwwroot/icons/**" />
+    <Content Include="wwwroot/icons/toolbar.svg;wwwroot/icons/LICENSE.txt" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <Target Name="BuildStyles" BeforeTargets="BeforeBuild" Condition="'$(BuildFrontend)' != 'false'">
     <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(MSBuildProjectDirectory)" Condition="!Exists('node_modules')" />

@@ -7,7 +7,7 @@ namespace Homestead.Features.Publishing;
 
 public sealed class SafeMarkdown
 {
-    private readonly MarkdownPipeline pipeline = new MarkdownPipelineBuilder().DisableHtml().Build();
+    private static readonly MarkdownPipeline pipeline = new MarkdownPipelineBuilder().DisableHtml().Build();
 
     // Full-content surfaces share this renderer, including private preview and RSS.
     public string RenderContent(ArticleSnapshot post, bool preview, string? canonicalBaseUrl = null)
@@ -50,7 +50,9 @@ public sealed class SafeMarkdown
         return article.Media.Where(x => article.Type != Data.Entities.PostType.Article || urls.Contains(x.Url) || x.Id == article.CoverMediaId).ToArray();
     }
 
-    private HashSet<string?> InlineImageUrls(ArticleSnapshot article) => new[] { article.BodyMarkdown }.Concat(article.Steps.Select(x => x.BodyMarkdown))
+    private static HashSet<string?> InlineImageUrls(ArticleSnapshot article) => ImageUrls(new[] { article.BodyMarkdown }.Concat(article.Steps.Select(x => x.BodyMarkdown)));
+
+    public static HashSet<string?> ImageUrls(IEnumerable<string> bodies) => bodies
         .SelectMany(text => Markdown.Parse(text, pipeline).Descendants<LinkInline>().Where(x => x.IsImage).Select(x => x.Url)).ToHashSet(StringComparer.Ordinal);
 
     public ArticleMedia[] PhotosOutsideBody(ArticleSnapshot article)

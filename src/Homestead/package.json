@@ -2,11 +2,12 @@
   "name": "homestead-admin",
   "private": true,
   "scripts": {
-    "build:css": "tailwindcss -i Styles/site.css -o wwwroot/css/site.css --minify"
+    "build:css": "node build-icons.mjs && tailwindcss -i Styles/site.css -o wwwroot/css/site.css --minify"
   },
   "devDependencies": {
+    "@fortawesome/fontawesome-free": "7.3.1",
     "@tailwindcss/cli": "4.3.3",
-    "tailwindcss": "4.3.3",
-    "daisyui": "5.7.47"
+    "daisyui": "5.7.47",
+    "tailwindcss": "4.3.3"
   }
 }

@@ -82,6 +82,7 @@ public sealed class PostMedia
     public Guid MediaAssetId { get; set; }
     public MediaAsset MediaAsset { get; set; } = null!;
     public MediaRole Role { get; set; }
+    public bool InlineOnly { get; set; }
     public int SortOrder { get; set; }
     public string? Caption { get; set; }
     public string? AltText { get; set; }

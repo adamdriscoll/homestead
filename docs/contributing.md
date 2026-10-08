@@ -20,8 +20,16 @@ With Docker Desktop's Linux engine running, choose
 **Homestead: persistent container (build and launch)**. This builds current source
 and starts the persistent instance at `https://127.0.0.1:5444`. Subsequent launches
 use the local runner's Upgrade operation: snapshot the data and pin the old image
-before replacing it. Saved port/configuration overrides are retained. The terminal
-follows container logs; stopping the launch leaves the instance running. Use
+before replacing it. Saved port/configuration overrides are retained.
+
+If Docker has removed the saved image, the launch instead uses Recover: archive
+the existing data and start current source on a new volume restored from that
+archive. The original volume remains untouched. The recovery archive records the
+missing image ID but cannot provide paired image/data rollback without that image.
+Normal upgrades resume after recovery. Avoid pruning local backup image tags if
+you need rollback; Docker images are separate from the data archives.
+
+The terminal follows container logs; stopping the launch leaves the instance running. Use
 **Tasks: Run Task → Homestead: stop persistent container** to stop it while
 preserving data. The container target launches the production image and tails
 logs; use the .NET target for C# breakpoint debugging.
