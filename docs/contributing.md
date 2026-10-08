@@ -50,6 +50,53 @@ For backup and rollback operations, follow the repository's
 
 ## Quality checks
 
+### Browser tests
+
+`tests/Homestead.Playwright` is a separate Node.js 24 project using Playwright Test.
+It runs Chromium with desktop and mobile viewports against the production Docker
+image through Caddy HTTPS. Install its dependencies and browser once, then run it
+from the repository root with Docker's Linux engine and Compose available:
+
+```sh
+npm ci --prefix tests/Homestead.Playwright
+cd tests/Homestead.Playwright
+npx playwright install chromium
+cd ../..
+npm test --prefix tests/Homestead.Playwright
+```
+
+On Linux, use `npx playwright install --with-deps chromium` to install the browser's
+system dependencies too. By default, each test run builds the current checkout.
+To reuse an image you have already built, set `HOMESTEAD_PLAYWRIGHT_IMAGE` to its
+local tag or image ID; the suite resolves it to an immutable ID before testing.
+CI reuses the image built for the Docker smoke test.
+
+Every test creates its own uniquely named Compose project, fresh data and TLS
+volumes, Docker-allocated network, random setup secret, and dynamically assigned
+loopback HTTPS port. Teardown removes only that test project's containers, network,
+and disposable volumes, including after a failed test or startup. It never connects
+to the local runner's sandbox or persistent installation. An abruptly killed test
+runner may leave a project named `homestead-playwright-<random ID>`; inspect
+`docker compose ls -a` and remove only that project's resources if cleanup is needed.
+TLS verification is skipped only for these test instances' internal Caddy CAs.
+
+The suite exercises browser setup/login/logout, autosave and stale-tab conflicts,
+private preview, publication/update/unpublish/delete, Markdown formatting and inline
+image uploads, gallery batch uploads/captions/order, all five post types, and public
+navigation and article forms without JavaScript. Mobile emulation does not replace
+the physical-phone acceptance checks in release readiness.
+
+Use `npm run test:headed --prefix tests/Homestead.Playwright` for a visible browser,
+`npm run test:ui --prefix tests/Homestead.Playwright` for Playwright's test UI, or
+`npm run test:desktop --prefix tests/Homestead.Playwright` for desktop only.
+Screenshots, videos, traces, and container logs are retained on failure under
+`output/playwright`; the HTML report is available with
+`npm run report --prefix tests/Homestead.Playwright`. CI uploads this directory even
+when the browser tests fail. These tests supplement the .NET integration tests and
+deployment/portability smoke rather than replacing them.
+
+### Application checks
+
 ```sh
 dotnet restore
 dotnet build

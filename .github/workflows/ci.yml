@@ -19,7 +19,9 @@ jobs:
         with:
           node-version: 24
           cache: npm
-          cache-dependency-path: src/Homestead/package-lock.json
+          cache-dependency-path: |
+            src/Homestead/package-lock.json
+            tests/Homestead.Playwright/package-lock.json
       - name: Install supported Hugo
         run: |
           curl -fsSL -o /tmp/hugo.tar.gz https://github.com/gohugoio/hugo/releases/download/v0.152.2/hugo_0.152.2_linux-amd64.tar.gz
@@ -42,4 +44,20 @@ jobs:
       - run: dotnet tool restore
       - run: dotnet ef migrations has-pending-model-changes --project src/Homestead --no-build --configuration Release
       - run: docker build -f deploy/Dockerfile -t homestead-smoke .
+      - name: Install browser test project
+        run: npm ci --prefix tests/Homestead.Playwright
+      - name: Install Chromium and system dependencies
+        working-directory: tests/Homestead.Playwright
+        run: npx playwright install --with-deps chromium
+      - name: Run isolated Playwright tests
+        run: npm test --prefix tests/Homestead.Playwright
+        env:
+          HOMESTEAD_PLAYWRIGHT_IMAGE: homestead-smoke
+      - name: Upload browser test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-results
+          path: output/playwright/
+          retention-days: 7
       - run: node tests/smoke/docker-smoke.mjs
