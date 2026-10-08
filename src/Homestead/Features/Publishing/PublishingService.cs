@@ -12,7 +12,7 @@ public sealed record PublicationResult(bool Succeeded, string Message, string? U
 
 public sealed class PublishingService(HomesteadDbContext db, ArticleService articles, PublicationLock writer,
     IStaticPageRenderer renderer, SafeMarkdown markdown, MediaService media, StoragePaths paths,
-    ActiveSite active, IWebHostEnvironment environment, ILogger<PublishingService> logger)
+    ActiveSite active, IGenerationActivation activation, IWebHostEnvironment environment, ILogger<PublishingService> logger)
 {
     public async Task<PublicationResult> TransitionAsync(Guid id, string action, long version)
     {
@@ -142,13 +142,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.Copy(media.OriginalPath(asset), destination); files.Add(relative);
             }
             var manifest = new GenerationManifest(generation.Id, DateTime.UtcNow, settings, posts, files.ToArray(), branding);
-            var temporary = Path.Combine(paths.SitePath, $"current-{generation.Id:N}.tmp");
-            await using (var stream = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
-            {
-                await JsonSerializer.SerializeAsync(stream, manifest); stream.Flush(flushToDisk: true);
-            }
-            File.Move(temporary, paths.CurrentPath, overwrite: true); // Same-volume atomic replacement.
-            active.Activate(manifest); activated = true;
+            await activation.ActivateAsync(manifest); activated = true;
             generation.Status = GenerationStatus.Succeeded; generation.ActivatedAtUtc = manifest.ActivatedAtUtc;
             await db.SaveChangesAsync();
             await PruneAsync();

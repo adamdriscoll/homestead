@@ -404,10 +404,13 @@ Tasks can be parallelized only after required models/contracts have been agreed;
 
 ### Phase 5 exit gate
 
-- [ ] Static ZIP works on static-only hosting.
-- [ ] Hugo ZIP builds and renders all five types without Homestead.
-- [ ] Complete backup/restore works, including originals and unpublished work.
+- [x] Static ZIP works on static-only hosting.
+- [x] Hugo ZIP builds and renders all five types without Homestead.
+- [x] Complete backup/restore works, including originals and unpublished work.
 - [ ] Fresh Droplet deployment, restart, upgrade, and failure recovery are documented and exercised.
+
+Implementation and automated evidence: [Phase 5](../phase-5.md). Physical-phone,
+public-DNS Droplet, and release promotion checks remain explicitly pending there.
 
 ---
 

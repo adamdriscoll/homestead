@@ -6,7 +6,7 @@ Homestead v2 is a personal publishing platform for microblogs, articles, reviews
 guides, and photo galleries. The application uses ASP.NET Core on .NET 10,
 Razor Pages, and SQLite, with a static public website regenerated on publication.
 
-Phases 1–4 are implemented: secure single-administrator setup, site settings,
+Phases 1–5 are implemented: secure single-administrator setup, site settings,
 a responsive Markdown article editor with autosave and conflict detection, private
 JPEG/PNG/WebP uploads, preview, and full static publication. Publish, update,
 unpublish, and delete replace the complete public site atomically; failures keep
@@ -18,9 +18,16 @@ rating; guides have ordered Markdown steps and step photos; galleries offer batc
 photo uploads, ordering, captions, and alt text. All five types share private
 preview, autosave, and the complete static publication lifecycle.
 
+**Maintenance** downloads the active public site as a static ZIP, a complete Hugo
+project with all five types and private drafts, or a consistent full backup with
+original media, settings, credentials, and keys. An offline CLI verifies and
+restores backups into a clean data volume. This checkout prepares `0.1.0-rc.1`;
+real-device and public-domain deployment acceptance remains to be recorded.
+
 ## Run locally
 
-Install the .NET 10 SDK and Node.js 24. From the repository root in PowerShell:
+Install the .NET 10 SDK, Node.js 24, and Hugo 0.152.2 (needed by export tests only).
+From the repository root in PowerShell:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
@@ -53,7 +60,8 @@ See [deployment instructions](docs/deploy.md) for Linux/Docker Compose,
 [Phase 2 publishing and verification](docs/phase-2.md), and
 [Phase 3 public website and verification](docs/phase-3.md), and
 [Phase 4 five-type authoring and verification](docs/phase-4.md) for acceptance evidence and
-the real-phone demo checklist.
+the real-phone demo checklist. See [Phase 5 portability and release readiness](docs/phase-5.md)
+and [backup/restore instructions](docs/backup-restore.md) for the new operations workflows.
 
 ## Planning documents
 

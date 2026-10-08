@@ -4,10 +4,15 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { randomBytes } from 'node:crypto';
 import { request as httpsRequest } from 'node:https';
+import { request as httpRequest } from 'node:http';
 import assert from 'node:assert/strict';
 
 // Runs the production Compose topology with local Caddy TLS and an isolated temporary volume.
 const name = `homestead-smoke-${randomBytes(5).toString('hex')}`;
+const restoreVolume = `${name}_restore`;
+const staticContainer = `${name}-static`;
+let restoreCreated = false;
+let staticCreated = false;
 const temp = mkdtempSync(join(tmpdir(), name));
 const secret = randomBytes(32).toString('hex');
 const composeFile = resolve('deploy/compose.yaml');
@@ -31,7 +36,7 @@ function docker(args, env = environment) {
 }
 const cookies = new Map();
 let port;
-function http(path, method = 'GET', fields, contentType = 'application/x-www-form-urlencoded') {
+function http(path, method = 'GET', fields, contentType = 'application/x-www-form-urlencoded', binary = false) {
   return new Promise((resolveResponse, reject) => {
     const body = fields ? Buffer.isBuffer(fields) ? fields : new URLSearchParams(fields).toString() : undefined;
     const req = httpsRequest({ hostname: 'localhost', port, path, method,
@@ -44,8 +49,11 @@ function http(path, method = 'GET', fields, contentType = 'application/x-www-for
         const first = cookie.split(';')[0]; const split = first.indexOf('=');
         cookies.set(first.slice(0, split), first.slice(split + 1));
       }
-      let text = ''; response.setEncoding('utf8'); response.on('data', chunk => text += chunk);
-      response.on('end', () => resolveResponse({ status: response.statusCode, headers: response.headers, text }));
+      const chunks = []; response.on('data', chunk => chunks.push(chunk));
+      response.on('end', () => {
+        const bytes = Buffer.concat(chunks);
+        resolveResponse({ status: response.statusCode, headers: response.headers, text: binary ? bytes : bytes.toString('utf8') });
+      });
     });
     req.setTimeout(3000, () => req.destroy(new Error('Request timed out'))); req.on('error', reject);
     req.end(body);
@@ -58,11 +66,11 @@ async function ready() {
   }
   throw new Error('Container did not become ready');
 }
-async function form(pagePath, postPath, fields) {
+async function form(pagePath, postPath, fields, binary = false) {
   const page = await http(pagePath); assert.equal(page.status, 200);
   const token = page.text.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/);
   assert.ok(token, 'Antiforgery token must be present');
-  return http(postPath, 'POST', { ...fields, __RequestVerificationToken: token[1] });
+  return http(postPath, 'POST', { ...fields, __RequestVerificationToken: token[1] }, 'application/x-www-form-urlencoded', binary);
 }
 try {
   console.log('Starting isolated production Compose deployment with local HTTPS.');
@@ -172,6 +180,67 @@ try {
   const id = docker([...base, 'ps', '-q', 'homestead']);
   assert.notEqual(docker(['exec', id, 'id', '-u']), '0');
   const keys = docker(['exec', id, 'sh', '-c', 'ls /data/keys']); assert.ok(keys.includes('.xml'));
+  for (const handler of ['Static', 'Hugo', 'Backup']) {
+    assert.equal((await http(`/admin/maintenance?handler=${handler}`, 'POST', {})).status, 400);
+    const archive = await form('/admin/maintenance', `/admin/maintenance?handler=${handler}`, {}, true);
+    assert.equal(archive.status, 200); assert.equal(archive.headers['content-type'], 'application/zip');
+    assert.equal(archive.headers['cache-control'], 'no-store');
+    assert.equal(archive.text.subarray(0, 2).toString(), 'PK');
+    writeFileSync(join(temp, `${handler}.zip`), archive.text);
+  }
+  assert.equal(docker(['exec', id, 'sh', '-c', 'ls -A /data/backups']), '');
+  console.log('Serving the extracted static ZIP with Caddy while Homestead is stopped.');
+  docker(['run', '-d', '--name', staticContainer, '-p', '127.0.0.1::8080', '-v', `${temp}:/archives:ro`,
+    '--entrypoint', 'sh', 'caddy:2.10.2-alpine', '-c', 'mkdir /site && unzip -q /archives/Static.zip -d /site && caddy file-server --root /site --listen :8080']);
+  staticCreated = true;
+  const staticPort = Number(docker(['port', staticContainer, '8080']).split(':').at(-1));
+  docker([...base, 'stop', 'homestead']);
+  async function staticHttp(path) {
+    return new Promise((resolveResponse, reject) => {
+      const req = httpRequest({ hostname: '127.0.0.1', port: staticPort, path }, response => {
+        const chunks = []; response.on('data', chunk => chunks.push(chunk));
+        response.on('end', () => resolveResponse({ status: response.statusCode, text: Buffer.concat(chunks).toString('utf8') }));
+      });
+      req.on('error', reject); req.end();
+    });
+  }
+  for (let attempt = 0; attempt < 30; attempt++) {
+    try { if ((await staticHttp('/')).status === 200) break; } catch { /* static server starting */ }
+    await new Promise(resolveWait => setTimeout(resolveWait, 1000));
+  }
+  const resources = new Set(['/', '/notes/', '/articles/', '/reviews/', '/guides/', '/galleries/', '/about/', '/tags/home/',
+    '/rss.xml', '/sitemap.xml', '/robots.txt', '/assets/site.css', '/assets/social-default.png', publicPath, imageUrl,
+    '/posts/a-porch-note/', '/posts/compose-coffee/', '/posts/compose-guide/', '/posts/compose-gallery/']);
+  for (const path of resources) {
+    const response = await staticHttp(path); assert.equal(response.status, 200, path);
+    assert.ok(!response.text.includes('Private pending edits'));
+    if (path.endsWith('/'))
+      for (const match of response.text.matchAll(/(?:href|src)="(\/[^"?#]*)"/g)) resources.add(match[1]);
+  }
+  docker([...base, 'start', 'homestead']); await ready();
+  console.log('Restoring the downloaded backup into a fresh Docker volume and rebuilding public output.');
+  docker(['volume', 'create', restoreVolume]);
+  restoreCreated = true;
+  try {
+    // Mount the file directly: Linux mkdtemp directories are 0700 and belong to the runner, not the image's app UID.
+    docker(['run', '--rm', '-v', `${restoreVolume}:/data`, '-v', `${join(temp, 'Backup.zip')}:/backup.zip:ro`, 'homestead-smoke', 'restore', '/backup.zip', '/data']);
+    // Mount a fresh data volume in the same HTTPS topology; the original volume remains untouched.
+    const restoreOverride = join(temp, 'restore.json');
+    writeFileSync(restoreOverride, JSON.stringify({ services: { homestead: { volumes: [{ type: 'volume', source: 'restore_data', target: '/data' }] } },
+      volumes: { restore_data: { external: true, name: restoreVolume } } }));
+    docker([...base, '-f', restoreOverride, 'up', '-d', '--no-build', '--force-recreate', 'homestead'], { ...environment, HOMESTEAD_SETUP_TOKEN: '' });
+    await ready();
+    assert.equal((await http('/admin')).status, 200, 'Restored keys retain the author session');
+    assert.equal((await http('/setup')).status, 404);
+    assert.ok((await http(publicPath)).text.includes('Updated story.'));
+    assert.equal((await http(imageUrl)).status, 200);
+    for (const slug of ['compose-coffee', 'compose-guide', 'compose-gallery']) assert.equal((await http(`/posts/${slug}/`)).status, 200);
+  } finally {
+    docker([...base, 'up', '-d', '--no-build', '--force-recreate', 'homestead'], { ...environment, HOMESTEAD_SETUP_TOKEN: '' });
+    await ready();
+    docker(['volume', 'rm', restoreVolume]);
+    restoreCreated = false;
+  }
   console.log('Recreating the application without the bootstrap secret; checking settings and session persistence.');
   docker([...base, 'up', '-d', '--no-build', '--force-recreate', 'homestead'], { ...environment, HOMESTEAD_SETUP_TOKEN: '' });
   await ready();
@@ -195,11 +264,15 @@ try {
   assert.equal((await http(imageUrl)).status, 200);
   const privateImage = imageUrl.replace(/\/media\/([^/]+)\/[^/]+/, '/admin/media/$1');
   assert.equal((await http(privateImage)).status, 302);
-  console.log('PASS: HTTPS authoring, all five post types, gallery batch/order/captions, article/media lifecycle, public discovery, draft isolation, non-root runtime, and restart persistence.');
+  console.log('PASS: HTTPS authoring, all five types, exports, full offline backup restore/rebuild, draft isolation, non-root runtime, and restart persistence.');
 } catch (error) {
   try { console.error(docker([...base, 'logs', '--tail', '60'])); } catch { /* original error wins */ }
   throw error;
 } finally {
   // Remove only the uniquely named test project and its disposable volumes.
-  try { docker([...base, 'down', '--volumes', '--remove-orphans']); } finally { rmSync(temp, { recursive: true, force: true }); }
+  try { docker([...base, 'down', '--volumes', '--remove-orphans']); } finally {
+    if (staticCreated) docker(['rm', '-f', staticContainer]);
+    if (restoreCreated) docker(['volume', 'rm', restoreVolume]);
+    rmSync(temp, { recursive: true, force: true });
+  }
 }

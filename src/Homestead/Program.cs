@@ -4,6 +4,7 @@ using Homestead.Data;
 using Homestead.Data.Entities;
 using Homestead.Features.Articles;
 using Homestead.Features.Authentication;
+using Homestead.Features.Export;
 using Homestead.Features.Media;
 using Homestead.Features.Publishing;
 using Homestead.Infrastructure.Storage;
@@ -14,6 +15,18 @@ using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
+if (args.FirstOrDefault() == "restore")
+{
+    try
+    {
+        if (args.Length != 3) throw new InvalidOperationException("Usage: dotnet Homestead.dll restore backup.zip /empty/data/path");
+        await BackupService.RestoreAsync(args[1], args[2]);
+        Console.WriteLine("Backup restored and verified. Start the same application version to rebuild the public site.");
+    }
+    catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or InvalidDataException or FormatException)
+    { Console.Error.WriteLine($"Restore failed: {ex.Message}"); Environment.ExitCode = 1; }
+    return;
+}
 var builder = WebApplication.CreateBuilder(args);
 // Never enable the framework's blanket proxy trust. Only honor the explicit allowlist below.
 builder.Configuration["ForwardedHeaders_Enabled"] = "false";
@@ -49,10 +62,14 @@ builder.Services.AddSingleton<SetupLock>();
 builder.Services.AddScoped<SetupService>();
 builder.Services.AddSingleton<PublicationLock>();
 builder.Services.AddSingleton<ActiveSite>();
+builder.Services.AddSingleton<IGenerationActivation, GenerationActivation>();
 builder.Services.AddSingleton<SafeMarkdown>();
 builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<MediaService>();
 builder.Services.AddScoped<PublishingService>();
+builder.Services.AddScoped<StaticExportService>();
+builder.Services.AddScoped<HugoExportService>();
+builder.Services.AddScoped<BackupService>();
 builder.Services.AddScoped<IStaticPageRenderer, StaticPageRenderer>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {

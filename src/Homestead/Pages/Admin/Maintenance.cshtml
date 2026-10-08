@@ -1,0 +1,28 @@
+@page
+@model Homestead.Pages.Admin.MaintenanceModel
+@{ ViewData["Title"] = "Maintenance"; }
+<h1 class="text-3xl font-bold mb-6">Maintenance and portability</h1>
+@if (Model.Notice is { } notice) { <p role="status" class="alert mb-4">@notice</p> }
+<div asp-validation-summary="All" class="text-error mb-4" role="alert"></div>
+<div class="grid gap-4 sm:grid-cols-2">
+    <section class="card card-border"><div class="card-body">
+        <h2 class="card-title">Static website</h2><p>Download the last active public site, including photos, styles, RSS, and sitemap. Serve it at your domain root.</p>
+        <form method="post" asp-page-handler="Static"><button class="btn btn-primary" type="submit">Export static website</button></form>
+    </div></section>
+    <section class="card card-border"><div class="card-body">
+        <h2 class="card-title">Hugo project</h2><p>Markdown bundles, original photos, and working layouts. Includes private drafts and unpublished edits; keep the archive private.</p>
+        <p>Build with Hugo @Homestead.Features.Export.HugoExportService.SupportedHugoVersion. Drafts stay hidden by default.</p>
+        <form method="post" asp-page-handler="Hugo"><button class="btn btn-primary" type="submit">Export for Hugo</button></form>
+    </div></section>
+    <section class="card card-border"><div class="card-body">
+        <h2 class="card-title">Full backup</h2><p>Consistent database, original media, settings, account credentials, and login encryption keys. Store securely off this server.</p>
+        <form method="post" asp-page-handler="Backup"><button class="btn btn-primary" type="submit">Download full backup</button></form>
+        <p>Restore with Homestead stopped into an empty data directory using the same application version:</p>
+        <code class="break-all">dotnet Homestead.dll restore backup.zip /data</code>
+        <p>Start Homestead afterwards to regenerate the public site. See the backup and restore guide in the repository.</p>
+    </div></section>
+    <section class="card card-border"><div class="card-body">
+        <h2 class="card-title">Rebuild site</h2><p>Apply saved public settings and pending publication changes. Draft edits remain private.</p>
+        <form method="post" asp-page-handler="Rebuild"><button class="btn" type="submit">Rebuild site</button></form>
+    </div></section>
+</div>
