@@ -159,6 +159,12 @@ snapshots/upgrades, generation/recovery failure, or portability. Check desired v
 active state as well as success. Use contributing's build/test/format/model checks
 and report only checks actually run, migration/config impact, and remaining issues.
 
+Before handing completed repository work back to the user, run
+[homestead-start-persistent](.agents/skills/homestead-start-persistent/SKILL.md)
+to build current source and leave the local persistent container running for
+manual verification. Follow the skill even for guidance-only changes. Report its
+URL and readiness, or the blocker if it could not start; preserve persistent data.
+
 Hugo 0.152.2 is required by portability tests. `HOMESTEAD_HUGO` overrides its binary
 path; `HOMESTEAD_FIXTURE_OUTPUT` retains ZIP fixtures. Linux CI builds the container
 and runs `tests/smoke/docker-smoke.mjs` with disposable volumes, Caddy TLS,
