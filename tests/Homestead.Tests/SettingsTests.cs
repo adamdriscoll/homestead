@@ -6,6 +6,39 @@ namespace Homestead.Tests;
 
 public sealed class SettingsTests
 {
+    [Theory]
+    [InlineData("general", "general")]
+    [InlineData("theme", "theme")]
+    [InlineData("about", "about")]
+    [InlineData("unknown", "general")]
+    public async Task Saving_all_settings_returns_to_the_selected_section(string section, string expected)
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+        var fields = Fields(); fields["Section"] = section;
+        var response = await TestApplication.Submit(client, "/admin/settings", fields);
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal($"/admin/settings#{expected}", response.Headers.Location!.ToString());
+        await app.WithDatabase(async db =>
+        {
+            var settings = await db.SiteSettings.SingleAsync();
+            Assert.Equal("My home", settings.Title); Assert.Equal("Forest", settings.AccentColor); Assert.Equal("# About me", settings.AboutMarkdown);
+        });
+    }
+
+    [Theory]
+    [InlineData("Theme", "theme")]
+    [InlineData("Upload", "images")]
+    public async Task Upload_errors_return_to_the_upload_section(string handler, string section)
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+        var response = await TestApplication.Submit(client, "/admin/settings", new(), $"/admin/settings?handler={handler}");
+        Assert.Equal(HttpStatusCode.Redirect, response.StatusCode);
+        Assert.Equal($"/admin/settings#{section}", response.Headers.Location!.ToString());
+        Assert.Contains(handler == "Theme" ? "Choose a theme ZIP first." : "Choose an image first.", await client.GetStringAsync(response.Headers.Location));
+    }
+
     [Fact]
     public async Task Optional_settings_can_be_cleared_and_required_fields_report_validation_errors()
     {

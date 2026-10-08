@@ -1,78 +1,114 @@
 @page "/admin/settings"
 @model Homestead.Pages.Admin.SettingsModel
 @{ ViewData["Title"] = "Settings"; }
-<section class="max-w-2xl space-y-6">
-    <h1 class="text-3xl font-semibold">Settings</h1>
-    <p>Make this place yours. Saving rebuilds your public site.</p>
+<section class="space-y-6" data-settings>
+    <div class="space-y-2">
+        <h1 class="text-3xl font-semibold">Settings</h1>
+        <p>Make this place yours. Saving rebuilds your public site.</p>
+    </div>
     @if (Model.StatusMessage != null) { <div class="alert" role="status">@Model.StatusMessage</div> }
-    <form method="post" class="space-y-6">
-        @if (!ViewData.ModelState.IsValid)
-        {
-            <div asp-validation-summary="All" role="alert" class="text-error"></div>
-        }
-        <fieldset class="fieldset gap-3">
-            <legend class="fieldset-legend">Your site</legend>
-            <label asp-for="Input.Title"></label><input asp-for="Input.Title" class="input w-full" />
-            <label asp-for="Input.CanonicalBaseUrl"></label><input asp-for="Input.CanonicalBaseUrl" type="url" class="input w-full" />
-            <label asp-for="Input.Description"></label><textarea asp-for="Input.Description" class="textarea w-full" rows="3"></textarea>
-            <label asp-for="Input.TimeZone"></label><input asp-for="Input.TimeZone" class="input w-full" list="timezones" />
-            <datalist id="timezones">@foreach (var zone in TimeZoneInfo.GetSystemTimeZones()) { <option value="@zone.Id">@zone.DisplayName</option> }</datalist>
-        </fieldset>
-        <fieldset class="fieldset gap-3">
-            <legend class="fieldset-legend">Public theme</legend>
-            <p>Porch is a familiar feed, Journal focuses on reading, and Ledger uses a wider magazine layout. Administration keeps its own light/dark appearance.</p>
-            <label asp-for="Input.ThemeId"></label>
-            <select asp-for="Input.ThemeId" class="select w-full">
-                @foreach (var theme in Model.Themes) { <option value="@theme.Id">@theme.Name · @theme.Version @(theme.SupportsColors ? "· colors supported" : "")</option> }
-            </select>
-            <p>Currently public: @(Model.ActiveTheme?.Name ?? "Porch") @(Model.ActiveTheme?.Version). Saving applies your selection after a successful rebuild.</p>
-            <label asp-for="Input.AccentColor"></label><select asp-for="Input.AccentColor" class="select w-full">@foreach (var accent in Homestead.Features.Settings.SettingsInput.Accents) { <option>@accent</option> }</select>
-            <p>Optional colors override theme defaults when the theme supports colors. Leave blank to reset; use #RRGGBB. Choose readable text and background combinations in both light and dark mode.</p>
-            <label asp-for="Input.ThemePrimaryColor"></label><input asp-for="Input.ThemePrimaryColor" class="input w-full" placeholder="#25613e" maxlength="7" />
-            <label asp-for="Input.ThemeBackgroundColor"></label><input asp-for="Input.ThemeBackgroundColor" class="input w-full" placeholder="#ffffff" maxlength="7" />
-            <label asp-for="Input.ThemeTextColor"></label><input asp-for="Input.ThemeTextColor" class="input w-full" placeholder="#181818" maxlength="7" />
-        </fieldset>
-        <fieldset class="fieldset gap-3">
-            <legend class="fieldset-legend">About you</legend>
-            <label asp-for="Input.DisplayAuthor"></label><input asp-for="Input.DisplayAuthor" class="input w-full" />
-            <label asp-for="Input.AuthorBio"></label><textarea asp-for="Input.AuthorBio" class="textarea w-full" rows="3"></textarea>
-            <label asp-for="Input.AboutMarkdown"></label><textarea asp-for="Input.AboutMarkdown" class="textarea w-full" rows="8"></textarea>
-            <label asp-for="Input.FooterText"></label><input asp-for="Input.FooterText" class="input w-full" />
-        </fieldset>
-        <fieldset class="fieldset gap-3">
-            <legend class="fieldset-legend">External profiles (up to five)</legend>
-            @for (var i = 0; i < Model.Input.ProfileLinks.Count; i++)
-            {
-                <label for="profile-label-@i">Profile @(i + 1) label</label><input id="profile-label-@i" asp-for="Input.ProfileLinks[i].Label" class="input w-full" maxlength="80" />
-                <label for="profile-url-@i">Profile @(i + 1) URL</label><input id="profile-url-@i" asp-for="Input.ProfileLinks[i].Url" class="input w-full" type="url" maxlength="2048" />
-            }
-        </fieldset>
-        <button type="submit" class="btn btn-primary">Save settings</button>
-    </form>
-    <section class="space-y-4" aria-labelledby="themes-title">
-        <h2 id="themes-title" class="text-xl font-semibold">Install a custom public theme</h2>
-        <p>Save settings above before uploading. Theme ZIPs may include public JavaScript; install only themes from authors you trust. Up to 5 MB.</p>
-        <form method="post" asp-page-handler="Theme" enctype="multipart/form-data" class="space-y-3">
-            <label class="block" for="theme-upload">Theme ZIP</label><input id="theme-upload" name="Upload" type="file" accept=".zip,application/zip" class="file-input w-full" />
-            <button class="btn">Install theme</button>
-        </form>
-    </section>
-    <section class="space-y-4" aria-labelledby="branding-title">
-        <h2 id="branding-title" class="text-xl font-semibold">Branding images</h2>
-        <p>Save text settings above before uploading. JPEG, PNG, or WebP, up to 20 MB.</p>
-        @foreach (var (slot, id) in new[] { ("Avatar", Model.Settings.AvatarMediaId), ("Logo", Model.Settings.LogoMediaId), ("Header", Model.Settings.HeaderMediaId) })
-        {
-            <div class="space-y-3 border border-base-300 rounded-lg p-4">
-                <h3 class="font-semibold">@slot</h3>
-                @if (id is not null) { <img src="/admin/media/@id" alt="Current @slot" class="max-w-full max-h-32" /> }
-                <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" class="space-y-3">
-                    <input type="hidden" name="Slot" value="@slot" />
-                    <label class="block" for="upload-@slot">New @slot image</label><input id="upload-@slot" name="Upload" type="file" accept="image/jpeg,image/png,image/webp" class="file-input w-full" />
-                    <button class="btn">Upload @slot</button>
-                </form>
-                @if (id is not null)
-                { <form method="post" asp-page-handler="Remove"><input type="hidden" name="Slot" value="@slot" /><button class="btn">Remove @slot</button></form> }
-            </div>
-        }
-    </section>
+    <div class="grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
+        <nav aria-label="Settings sections" data-settings-navigation>
+            <ul class="menu menu-horizontal md:menu-vertical bg-base-200 rounded-box w-full p-2">
+                @foreach (var (label, icon) in new[] { ("General", "gear"), ("Theme", "palette"), ("About", "user"), ("Images", "images") })
+                {
+                    <li>
+                        <a id="tab-@label.ToLowerInvariant()" href="#@label.ToLowerInvariant()" class="min-h-11 content-center px-2 md:px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content" data-settings-tab>
+                            <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#@icon"></use></svg>
+                            <span>@label</span>
+                        </a>
+                    </li>
+                }
+            </ul>
+        </nav>
+        <div class="min-w-0 space-y-6">
+            <form method="post" id="settings-form" class="space-y-6">
+                <input asp-for="Section" type="hidden" />
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div asp-validation-summary="All" role="alert" class="text-error"></div>
+                }
+                <section id="general" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="general-title" data-settings-panel>
+                    <h2 id="general-title" class="text-xl font-semibold">General</h2>
+                    <p>Your site’s name, address, and time zone.</p>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Your site</legend>
+                        <label asp-for="Input.Title"></label><input asp-for="Input.Title" class="input w-full" />
+                        <label asp-for="Input.CanonicalBaseUrl"></label><input asp-for="Input.CanonicalBaseUrl" type="url" class="input w-full" />
+                        <label asp-for="Input.Description"></label><textarea asp-for="Input.Description" class="textarea w-full" rows="3"></textarea>
+                        <label asp-for="Input.TimeZone"></label><input asp-for="Input.TimeZone" class="input w-full" list="timezones" />
+                        <datalist id="timezones">@foreach (var zone in TimeZoneInfo.GetSystemTimeZones()) { <option value="@zone.Id">@zone.DisplayName</option> }</datalist>
+                    </fieldset>
+                </section>
+                <section id="theme" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="theme-title" data-settings-panel>
+                    <h2 id="theme-title" class="text-xl font-semibold">Theme</h2>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Public theme</legend>
+                        <p>Porch is a familiar feed, Journal focuses on reading, and Ledger uses a wider magazine layout. Administration keeps its own light/dark appearance.</p>
+                        <label asp-for="Input.ThemeId"></label>
+                        <select asp-for="Input.ThemeId" class="select w-full">
+                            @foreach (var theme in Model.Themes) { <option value="@theme.Id">@theme.Name · @theme.Version @(theme.SupportsColors ? "· colors supported" : "")</option> }
+                        </select>
+                        <p>Currently public: @(Model.ActiveTheme?.Name ?? "Porch") @(Model.ActiveTheme?.Version). Saving applies your selection after a successful rebuild.</p>
+                        <label asp-for="Input.AccentColor"></label><select asp-for="Input.AccentColor" class="select w-full">@foreach (var accent in Homestead.Features.Settings.SettingsInput.Accents) { <option>@accent</option> }</select>
+                        <p>Optional colors override theme defaults when the theme supports colors. Leave blank to reset; use #RRGGBB. Choose readable text and background combinations in both light and dark mode.</p>
+                        <label asp-for="Input.ThemePrimaryColor"></label><input asp-for="Input.ThemePrimaryColor" class="input w-full" placeholder="#25613e" maxlength="7" />
+                        <label asp-for="Input.ThemeBackgroundColor"></label><input asp-for="Input.ThemeBackgroundColor" class="input w-full" placeholder="#ffffff" maxlength="7" />
+                        <label asp-for="Input.ThemeTextColor"></label><input asp-for="Input.ThemeTextColor" class="input w-full" placeholder="#181818" maxlength="7" />
+                    </fieldset>
+                    <section class="space-y-3 border-t border-base-300 pt-4" aria-labelledby="themes-title">
+                        <h3 id="themes-title" class="font-semibold">Install a custom public theme</h3>
+                        <p>Save settings before uploading. Theme ZIPs may include public JavaScript; install only themes from authors you trust. Up to 5 MB.</p>
+                        <label class="block" for="theme-upload">Theme ZIP</label><input id="theme-upload" name="Upload" form="theme-upload-form" type="file" accept=".zip,application/zip" class="file-input w-full" />
+                        <button type="submit" form="theme-upload-form" class="btn">Install theme</button>
+                    </section>
+                </section>
+                <section id="about" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="about-title" data-settings-panel>
+                    <h2 id="about-title" class="text-xl font-semibold">About</h2>
+                    <p>Introduce yourself and add links to your other profiles.</p>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">About you</legend>
+                        <label asp-for="Input.DisplayAuthor"></label><input asp-for="Input.DisplayAuthor" class="input w-full" />
+                        <label asp-for="Input.AuthorBio"></label><textarea asp-for="Input.AuthorBio" class="textarea w-full" rows="3"></textarea>
+                        <label asp-for="Input.AboutMarkdown"></label><textarea asp-for="Input.AboutMarkdown" class="textarea w-full" rows="8"></textarea>
+                        <label asp-for="Input.FooterText"></label><input asp-for="Input.FooterText" class="input w-full" />
+                    </fieldset>
+                    <fieldset class="fieldset gap-3" data-settings-error="@(ViewData.ModelState.TryGetValue("Input.ProfileLinks", out var profileState) && profileState.Errors.Count > 0 ? "true" : null)">
+                        <legend class="fieldset-legend">External profiles (up to five)</legend>
+                        @for (var i = 0; i < Model.Input.ProfileLinks.Count; i++)
+                        {
+                            <label for="profile-label-@i">Profile @(i + 1) label</label><input id="profile-label-@i" asp-for="Input.ProfileLinks[i].Label" class="input w-full" maxlength="80" />
+                            <label for="profile-url-@i">Profile @(i + 1) URL</label><input id="profile-url-@i" asp-for="Input.ProfileLinks[i].Url" class="input w-full" type="url" maxlength="2048" />
+                        }
+                    </fieldset>
+                </section>
+                <div class="space-y-2">
+                    <button type="submit" class="btn btn-primary">Save settings</button>
+                    <p class="text-sm">Saves changes in General, Theme, and About.</p>
+                </div>
+            </form>
+            <form method="post" id="theme-upload-form" asp-page-handler="Theme" enctype="multipart/form-data" hidden></form>
+            <section id="images" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="images-title" data-settings-panel>
+                <h2 id="images-title" class="text-xl font-semibold">Images</h2>
+                <p>Upload your avatar, logo, and header. Save changes in the other sections before uploading. JPEG, PNG, or WebP, up to 20 MB.</p>
+                @foreach (var (slot, id) in new[] { ("Avatar", Model.Settings.AvatarMediaId), ("Logo", Model.Settings.LogoMediaId), ("Header", Model.Settings.HeaderMediaId) })
+                {
+                    <div class="space-y-3 border border-base-300 rounded-lg p-4">
+                        <h3 class="font-semibold">@slot</h3>
+                        @if (id is not null) { <img src="/admin/media/@id" alt="Current @slot" class="max-w-full max-h-32" /> }
+                        <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" class="space-y-3">
+                            <input type="hidden" name="Slot" value="@slot" />
+                            <label class="block" for="upload-@slot">New @slot image</label><input id="upload-@slot" name="Upload" type="file" accept="image/jpeg,image/png,image/webp" class="file-input w-full" />
+                            <button class="btn">Upload @slot</button>
+                        </form>
+                        @if (id is not null)
+                        { <form method="post" asp-page-handler="Remove"><input type="hidden" name="Slot" value="@slot" /><button class="btn">Remove @slot</button></form> }
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
 </section>
+@section Scripts {
+    <script src="~/js/settings.js" asp-append-version="true" defer></script>
+}

@@ -6,6 +6,7 @@ COPY src/Homestead/Pages ./Pages
 COPY src/Homestead/Components ./Components
 COPY src/Homestead/Program.cs ./Program.cs
 COPY src/Homestead/wwwroot/js/article-editor.js ./wwwroot/js/article-editor.js
+COPY src/Homestead/wwwroot/js/settings.js ./wwwroot/js/settings.js
 COPY src/Homestead/Features/Publishing/SafeMarkdown.cs ./Features/Publishing/SafeMarkdown.cs
 COPY src/Homestead/Features/Export/HugoTemplates.cs ./Features/Export/HugoTemplates.cs
 COPY src/Homestead/Styles ./Styles

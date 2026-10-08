@@ -1,9 +1,9 @@
 import { readFileSync, mkdirSync, writeFileSync, copyFileSync } from 'node:fs';
 
-// Keep the toolbar sprite small; icons remain local and need no runtime library.
+// Keep the administration sprite small; icons remain local and need no runtime library.
 const source = 'node_modules/@fortawesome/fontawesome-free/';
 const sprite = readFileSync(source + 'sprites-full/solid.svg', 'utf8');
-const names = ['bold', 'italic', 'heading', 'link', 'list-ul', 'list-ol', 'quote-left', 'code', 'image', 'circle-check', 'spinner', 'circle-exclamation', 'triangle-exclamation', 'asterisk', 'pen', 'eye', 'images'];
+const names = ['bold', 'italic', 'heading', 'link', 'list-ul', 'list-ol', 'quote-left', 'code', 'image', 'circle-check', 'spinner', 'circle-exclamation', 'triangle-exclamation', 'asterisk', 'pen', 'eye', 'images', 'gear', 'palette', 'user'];
 const symbols = names.map(name => {
   const symbol = sprite.match(new RegExp(`<symbol id="${name}"[\\s\\S]*?</symbol>`));
   if (!symbol) throw new Error(`Missing Font Awesome icon: ${name}`);

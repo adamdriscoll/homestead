@@ -14,6 +14,7 @@ namespace Homestead.Pages.Admin;
 public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment environment, PublicationLock writer, PublishingService publishing, MediaService media, ThemeService themes, ActiveSite active) : PageModel
 {
     [BindProperty] public SettingsInput Input { get; set; } = new();
+    [BindProperty] public string? Section { get; set; } = "general";
     [TempData] public string? StatusMessage { get; set; }
     [BindProperty] public IFormFile? Upload { get; set; }
     [BindProperty] public string? Slot { get; set; }
@@ -33,10 +34,10 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
         {
             if (Upload is null) throw new InvalidDataException("Choose a theme ZIP first.");
             var theme = await themes.InstallAsync(Upload, HttpContext.RequestAborted);
-            StatusMessage = $"{theme.Name} {theme.Version} installed. Select it below and save settings to apply it.";
+            StatusMessage = $"{theme.Name} {theme.Version} installed. Select it in Theme and save settings to apply it.";
         }
         catch (InvalidDataException ex) { StatusMessage = ex.Message; }
-        return RedirectToPage();
+        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "theme");
     }
 
     public async Task<IActionResult> OnPostUploadAsync()
@@ -48,7 +49,7 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
             StatusMessage = "Branding image saved. " + (await publishing.RebuildAsync()).Message;
         }
         catch (InvalidOperationException ex) { StatusMessage = ex.Message; }
-        return RedirectToPage();
+        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "images");
     }
 
     public async Task<IActionResult> OnPostRemoveAsync()
@@ -68,7 +69,7 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
             StatusMessage = "Branding image removed from settings. " + (await publishing.BuildLockedAsync()).Message;
         }
         finally { writer.Semaphore.Release(); }
-        return RedirectToPage();
+        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "images");
     }
     public async Task<IActionResult> OnPostAsync()
     {
@@ -89,6 +90,7 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
             StatusMessage = result.Succeeded ? "Settings saved and public site rebuilt." : "Settings saved. " + result.Message;
         }
         finally { writer.Semaphore.Release(); }
-        return RedirectToPage();
+        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null,
+            fragment: Section is "theme" or "about" or "images" ? Section : "general");
     }
 }
