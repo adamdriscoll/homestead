@@ -16,6 +16,10 @@ public sealed class SiteSettings
     public string AuthorBio { get; set; } = "";
     public string FooterText { get; set; } = "";
     public string AccentColor { get; set; } = "Porch";
+    public string ThemeId { get; set; } = "porch";
+    public string ThemePrimaryColor { get; set; } = "";
+    public string ThemeBackgroundColor { get; set; } = "";
+    public string ThemeTextColor { get; set; } = "";
     public Guid? AvatarMediaId { get; set; }
     public Guid? LogoMediaId { get; set; }
     public Guid? HeaderMediaId { get; set; }

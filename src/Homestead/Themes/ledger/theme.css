@@ -1,0 +1,8 @@
+html[data-public-theme] { color-scheme: light dark; }
+html[data-public-theme] body { background: var(--color-base-100); color: var(--color-base-content); }
+html[data-public-theme] body > header, html[data-public-theme] main, html[data-public-theme] body > footer { max-width: 72rem; }
+html[data-public-theme] header > div > a { font-size: clamp(2rem, 6vw, 4rem); font-weight: 800; }
+html[data-public-theme] main { display: grid; gap: 1.5rem; }
+html[data-public-theme] main > h1, html[data-public-theme] main > article:not(.card), html[data-public-theme] main > .alert { grid-column: 1 / -1; }
+@media (min-width: 48rem) { html[data-public-theme] main:has(> .card) { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+html[data-public-theme] .card { border-radius: 0; }

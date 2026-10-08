@@ -1,6 +1,7 @@
 using Homestead.Data.Entities;
 using Homestead.Features.Articles;
 using Homestead.Features.Publishing;
+using Homestead.Features.Themes;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Homestead.Tests;
@@ -30,7 +31,9 @@ public sealed class MarkdownTests
         var services = new ServiceCollection().AddLogging().AddSingleton<SafeMarkdown>().BuildServiceProvider();
         await using var scope = services.CreateAsyncScope();
         var renderer = new StaticPageRenderer(scope.ServiceProvider, scope.ServiceProvider.GetRequiredService<Microsoft.Extensions.Logging.ILoggerFactory>());
-        var html = await renderer.RenderAsync(new(new SiteSettings { Title = "My <home>", CanonicalBaseUrl = "https://example.test", Description = "\" onload=\"evil" }, Snapshot("## Heading\n\n**Bold** and [link](https://example.test)\n\n1. One\n\n```\n<script>\n```"), []));
+        var variant = new ThemeVariant(1, ["microblog", "article", "review", "guide", "gallery"], ["theme.css"], []);
+        var theme = new ThemePackage("porch", new(1, "Porch", "1.0.0", [variant]), variant, []);
+        var html = await renderer.RenderAsync(new(new SiteSettings { Title = "My <home>", CanonicalBaseUrl = "https://example.test", Description = "\" onload=\"evil" }, Snapshot("## Heading\n\n**Bold** and [link](https://example.test)\n\n1. One\n\n```\n<script>\n```"), [], Theme: theme));
         Assert.StartsWith("<!doctype html>", html); Assert.Contains("</html>", html);
         Assert.Contains("<h2>Heading</h2>", html); Assert.Contains("<strong>Bold</strong>", html);
         Assert.DoesNotContain("<home>", html); Assert.DoesNotContain("<script>", html);

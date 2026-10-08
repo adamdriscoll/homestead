@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.Text.Json;
 using Homestead.Data.Entities;
+using Homestead.Features.Themes;
 
 namespace Homestead.Features.Settings;
 
@@ -22,6 +23,10 @@ public sealed class SettingsInput : IValidatableObject
     [StringLength(500), Display(Name = "Author bio")] public string? AuthorBio { get; set; }
     [StringLength(300), Display(Name = "Footer text")] public string? FooterText { get; set; }
     [Required, Display(Name = "Accent preset")] public string AccentColor { get; set; } = "Porch";
+    [Required, StringLength(80), Display(Name = "Public theme")] public string ThemeId { get; set; } = "porch";
+    [StringLength(7), Display(Name = "Primary color")] public string? ThemePrimaryColor { get; set; }
+    [StringLength(7), Display(Name = "Background color")] public string? ThemeBackgroundColor { get; set; }
+    [StringLength(7), Display(Name = "Text color")] public string? ThemeTextColor { get; set; }
     public List<ProfileLink> ProfileLinks { get; set; } = [];
 
     public static bool IsCanonicalUrl(string? value) => Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
@@ -34,6 +39,9 @@ public sealed class SettingsInput : IValidatableObject
             yield return new("Use an absolute HTTP(S) URL at the site root, without credentials, a query, or a fragment.", [nameof(CanonicalBaseUrl)]);
         if (!Accents.Contains(AccentColor))
             yield return new("Choose an available accent preset.", [nameof(AccentColor)]);
+        foreach (var (value, member) in new[] { (ThemePrimaryColor, nameof(ThemePrimaryColor)),
+            (ThemeBackgroundColor, nameof(ThemeBackgroundColor)), (ThemeTextColor, nameof(ThemeTextColor)) })
+            if (!ThemePackage.IsColor(value)) yield return new("Use a six-digit hex color, such as #25613e, or leave blank for the theme default.", [member]);
         if (!IsTimeZone(TimeZone))
             yield return new("Choose a valid time zone identifier, such as America/Chicago or UTC.", [nameof(TimeZone)]);
         if (ProfileLinks.Count > 5)
@@ -66,6 +74,10 @@ public sealed class SettingsInput : IValidatableObject
         AuthorBio = s.AuthorBio,
         FooterText = s.FooterText,
         AccentColor = s.AccentColor,
+        ThemeId = s.ThemeId,
+        ThemePrimaryColor = s.ThemePrimaryColor,
+        ThemeBackgroundColor = s.ThemeBackgroundColor,
+        ThemeTextColor = s.ThemeTextColor,
         ProfileLinks = s.ProfileLinks.ToList()
     };
 
@@ -80,6 +92,10 @@ public sealed class SettingsInput : IValidatableObject
         s.AuthorBio = AuthorBio ?? "";
         s.FooterText = FooterText ?? "";
         s.AccentColor = AccentColor;
+        s.ThemeId = ThemeId;
+        s.ThemePrimaryColor = ThemePrimaryColor ?? "";
+        s.ThemeBackgroundColor = ThemeBackgroundColor ?? "";
+        s.ThemeTextColor = ThemeTextColor ?? "";
         s.ProfileLinksJson = JsonSerializer.Serialize(ProfileLinks.Where(x => !string.IsNullOrWhiteSpace(x.Url))
             .Select(x => new ProfileLink { Label = x.Label?.Trim(), Url = x.Url?.Trim() }).ToArray());
     }

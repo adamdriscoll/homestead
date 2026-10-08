@@ -1,7 +1,8 @@
 @using Homestead.Features.Settings
 @using Homestead.Data.Entities
 @inject SafeMarkdown Markdown
-<html lang="en" data-accent="@Page.Settings.AccentColor.ToLowerInvariant()">
+@if (Region == "head")
+{
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
@@ -20,9 +21,18 @@
     <meta name="twitter:image" content="@SocialImage" />
     @if (Page.Preview) { <meta name="robots" content="noindex, nofollow" /> }
     <link rel="stylesheet" href="@(Page.Preview ? "/css/site.css" : "/assets/site.css")" />
+    @foreach (var style in Page.Theme!.Variant.Styles)
+    { <link rel="stylesheet" href="@Page.Theme.AssetUrl(style, Page.Preview)" /> }
+    <link rel="stylesheet" href="@(Page.Preview ? "/admin/themes/colors.css" : "/assets/theme-colors.css")" />
+    @if (!Page.Preview)
+    {
+        @foreach (var script in Page.Theme.Variant.Scripts)
+        { <script src="@Page.Theme.AssetUrl(script, false)" defer></script> }
+    }
 </head>
-<body>
-    <a href="#main" class="btn absolute -top-20 focus:top-2 left-2">Skip to content</a>
+}
+@if (Region == "header")
+{
     <header class="max-w-3xl mx-auto px-4 py-8 border-b border-base-300 space-y-4">
         @if (Brand(Page.Settings.HeaderMediaId) is { } header)
         { <img src="@ImageUrl(header)" alt="" class="w-full max-h-64 object-cover rounded-lg" /> }
@@ -37,6 +47,9 @@
             { <a class="btn min-h-11" href="@path" aria-current="@(Page.Path == path ? "page" : null)">@label</a> }
         </nav>
     </header>
+}
+@if (Region == "main")
+{
     <main id="main" class="max-w-3xl mx-auto px-4 py-8 space-y-6">
         @if (Page.Preview) { <p class="alert" role="status">Private draft preview · unpublished edits</p> }
         @if (Page.Article is { } article)
@@ -84,6 +97,9 @@
             }
         }
     </main>
+}
+@if (Region == "footer")
+{
     <footer class="max-w-3xl mx-auto p-4 border-t border-base-300 space-y-4">
         <p>@Page.Settings.FooterText</p>
         <nav aria-label="External profiles" class="flex flex-wrap gap-4">
@@ -92,9 +108,9 @@
             <a class="underline py-3" href="/rss.xml">RSS feed</a>
         </nav>
     </footer>
-</body>
-</html>
+}
 @code {
+    [Parameter] public string Region { get; set; } = "main";
     [Parameter, EditorRequired] public PublicPage Page { get; set; } = null!;
     private static readonly (string, string)[] Navigation = [("/", "Home"), ("/notes/", "Notes"), ("/articles/", "Articles"),
         ("/reviews/", "Reviews"), ("/guides/", "Guides"), ("/galleries/", "Galleries"), ("/about/", "About")];

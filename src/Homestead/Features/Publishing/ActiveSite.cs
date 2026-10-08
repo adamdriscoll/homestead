@@ -1,13 +1,14 @@
 using System.Text.Json;
 using Homestead.Data.Entities;
 using Homestead.Features.Articles;
+using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
 using Microsoft.AspNetCore.StaticFiles;
 
 namespace Homestead.Features.Publishing;
 
 public sealed record GenerationManifest(Guid GenerationId, DateTime ActivatedAtUtc, SiteSettings Settings,
-    ArticleSnapshot[] Articles, string[] Files, ArticleMedia[]? Branding = null);
+    ArticleSnapshot[] Articles, string[] Files, ArticleMedia[]? Branding = null, ThemeSnapshot? Theme = null);
 
 public sealed class ActiveSite(StoragePaths paths, ILogger<ActiveSite> logger)
 {

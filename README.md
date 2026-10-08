@@ -12,8 +12,10 @@ post pages, type listings, tags, About page, RSS, sitemap, and sharing metadata 
 one complete site. Draft edits stay private until you publish an update. If a build
 fails, the previous site stays available and the administrator can retry.
 
-The built-in theme supports light/dark appearance, accent presets, author profiles,
-and avatar, logo, and header images. Your content stays portable: download the
+The Porch, Journal, and Ledger public themes support light/dark appearance, accent
+presets, author profiles, and avatar, logo, and header images. Install custom ZIP
+themes and adjust basic colors in Settings; see [public themes](docs/themes.md).
+Your content stays portable: download the
 public site as a standalone static ZIP, export a Hugo project with Markdown and
 photos, or take a complete backup for restoring your installation.
 
@@ -52,6 +54,7 @@ and login keys. For production hosting with Docker and HTTPS, follow the
 - [Contributing](docs/contributing.md): development tools, tests, quality checks, and migrations.
 - [Deployment](docs/deploy.md): Docker Compose, HTTPS, configuration, upgrades, and troubleshooting.
 - [Backup and restore](docs/backup-restore.md): protecting your data and moving to a new installation.
+- [Public themes](docs/themes.md): selecting, customizing, and authoring theme packages.
 - [Agent guidance](AGENTS.md): architecture, project conventions, and security boundaries.
 - [Changelog](CHANGELOG.md): release history.
 - [GitHub issues](https://github.com/PoshTools/homestead/issues): remaining work and feature proposals.

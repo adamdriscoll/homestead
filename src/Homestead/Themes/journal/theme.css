@@ -1,0 +1,7 @@
+html[data-public-theme] { color-scheme: light dark; }
+html[data-public-theme] body { background: var(--color-base-100); color: var(--color-base-content); font-family: Georgia, serif; }
+html[data-public-theme] body > header, html[data-public-theme] main, html[data-public-theme] body > footer { max-width: 42rem; }
+html[data-public-theme] main > article.card { border-width: 0; border-bottom: 1px solid var(--color-base-300); border-radius: 0; }
+html[data-public-theme] .card-body { padding-inline: 0; }
+html[data-public-theme] h1, html[data-public-theme] h2 { font-weight: 400; }
+html[data-public-theme] header nav .btn { background: transparent; box-shadow: none; border: 0; }

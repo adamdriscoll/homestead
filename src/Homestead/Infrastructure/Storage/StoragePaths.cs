@@ -8,6 +8,7 @@ public sealed class StoragePaths
     public string DatabasePath => Path.Combine(DataRoot, "homestead.db");
     public string KeysPath => Path.Combine(DataRoot, "keys");
     public string OriginalsPath => Path.Combine(DataRoot, "media", "originals");
+    public string ThemesPath => Path.Combine(DataRoot, "themes");
     public string SitePath => Path.Combine(DataRoot, "site");
     public string BuildsPath => Path.Combine(SitePath, "builds");
     public string CurrentPath => Path.Combine(SitePath, "current.json");
@@ -24,7 +25,7 @@ public sealed class StoragePaths
         var webRoot = Path.GetFullPath(environment.WebRootPath ?? Path.Combine(environment.ContentRootPath, "wwwroot"));
         if (DataRoot.Equals(webRoot, StringComparison.OrdinalIgnoreCase) || DataRoot.StartsWith(webRoot + Path.DirectorySeparatorChar, StringComparison.OrdinalIgnoreCase))
             throw new InvalidOperationException("The data directory must be outside wwwroot.");
-        foreach (var path in new[] { DataRoot, KeysPath, Path.Combine(DataRoot, "media", "originals"), Path.Combine(DataRoot, "site", "builds"), Path.Combine(DataRoot, "backups") })
+        foreach (var path in new[] { DataRoot, KeysPath, ThemesPath, Path.Combine(DataRoot, "media", "originals"), Path.Combine(DataRoot, "site", "builds"), Path.Combine(DataRoot, "backups") })
         {
             Directory.CreateDirectory(path);
             if (!OperatingSystem.IsWindows())

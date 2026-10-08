@@ -4,10 +4,10 @@
 
 Sign in and open **Maintenance → Download full backup**. The ZIP contains a
 SQLite online backup, every recorded original photo (including unused and private
-photos), saved settings and drafts, the administrator's password hash, and the
+photos), installed custom theme ZIPs, saved settings and drafts, the administrator's password hash, and the
 Data Protection key ring. `manifest.json` records the application version, archive
 format, UTC creation time, file sizes, and SHA-256 checksums. Database capture and
-media mutations share the publication lock. Authoring/publication may wait while
+media/theme mutations share the publication lock. Authoring/publication may wait while
 the archive is assembled; public static requests continue normally.
 
 The implementation uses [Microsoft.Data.Sqlite's online backup API](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/backup),

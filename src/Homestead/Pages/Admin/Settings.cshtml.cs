@@ -3,6 +3,7 @@ using Homestead.Data.Entities;
 using Homestead.Features.Media;
 using Homestead.Features.Publishing;
 using Homestead.Features.Settings;
+using Homestead.Features.Themes;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using Microsoft.EntityFrameworkCore;
@@ -10,18 +11,33 @@ using Microsoft.EntityFrameworkCore;
 namespace Homestead.Pages.Admin;
 
 [RequestSizeLimit(MediaService.MaximumBytes + 1024 * 1024)]
-public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment environment, PublicationLock writer, PublishingService publishing, MediaService media) : PageModel
+public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment environment, PublicationLock writer, PublishingService publishing, MediaService media, ThemeService themes, ActiveSite active) : PageModel
 {
     [BindProperty] public SettingsInput Input { get; set; } = new();
     [TempData] public string? StatusMessage { get; set; }
     [BindProperty] public IFormFile? Upload { get; set; }
     [BindProperty] public string? Slot { get; set; }
     public SiteSettings Settings { get; private set; } = null!;
+    public IReadOnlyList<ThemeSnapshot> Themes { get; private set; } = [];
+    public ThemeSnapshot? ActiveTheme => active.Current?.Theme;
+    private void LoadThemes() => Themes = themes.Installed();
     public async Task OnGetAsync()
     {
-        Settings = await db.SiteSettings.SingleAsync(); Input = SettingsInput.From(Settings); PadProfiles();
+        Settings = await db.SiteSettings.SingleAsync(); Input = SettingsInput.From(Settings); PadProfiles(); LoadThemes();
     }
     private void PadProfiles() { while (Input.ProfileLinks.Count < 5) Input.ProfileLinks.Add(new()); }
+
+    public async Task<IActionResult> OnPostThemeAsync()
+    {
+        try
+        {
+            if (Upload is null) throw new InvalidDataException("Choose a theme ZIP first.");
+            var theme = await themes.InstallAsync(Upload, HttpContext.RequestAborted);
+            StatusMessage = $"{theme.Name} {theme.Version} installed. Select it below and save settings to apply it.";
+        }
+        catch (InvalidDataException ex) { StatusMessage = ex.Message; }
+        return RedirectToPage();
+    }
 
     public async Task<IActionResult> OnPostUploadAsync()
     {
@@ -56,11 +72,13 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
     }
     public async Task<IActionResult> OnPostAsync()
     {
+        try { _ = themes.Resolve(Input.ThemeId); }
+        catch (InvalidDataException ex) { ModelState.AddModelError("Input.ThemeId", ex.Message); }
         if (!environment.IsDevelopment() && !(Input.CanonicalBaseUrl ?? "").StartsWith("https://", StringComparison.OrdinalIgnoreCase))
             ModelState.AddModelError("Input.CanonicalBaseUrl", "Use HTTPS in production.");
         if (!ModelState.IsValid)
         {
-            Settings = await db.SiteSettings.AsNoTracking().SingleAsync(); PadProfiles(); return Page();
+            Settings = await db.SiteSettings.AsNoTracking().SingleAsync(); PadProfiles(); LoadThemes(); return Page();
         }
         await writer.Semaphore.WaitAsync();
         try

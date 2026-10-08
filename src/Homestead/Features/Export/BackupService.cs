@@ -3,6 +3,7 @@ using System.Security.Cryptography;
 using System.Text.Json;
 using Homestead.Data;
 using Homestead.Features.Publishing;
+using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -45,6 +46,11 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
             }
             foreach (var key in Directory.GetFiles(paths.KeysPath, "*.xml"))
                 await Add("keys/" + Path.GetFileName(key), key);
+            foreach (var theme in Directory.GetFiles(paths.ThemesPath, "custom-*.zip"))
+            {
+                ThemeService.ValidateArchive(theme);
+                await Add("themes/" + Path.GetFileName(theme), theme);
+            }
             var manifest = JsonSerializer.Serialize(new BackupManifest(1, ApplicationVersion, DateTime.UtcNow, files.ToArray()),
                 new JsonSerializerOptions { WriteIndented = true });
             if (System.Text.Encoding.UTF8.GetByteCount(manifest) > 4 * 1024 * 1024)
@@ -101,7 +107,7 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
             foreach (var file in manifest.Files)
             {
                 var path = ArchiveFiles.SafePath(staging, file.Path);
-                if (file.Path != "homestead.db" && !file.Path.StartsWith("media/originals/", StringComparison.Ordinal) && !file.Path.StartsWith("keys/", StringComparison.Ordinal))
+                if (file.Path != "homestead.db" && !file.Path.StartsWith("media/originals/", StringComparison.Ordinal) && !file.Path.StartsWith("keys/", StringComparison.Ordinal) && !file.Path.StartsWith("themes/", StringComparison.Ordinal))
                     throw new InvalidDataException($"Unexpected backup file: {file.Path}");
                 var source = zip.GetEntry(file.Path) ?? throw new InvalidDataException($"Backup file missing: {file.Path}");
                 if (source.Length != file.Size) throw new InvalidDataException($"Backup size mismatch: {file.Path}");
@@ -123,6 +129,11 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
                     throw new InvalidDataException($"Backup checksum mismatch: {file.Path}");
             }
             await ValidateDatabaseAsync(staging, manifest, ct);
+            foreach (var theme in manifest.Files.Where(x => x.Path.StartsWith("themes/", StringComparison.Ordinal)))
+            {
+                if (theme.Path.Split('/').Length != 2 || !theme.Path.EndsWith(".zip", StringComparison.Ordinal)) throw new InvalidDataException("Invalid backup theme path.");
+                ThemeService.ValidateArchive(ArchiveFiles.SafePath(staging, theme.Path));
+            }
             // The archive is fully validated before any authoritative files are installed.
             // A pre-created empty Docker mount cannot itself be renamed, so move its children.
             Directory.CreateDirectory(target);
@@ -167,14 +178,25 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
             await using (var violations = await command.ExecuteReaderAsync(ct))
                 if (await violations.ReadAsync(ct)) throw new InvalidDataException("Backup SQLite foreign key check failed.");
             command.CommandText = "SELECT Id, StoredFilename, Size FROM MediaAssets";
-            await using var reader = await command.ExecuteReaderAsync(ct);
-            while (await reader.ReadAsync(ct))
+            await using (var reader = await command.ExecuteReaderAsync(ct))
             {
-                var id = Guid.Parse(reader.GetString(0));
-                var relative = $"media/originals/{id:D}/{reader.GetString(1)}";
-                _ = ArchiveFiles.SafePath(staging, relative);
-                if (!manifest.Files.Any(x => x.Path == relative && x.Size == reader.GetInt64(2)))
-                    throw new InvalidDataException($"Backup original media is missing or incomplete: {id}");
+                while (await reader.ReadAsync(ct))
+                {
+                    var id = Guid.Parse(reader.GetString(0));
+                    var relative = $"media/originals/{id:D}/{reader.GetString(1)}";
+                    _ = ArchiveFiles.SafePath(staging, relative);
+                    if (!manifest.Files.Any(x => x.Path == relative && x.Size == reader.GetInt64(2)))
+                        throw new InvalidDataException($"Backup original media is missing or incomplete: {id}");
+                }
+            }
+            // Backups from earlier versions have no theme column and default to Porch after migration.
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('SiteSettings') WHERE name = 'ThemeId'";
+            if ((long)(await command.ExecuteScalarAsync(ct))! > 0)
+            {
+                command.CommandText = "SELECT ThemeId FROM SiteSettings";
+                var themeId = (string?)await command.ExecuteScalarAsync(ct);
+                if (themeId is not null && !ThemeService.BuiltInIds.Contains(themeId) && !manifest.Files.Any(x => x.Path == $"themes/{themeId}.zip"))
+                    throw new InvalidDataException("Backup is missing the selected custom theme.");
             }
         }
         catch (SqliteException ex) { throw new InvalidDataException("Backup database is invalid or has an unsupported schema.", ex); }

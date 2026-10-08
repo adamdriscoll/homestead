@@ -10,9 +10,9 @@ public website. Prefer concrete services within the existing application.
 Track unfinished work and proposals in [GitHub issues](https://github.com/PoshTools/homestead/issues).
 The old implementation phases are delivered; keep planning and acceptance work
 in issues rather than recreating local phase documents. Deferred proposals need
-explicit scope before implementation. The current public site has one theme with
-branding presets; [Theme Engine #1](https://github.com/PoshTools/homestead/issues/1)
-proposes public themes with light/dark administration kept separate. Historical
+explicit scope before implementation. Public themes use shared Razor regions,
+versioned ZIP packages, and optional colors; for theme authoring or engine changes,
+read [themes](docs/themes.md). Administration keeps separate light/dark appearance. Historical
 MVP exclusions are not permanent bans on explicitly requested features.
 
 - For development checks, tools, or migrations, read [contributing](docs/contributing.md).

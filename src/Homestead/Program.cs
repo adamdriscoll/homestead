@@ -7,6 +7,7 @@ using Homestead.Features.Authentication;
 using Homestead.Features.Export;
 using Homestead.Features.Media;
 using Homestead.Features.Publishing;
+using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -67,6 +68,7 @@ builder.Services.AddSingleton<SafeMarkdown>();
 builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<MediaService>();
 builder.Services.AddScoped<PublishingService>();
+builder.Services.AddSingleton<ThemeService>();
 builder.Services.AddScoped<StaticExportService>();
 builder.Services.AddScoped<HugoExportService>();
 builder.Services.AddScoped<BackupService>();
@@ -137,8 +139,10 @@ app.Use(async (context, next) =>
 {
     context.Response.Headers.XContentTypeOptions = "nosniff";
     context.Response.Headers["Referrer-Policy"] = "same-origin";
-    var frameAncestors = context.Request.Path.StartsWithSegments("/admin/posts") && context.Request.Path.Value!.EndsWith("/preview", StringComparison.OrdinalIgnoreCase) ? "'self'" : "'none'";
-    context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
+    var preview = context.Request.Path.StartsWithSegments("/admin/posts") && context.Request.Path.Value!.EndsWith("/preview", StringComparison.OrdinalIgnoreCase);
+    var frameAncestors = preview ? "'self'" : "'none'";
+    var scripts = preview ? "'none'" : "'self'";
+    context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src {scripts}; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
     if (context.Request.Path.StartsWithSegments("/admin") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/setup"))
         context.Response.Headers.CacheControl = "no-store";
     await next(context);
@@ -146,6 +150,24 @@ app.Use(async (context, next) =>
 app.UseStaticFiles(); // Only compiled admin assets in wwwroot; /data is never registered.
 app.UseRouting(); app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
 app.MapRazorPages();
+app.MapGet("/admin/themes/colors.css", async (HomesteadDbContext db, ThemeService themes) =>
+{
+    var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
+    return Results.Text(ThemeService.ColorStyles(settings, themes.Resolve(settings.ThemeId)), "text/css");
+}).RequireAuthorization();
+app.MapGet("/admin/themes/{id}/{**file}", (string id, string file, ThemeService themes) =>
+{
+    if (!ThemePackage.IsAssetPath(file) || file == "theme.json" || file.EndsWith(".html", StringComparison.Ordinal) || file.EndsWith(".js", StringComparison.Ordinal))
+        return Results.NotFound();
+    try
+    {
+        var theme = themes.Resolve(id);
+        if (!theme.Files.TryGetValue(file, out var bytes) || !new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider().TryGetContentType(file, out var type))
+            return Results.NotFound();
+        return Results.Bytes(bytes, type);
+    }
+    catch (InvalidDataException) { return Results.NotFound(); }
+}).RequireAuthorization();
 app.MapGet("/health/live", () => Results.Text("Healthy"));
 app.MapGet("/health/ready", async (HomesteadDbContext db, ActiveSite active, CancellationToken ct) =>
     active.RecoveryError is null && await db.Database.CanConnectAsync(ct) && (active.IsHealthy || !await db.Users.AnyAsync(ct))

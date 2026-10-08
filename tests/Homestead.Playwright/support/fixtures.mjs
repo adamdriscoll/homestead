@@ -57,7 +57,11 @@ export async function saved(page) {
 }
 
 export async function publish(page, name = 'Publish') {
-  await page.getByRole('button', { name, exact: true }).click();
+  // On updates the public link is already visible; wait for the new document before returning it.
+  await Promise.all([
+    page.waitForEvent('domcontentloaded'),
+    page.getByRole('button', { name, exact: true }).click()
+  ]);
   await expect(page.getByRole('link', { name: 'Open public post' })).toBeVisible();
   return page.getByRole('link', { name: 'Open public post' }).getAttribute('href');
 }

@@ -4,13 +4,14 @@ using Homestead.Data.Entities;
 using Homestead.Features.Articles;
 using Homestead.Features.Media;
 using Homestead.Features.Publishing;
+using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 
 namespace Homestead.Features.Export;
 
 public sealed class HugoExportService(HomesteadDbContext db, ArticleService articles, MediaService media,
-    StoragePaths paths, PublicationLock writer, ActiveSite active, IWebHostEnvironment environment)
+    StoragePaths paths, PublicationLock writer, ActiveSite active, IWebHostEnvironment environment, ThemeService themes)
 {
     public const string SupportedHugoVersion = "0.152.2";
 
@@ -18,11 +19,22 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
     {
         db.ChangeTracker.Clear();
         var settings = await db.SiteSettings.AsNoTracking().SingleAsync(ct);
+        var theme = themes.Resolve(settings.ThemeId);
         await ArchiveFiles.TextAsync(zip, "hugo.toml", $"baseURL = {TomlString(settings.CanonicalBaseUrl.TrimEnd('/') + "/")}\n" +
             $"title = {TomlString(settings.Title)}\nlanguageCode = 'en-us'\nenableRobotsTXT = true\n" +
             "[markup.goldmark.renderer]\nunsafe = false\n", ct);
-        foreach (var (path, text) in HugoTemplates.Files) await ArchiveFiles.TextAsync(zip, path, text, ct);
+        foreach (var (path, text) in HugoTemplates.Files)
+            await ArchiveFiles.TextAsync(zip, path, path == "layouts/baseof.html" ? HugoTemplates.ThemedLayout(settings, theme) : text, ct);
         await ArchiveFiles.CopyAsync(zip, "static/assets/site.css", Path.Combine(environment.WebRootPath, "css", "site.css"), ct);
+        foreach (var (file, bytes) in theme.Files)
+        {
+            await using (var output = zip.CreateEntry("homestead-theme/" + file).Open())
+                await output.WriteAsync(bytes, ct);
+            if (file == "theme.json" || file.EndsWith(".html", StringComparison.Ordinal)) continue;
+            await using var asset = zip.CreateEntry("static/assets/theme/" + file).Open();
+            await asset.WriteAsync(bytes, ct);
+        }
+        await ArchiveFiles.TextAsync(zip, "static/assets/theme-colors.css", ThemeService.ColorStyles(settings, theme), ct);
         await ArchiveFiles.TextAsync(zip, "content/about/index.md", "---\ntitle: \"About\"\nurl: \"/about/\"\n---\n" +
             settings.AboutMarkdown.Replace("{{", "&#123;&#123;", StringComparison.Ordinal), ct);
         var ids = await db.Posts.Where(x => x.Status != PostStatus.Deleted).OrderBy(x => x.CreatedAtUtc).Select(x => x.Id).ToArrayAsync(ct);
@@ -51,7 +63,7 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
         await ArchiveFiles.TextAsync(zip, "README.md", $"# Homestead Hugo export\n\nTested with Hugo {SupportedHugoVersion} (standard or extended). Run `hugo` in this directory; serve `public/`.\n\n" +
             "All nondeleted posts are included. Active published snapshots build by default. Drafts, unpublished posts, pending publications, and separate working bundles containing unpublished edits use `draft: true`. Use `hugo --buildDrafts` only to preview private work.\n\n" +
             "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), and ordered `steps` (id/body_markdown/images). Steps and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
-            "Raw HTML is disabled. This minimal layout renders all five types; it is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
+            "Raw HTML is disabled. This minimal layout renders all five types and carries the selected theme assets, layout, and colors. The original package files are in homestead-theme/. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
 
         async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug)
         {

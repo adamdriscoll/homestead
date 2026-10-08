@@ -3,13 +3,14 @@
 @source "../Components";
 @source "../Program.cs";
 @source "../Features/Publishing/SafeMarkdown.cs";
+@source "../Features/Export/HugoTemplates.cs";
 @source "../wwwroot/js/article-editor.js";
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
   logs: false;
 }
 
-/* The one public theme has four fixed accents, paired with readable content colors. */
+/* Public accent presets stay scoped away from administration. Theme colors may override these. */
 html[data-accent] { --color-primary-content: #fff; --color-primary: #8c431c; }
 html[data-accent="forest"] { --color-primary: #25613e; }
 html[data-accent="ocean"] { --color-primary: #165d81; }

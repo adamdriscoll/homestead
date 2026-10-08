@@ -96,6 +96,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
         });
         builder.Entity<SiteSettings>(e =>
         {
+            e.Property(x => x.ThemeId).HasDefaultValue("porch");
             e.ToTable("SiteSettings", t => t.HasCheckConstraint("CK_Settings_Singleton", "Id = 1"));
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.AvatarMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.LogoMediaId).OnDelete(DeleteBehavior.Restrict);

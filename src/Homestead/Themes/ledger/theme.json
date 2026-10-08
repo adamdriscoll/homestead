@@ -1,0 +1,22 @@
+{
+  "formatVersion": 1,
+  "name": "Ledger",
+  "version": "1.0.0",
+  "variants": [
+    {
+      "engineVersion": 1,
+      "postTypes": [
+        "microblog",
+        "article",
+        "review",
+        "guide",
+        "gallery"
+      ],
+      "styles": [
+        "theme.css"
+      ],
+      "scripts": [],
+      "supportsColors": true
+    }
+  ]
+}

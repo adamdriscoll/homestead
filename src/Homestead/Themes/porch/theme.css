@@ -1,0 +1,2 @@
+html[data-public-theme] { color-scheme: light dark; }
+html[data-public-theme] body { background: var(--color-base-100); color: var(--color-base-content); }

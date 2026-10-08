@@ -3,6 +3,7 @@ using Homestead.Data;
 using Homestead.Data.Entities;
 using Homestead.Features.Articles;
 using Homestead.Features.Media;
+using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 
@@ -12,7 +13,7 @@ public sealed record PublicationResult(bool Succeeded, string Message, string? U
 
 public sealed class PublishingService(HomesteadDbContext db, ArticleService articles, PublicationLock writer,
     IStaticPageRenderer renderer, SafeMarkdown markdown, MediaService media, StoragePaths paths,
-    ActiveSite active, IGenerationActivation activation, IWebHostEnvironment environment, ILogger<PublishingService> logger)
+    ActiveSite active, IGenerationActivation activation, ThemeService themes, IWebHostEnvironment environment, ILogger<PublishingService> logger)
 {
     public async Task<PublicationResult> TransitionAsync(Guid id, string action, long version)
     {
@@ -77,6 +78,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
         try
         {
             var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
+            var theme = themes.Resolve(settings.ThemeId);
             var snapshots = await db.PublishedSnapshots.AsNoTracking()
                 .Where(x => x.IsActive && x.Post.Status == PostStatus.Published).Select(x => x.SnapshotJson).ToListAsync();
             var posts = snapshots.Select(x => JsonSerializer.Deserialize<ArticleSnapshot>(x) ?? throw new InvalidOperationException("Invalid article snapshot."))
@@ -106,7 +108,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             async Task Page(string path, string heading, ArticleSnapshot[] items, ArticleSnapshot? post = null)
             {
                 await Write(path.TrimStart('/') + "index.html", await renderer.RenderAsync(new(settings, post, items,
-                    Path: path, Heading: heading, Branding: branding)));
+                    Path: path, Heading: heading, Branding: branding, Theme: theme)));
                 pagePaths.Add(path);
             }
             await Page("/", "Welcome home.", posts);
@@ -134,6 +136,14 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             Directory.CreateDirectory(Path.Combine(root, "assets"));
             File.Copy(Path.Combine(environment.WebRootPath, "css", "site.css"), Path.Combine(root, "assets", "site.css"));
             files.Add("assets/site.css");
+            foreach (var (file, contents) in theme.Files.Where(x => x.Key != "theme.json" && !x.Key.EndsWith(".html", StringComparison.Ordinal)))
+            {
+                var relative = "assets/theme/" + file;
+                var destination = Path.Combine(root, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                await File.WriteAllBytesAsync(destination, contents); files.Add(relative);
+            }
+            await DataFile("assets/theme-colors.css", ThemeService.ColorStyles(settings, theme));
             File.Copy(Path.Combine(environment.WebRootPath, "social-default.png"), Path.Combine(root, "assets", "social-default.png"));
             files.Add("assets/social-default.png");
             foreach (var asset in posts.SelectMany(x => x.Media).Concat(branding).DistinctBy(x => x.Id))
@@ -141,7 +151,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 var relative = asset.Url.TrimStart('/'); var destination = Path.Combine(root, relative);
                 Directory.CreateDirectory(Path.GetDirectoryName(destination)!); File.Copy(media.OriginalPath(asset), destination); files.Add(relative);
             }
-            var manifest = new GenerationManifest(generation.Id, DateTime.UtcNow, settings, posts, files.ToArray(), branding);
+            var manifest = new GenerationManifest(generation.Id, DateTime.UtcNow, settings, posts, files.ToArray(), branding, theme.Snapshot);
             await activation.ActivateAsync(manifest); activated = true;
             generation.Status = GenerationStatus.Succeeded; generation.ActivatedAtUtc = manifest.ActivatedAtUtc;
             await db.SaveChangesAsync();
