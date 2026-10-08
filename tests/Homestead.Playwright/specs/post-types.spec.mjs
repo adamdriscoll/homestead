@@ -4,12 +4,14 @@ test('a check-in autosaves its location, previews privately, and publishes witho
   await newPost(page, 'check-in');
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'A check-in needs' })).toContainText('place name');
+  await page.getByRole('tab', { name: 'Details', exact: true }).click();
   await page.getByLabel('Place name (required to publish)', { exact: true }).fill('Browser café');
   await page.getByLabel('Address (optional)', { exact: true }).fill('123 Quiet Street');
   await page.getByLabel('Latitude (optional)', { exact: true }).fill('41.88');
   await page.getByLabel('Longitude (optional)', { exact: true }).fill('-87.63');
   await saved(page);
   await page.reload();
+  await page.getByRole('tab', { name: 'Details', exact: true }).click();
   await expect(page.getByLabel('Place name (required to publish)', { exact: true })).toHaveValue('Browser café');
   await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   await expect(page.frameLocator('#draft-preview').getByText('Location:', { exact: false })).toContainText('123 Quiet Street');
@@ -32,6 +34,7 @@ test('a check-in autosaves its location, previews privately, and publishes witho
 test('a text note publishes without a title and public navigation works without JavaScript', async ({ owner: page, browser, site }) => {
   await newPost(page, 'note');
   await page.getByLabel('Note (Markdown)', { exact: true }).fill('A quiet browser-tested afternoon.');
+  await page.getByRole('tab', { name: 'Details', exact: true }).click();
   await page.getByLabel('Tags (comma separated)').fill('Home');
   const publicPath = await publish(page);
   const reader = await browser.newContext({ baseURL: site.baseURL, ignoreHTTPSErrors: true, javaScriptEnabled: false });

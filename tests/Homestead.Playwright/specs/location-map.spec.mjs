@@ -37,11 +37,13 @@ for (const javaScriptEnabled of [true, false]) {
       await expect(page.getByText('No published posts with coordinates yet', { exact: false })).toBeVisible();
 
       await newPost(page, 'check-in');
+      if (javaScriptEnabled) await page.getByRole('tab', { name: 'Details', exact: true }).click();
       await page.getByLabel('Place name (required to publish)', { exact: true }).fill('Equator café');
       await page.getByLabel('Latitude (optional)', { exact: true }).fill('0');
       await page.getByLabel('Longitude (optional)', { exact: true }).fill('0');
       const publicPath = await publish(page);
       const editorPath = new URL(page.url()).pathname;
+      if (javaScriptEnabled) await page.getByRole('tab', { name: 'Details', exact: true }).click();
       await page.getByLabel('Place name (required to publish)', { exact: true }).fill('Private draft place');
       await page.getByLabel('Latitude (optional)', { exact: true }).fill('42');
       await page.getByRole('button', { name: 'Save draft', exact: true }).click();
@@ -73,6 +75,7 @@ for (const javaScriptEnabled of [true, false]) {
       await page.getByRole('button', { name: 'Save settings', exact: true }).click();
       expect((await page.request.get('/map/')).status()).toBe(404);
       await page.goto(editorPath);
+      if (javaScriptEnabled) await page.getByRole('tab', { name: 'Details', exact: true }).click();
       await expect(page.getByLabel('Place name (required to publish)', { exact: true })).toHaveValue('Private draft place');
       expect(errors).toEqual([]);
     });
@@ -94,6 +97,7 @@ test('every post has a marker and overlapping markers expose safe links to all p
   ];
   for (const [place, latitude, longitude] of places) {
     await newPost(page, 'check-in');
+    await page.getByRole('tab', { name: 'Details', exact: true }).click();
     await page.getByLabel('Place name (required to publish)', { exact: true }).fill(place);
     await page.getByLabel('Latitude (optional)', { exact: true }).fill(latitude);
     await page.getByLabel('Longitude (optional)', { exact: true }).fill(longitude);

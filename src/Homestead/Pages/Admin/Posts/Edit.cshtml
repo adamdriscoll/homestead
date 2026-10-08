@@ -4,21 +4,10 @@
 @{ var note = Model.Post.Type == PostType.Microblog; var gallery = Model.Post.Type == PostType.Gallery; var guide = Model.Post.Type == PostType.Guide; var review = Model.Post.Type == PostType.Review; var checkin = Model.Post.Type == PostType.Checkin; var newPostType = Model.IsNew ? Model.NewPostType : null; ViewData["Title"] = $"Edit {Model.TypeLabel}"; }
 <div class="space-y-6">
     <h1 class="text-3xl font-semibold">Your @Model.TypeLabel</h1>
-    @if (note) { <p>A thought, a moment, a photo. Add text or a photo to publish.</p> }
-    @if (checkin) { <p>A place you visited. Add a place name to publish, with optional text and photos.</p> }
     @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
     @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-error" role="alert"></div> }
-    <p id="post-state">@(Model.IsNew ? "New post · add content to save a draft" : Model.Post.Status.ToString()) · @(Model.Live is null ? "Not currently public" : "Currently public")</p>
     @if (!Model.IsTypeEnabled) { <p role="status">This post type is disabled. Your content is kept and draft edits can still be saved. Enable it in <a class="link" href="/admin/settings#posts">Settings</a> to publish. @(Model.Live is not null ? "The previous post is still public. Rebuild from Posts to apply saved settings." : "")</p> }
-    @if (Model.Live is { } live)
-    {
-        <a class="btn" href="/posts/@live.Slug/">Open public post</a>
-        @if (Homestead.Features.Articles.ArticleService.HasDraftChanges(Model.Post, live)) { <p>Unpublished edits · use Update published post when ready.</p> }
-        @if (Homestead.Features.Articles.ArticleService.IsPublicationPending(Model.Post, live))
-        { <p role="alert">Saved publication changes are pending. The previous post is still public. Rebuild from Posts to retry.</p> }
-    }
-    else if (Model.IsTypeEnabled && Model.Post.Status == Homestead.Data.Entities.PostStatus.Published) { <p role="alert">Publication pending. Rebuild from Posts to retry.</p> }
-    <form method="post" asp-page-handler="Save" asp-route-newPostType="@newPostType" id="article-editor" data-post-type="@Model.Post.Type" data-new-post="@Model.IsNew.ToString().ToLowerInvariant()" data-preview-url="/admin/posts/@Model.Post.Id/preview" class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
+    <form method="post" asp-page-handler="Save" asp-route-newPostType="@newPostType" id="article-editor" data-post-type="@Model.Post.Type" data-new-post="@Model.IsNew.ToString().ToLowerInvariant()" data-preview-url="/admin/posts/@Model.Post.Id/preview" class="space-y-6">
         <input type="hidden" asp-for="Input.Version" />
         @if (Model.IsNew) { <input type="hidden" asp-for="NewPostType" /> }
         <section class="min-w-0 border border-base-300 rounded-lg" aria-label="Post editor">
@@ -32,6 +21,9 @@
             </button>
             <button type="button" id="images-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-images" tabindex="-1">
                 <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#images"></use></svg>Images
+            </button>
+            <button type="button" id="details-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-details" tabindex="-1">
+                <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#gear"></use></svg>Details
             </button>
         </div>
         <p id="save-status" class="badge badge-soft my-2 ml-auto shrink-0" role="status" aria-live="polite"><svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#circle-check"></use></svg><span id="save-status-text">@(Model.IsNew ? "Not saved" : "Draft loaded")</span></p>
@@ -100,7 +92,6 @@
                 <button class="btn" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="add-step">Add step</button>
             </section>
         }
-        <p class="text-sm">Raw HTML is displayed as text. Paste or drop images into a Markdown field, or manage photos in Images.</p>
         </div>
         <div id="editor-preview" class="p-4" hidden>
             <iframe id="draft-preview" title="Private post preview" class="w-full min-h-160 border border-base-300" sandbox="allow-same-origin"></iframe>
@@ -154,8 +145,7 @@
             <p id="upload-status" role="status" aria-live="polite"></p>
         </div>
         </div>
-        </section>
-        <aside class="min-w-0 space-y-5" aria-label="Post settings">
+        <div id="editor-details" class="p-4 space-y-5" aria-label="Post settings">
             <fieldset class="fieldset border-b border-base-300 pb-5">
                 <legend class="fieldset-legend">Location @(checkin ? "" : "(optional)")</legend>
                 <p>These details become public when you publish.</p>
@@ -179,8 +169,34 @@
                     <p class="text-sm">Add photos in Images to choose a cover.</p>
                 </section>
             }
-        </aside>
-        <div class="flex flex-wrap justify-end gap-2 lg:col-span-2">
+        </div>
+        <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-4 py-3" aria-label="Publication status">
+            @if (Model.Live is { } live)
+            {
+                <a id="post-state" class="badge badge-success badge-soft badge-lg min-h-11 gap-2 hover:badge-outline focus-visible:outline-2 focus-visible:outline-offset-2" href="/posts/@live.Slug/" title="View public post">
+                    <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#eye"></use></svg>Public post
+                    <svg class="size-3 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#chevron-right"></use></svg>
+                </a>
+                @if (Homestead.Features.Articles.ArticleService.HasDraftChanges(Model.Post, live))
+                {
+                    <span class="badge badge-warning badge-soft gap-2"><svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#pen"></use></svg>Unpublished edits</span>
+                }
+                @if (Homestead.Features.Articles.ArticleService.IsPublicationPending(Model.Post, live))
+                { <p class="w-full text-sm text-warning" role="alert">Saved publication changes are pending. The previous post is still public. Rebuild from Posts to retry.</p> }
+            }
+            else
+            {
+                <span id="post-state" class="badge badge-info badge-soft badge-lg gap-2"><svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#pen"></use></svg>Draft</span>
+                @if (Model.IsTypeEnabled && Model.Post.Status == PostStatus.Published)
+                { <p class="w-full text-sm text-warning" role="alert">Publication pending. Rebuild from Posts to retry.</p> }
+            }
+            <button type="button" id="add-location" class="btn btn-ghost min-h-11 ml-auto gap-2" hidden>
+                <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#location-dot"></use></svg><span>Add Location</span>
+            </button>
+            <p id="location-status" class="w-full text-sm" role="status" aria-live="polite" hidden></p>
+        </footer>
+        </section>
+        <div class="flex flex-wrap justify-end gap-2">
             <button class="btn btn-outline btn-error" asp-page-handler="Delete" asp-route-newPostType="@newPostType" data-delete-post>Delete post</button>
             @if (Model.Post.FirstPublishedAtUtc is not null) { <button class="btn" asp-page-handler="Unpublish" asp-route-newPostType="@newPostType">Unpublish</button> }
             <button class="btn" type="submit">Save draft</button>

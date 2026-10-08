@@ -62,6 +62,6 @@ export async function publish(page, name = 'Publish') {
     page.waitForEvent('domcontentloaded'),
     page.getByRole('button', { name, exact: true }).click()
   ]);
-  await expect(page.getByRole('link', { name: 'Open public post' })).toBeVisible();
-  return page.getByRole('link', { name: 'Open public post' }).getAttribute('href');
+  await expect(page.getByRole('link', { name: 'Public post', exact: true })).toBeVisible();
+  return page.getByRole('link', { name: 'Public post', exact: true }).getAttribute('href');
 }
