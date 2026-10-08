@@ -1,0 +1,35 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Homestead: .NET",
+      "type": "coreclr",
+      "request": "launch",
+      "preLaunchTask": "Homestead: prepare .NET launch",
+      "program": "${workspaceFolder}/src/Homestead/bin/Debug/net10.0/Homestead.dll",
+      "args": ["--urls", "http://localhost:5080"],
+      "cwd": "${workspaceFolder}/src/Homestead",
+      "envFile": "${workspaceFolder}/.homestead-local/vscode/.env",
+      "env": {
+        "ASPNETCORE_ENVIRONMENT": "Development",
+        "HOMESTEAD_BASE_URL": "http://localhost:5080",
+        "HOMESTEAD_DATA_PATH": "${workspaceFolder}/data/vscode"
+      },
+      "console": "internalConsole",
+      "stopAtEntry": false,
+      "serverReadyAction": {
+        "action": "openExternally",
+        "pattern": "\\bNow listening on:\\s+(https?://\\S+)",
+        "uriFormat": "%s"
+      }
+    },
+    {
+      "name": "Homestead: persistent container (build and launch)",
+      "type": "node-terminal",
+      "request": "launch",
+      "command": "pwsh -NoProfile -File \"${workspaceFolder}/.vscode/start-persistent.ps1\" -Follow",
+      "cwd": "${workspaceFolder}",
+      "autoAttachChildProcesses": false
+    }
+  ]
+}

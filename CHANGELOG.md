@@ -10,8 +10,11 @@
 - Regression coverage for archive privacy, all-type Hugo builds, corruption and
   traversal rejection, activation/commit failures, backup concurrency, and real
   Docker restore plus static-only hosting.
-- Deployment, upgrade/rollback, backup scheduling and release acceptance guides.
+- Deployment, upgrade/rollback, and backup scheduling guides, with release
+  acceptance tracked in GitHub issues.
 
 Release candidate preparation; real-phone and public-DNS Droplet checks remain
-pending. See [Phase 5 verification and limitations](docs/phase-5.md), including the
-documented ImageSharp audit suppressions for unreachable processing paths.
+pending in [release readiness](https://github.com/PoshTools/homestead/issues/22).
+ImageSharp audit suppression assumptions and the dependency follow-up are
+documented in [agent guidance](AGENTS.md#privacy-security-and-configuration) and
+[#8](https://github.com/PoshTools/homestead/issues/8).

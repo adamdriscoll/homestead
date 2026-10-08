@@ -9,6 +9,7 @@ src/Homestead/wwwroot/favicon.ico
 .idea/
 TestResults/
 /data/
+/.homestead-local/
 .playwright-cli/
 output/playwright/
 *.db

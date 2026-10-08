@@ -2,74 +2,62 @@
 
 A self-hostable home for your digital life.
 
-Homestead v2 is a personal publishing platform for microblogs, articles, reviews,
-guides, and photo galleries. The application uses ASP.NET Core on .NET 10,
-Razor Pages, and SQLite, with a static public website regenerated on publication.
+Homestead is a personal publishing platform for one author. Share a short note,
+write an article or review, explain something in a step-by-step guide, or collect
+photos in a gallery. Author from a phone or desktop with Markdown, photo uploads,
+autosave, and private previews.
 
-Phases 1–5 are implemented: secure single-administrator setup, site settings,
-a responsive Markdown article editor with autosave and conflict detection, private
-JPEG/PNG/WebP uploads, preview, and full static publication. Publish, update,
-unpublish, and delete replace the complete public site atomically; failures keep
-the previous site available. Notes support text, photos, or both, with optional titles.
-The public site includes a mixed feed, type listings, tags, About, RSS, sitemap,
-canonical URLs, and social metadata. Branding includes four accent presets,
-avatar/logo/header uploads, and external profiles. Reviews include a subject and
-rating; guides have ordered Markdown steps and step photos; galleries offer batch
-photo uploads, ordering, captions, and alt text. All five types share private
-preview, autosave, and the complete static publication lifecycle.
+Your public website is made of static files. Publishing regenerates the home feed,
+post pages, type listings, tags, About page, RSS, sitemap, and sharing metadata as
+one complete site. Draft edits stay private until you publish an update. If a build
+fails, the previous site stays available and the administrator can retry.
 
-**Maintenance** downloads the active public site as a static ZIP, a complete Hugo
-project with all five types and private drafts, or a consistent full backup with
-original media, settings, credentials, and keys. An offline CLI verifies and
-restores backups into a clean data volume. This checkout prepares `0.1.0-rc.1`;
-real-device and public-domain deployment acceptance remains to be recorded.
+The built-in theme supports light/dark appearance, accent presets, author profiles,
+and avatar, logo, and header images. Your content stays portable: download the
+public site as a standalone static ZIP, export a Hugo project with Markdown and
+photos, or take a complete backup for restoring your installation.
 
-## Run locally
+Homestead uses ASP.NET Core on .NET 10, Razor Pages, and SQLite. It runs as one
+application with a persistent data directory; the Docker Compose configuration
+includes Caddy for HTTPS. Node.js builds the CSS and is not needed at runtime.
 
-Install the .NET 10 SDK, Node.js 24, and Hugo 0.152.2 (needed by export tests only).
-From the repository root in PowerShell:
+## Quick start
+
+Install the .NET 10 SDK and Node.js 24. From the repository root in PowerShell 7:
 
 ```powershell
 $env:ASPNETCORE_ENVIRONMENT = 'Development'
 $env:HOMESTEAD_BASE_URL = 'http://localhost:5080'
 $env:HOMESTEAD_DATA_PATH = Join-Path (Get-Location) 'data'
 $env:HOMESTEAD_SETUP_TOKEN = [Convert]::ToHexString([Security.Cryptography.RandomNumberGenerator]::GetBytes(32))
+# Keep this token for the setup form below.
+$env:HOMESTEAD_SETUP_TOKEN
 dotnet restore
 dotnet build
-dotnet test --no-build
-dotnet run --project src/Homestead --no-launch-profile --urls http://localhost:5080
+dotnet run --project src/Homestead --no-build --no-launch-profile --urls http://localhost:5080
 ```
 
-Open [first-run setup](http://localhost:5080/setup) and enter the generated secret
-(inspect `$env:HOMESTEAD_SETUP_TOKEN` in your local terminal), email, and a strong
-password. Sign in, open **Posts**, and choose **New article**. Write a title/body,
-upload a photo, preview, then publish. Choose **New note** for a shorter update or
-photo-only post. Choose **New review**, **New guide**, or **New gallery** for the
-other focused editors. Open **Settings** to personalize the public site; saving settings
-or uploading branding images rebuilds it. Later edits stay private until **Update
-published post**. Remove the setup token
-from your environment after setup; future startups use the saved administrator.
+Open [first-run setup](http://localhost:5080/setup), enter the generated token,
+and create your administrator account. Sign in, personalize your site in
+**Settings**, then choose a post type in **Posts**. Save, upload photos, preview,
+and publish. Your public site is at [localhost:5080](http://localhost:5080/).
 
-The build compiles Tailwind/daisyUI CSS locally; there is no frontend server or
-Node.js dependency in the production runtime. SQLite and Data Protection keys
-live in the configured data directory, outside the public assets.
+After setup, remove `HOMESTEAD_SETUP_TOKEN` from your environment; subsequent
+startups use the saved account. Keep the data directory to retain your content
+and login keys. For production hosting with Docker and HTTPS, follow the
+[deployment guide](docs/deploy.md).
 
-See [deployment instructions](docs/deploy.md) for Linux/Docker Compose,
-[contributing](docs/contributing.md) for quality checks, and
-[Phase 1 decisions and verification](docs/phase-1.md),
-[Phase 2 publishing and verification](docs/phase-2.md), and
-[Phase 3 public website and verification](docs/phase-3.md), and
-[Phase 4 five-type authoring and verification](docs/phase-4.md) for acceptance evidence and
-the real-phone demo checklist. See [Phase 5 portability and release readiness](docs/phase-5.md)
-and [backup/restore instructions](docs/backup-restore.md) for the new operations workflows.
+## Documentation and development
 
-## Planning documents
+- [Contributing](docs/contributing.md): development tools, tests, quality checks, and migrations.
+- [Deployment](docs/deploy.md): Docker Compose, HTTPS, configuration, upgrades, and troubleshooting.
+- [Backup and restore](docs/backup-restore.md): protecting your data and moving to a new installation.
+- [Agent guidance](AGENTS.md): architecture, project conventions, and security boundaries.
+- [Changelog](CHANGELOG.md): release history.
+- [GitHub issues](https://github.com/PoshTools/homestead/issues): remaining work and feature proposals.
 
-Start with the [planning index and review](docs/planning/README.md), then read:
-
-1. [Product specification](docs/planning/SPEC.md) — MVP scope, user journeys, and release acceptance criteria.
-2. [Technical architecture](docs/planning/ARCHITECTURE.md) — application structure, content storage, static publishing, security, and exports.
-3. [Implementation plan](docs/planning/IMPLEMENTATION.md) — five delivery phases with task dependencies and acceptance checks.
+The current version is a release candidate. Real-device and public-deployment
+acceptance is tracked in [release readiness](https://github.com/PoshTools/homestead/issues/22).
 
 ## License
 

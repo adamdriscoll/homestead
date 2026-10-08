@@ -9,7 +9,8 @@
   </PropertyGroup>
   <!-- These advisory paths are unreachable: TIFF is rejected before decoding,
        ICC metadata is skipped, and histogram processing is never used.
-       ImageSharp 4.1.2 requires a license key; see docs/phase-5.md. Keep all other audits enabled. -->
+       See AGENTS.md and GitHub issue #8 for the dependency/licensing follow-up.
+       Keep all other audits enabled. -->
   <ItemGroup>
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-gwg2-r3hj-4w44" />
     <NuGetAuditSuppress Include="https://github.com/advisories/GHSA-j3p4-wp97-rph4" />

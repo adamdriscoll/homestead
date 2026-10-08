@@ -142,7 +142,8 @@ a draft alone never updates its public snapshot.
 Restart recovers the active manifest and reconciles interrupted build records.
 A corrupt or incomplete active generation makes readiness return 503; sign in and
 rebuild to recover. Keep the entire `/data` volume during container replacement.
-See [Phase 2](phase-2.md) for implementation decisions and phone acceptance steps.
+Track real-device publishing acceptance in the
+[physical-phone checklist](https://github.com/PoshTools/homestead/issues/3).
 
 ## Exports, backup cadence, and upgrades
 
@@ -173,8 +174,8 @@ Never downgrade a migrated database in place. To roll back, stop the new app,
 restore the pre-upgrade backup into a **fresh** volume using its matching old
 image, and configure Compose to use that volume and the saved `homestead:rollback`
 image with an override. Keep the failed/new volume for diagnosis. Return the
-domain to service only after health and content checks pass. Phase 5 itself adds
-no migrations, but the same procedure applies to future schema upgrades.
+domain to service only after health and content checks pass. Use this procedure
+for upgrades even when the new release has no database migrations.
 
 ## Logs and troubleshooting
 
@@ -194,6 +195,7 @@ backups, key files, setup secrets, or private content when sharing diagnostics.
 | Photos rejected | Use matching JPEG/PNG/WebP contents, extension and MIME, ≤20 MB, ≤40 MP. HEIC/HEIF requires JPEG conversion. |
 | Login fails after restoring without keys | Sign in again; only the complete key backup preserves compatible sessions. |
 
-Use [Phase 5's acceptance checklist](phase-5.md) to record actual public-DNS,
+Use the [release acceptance checklist](https://github.com/PoshTools/homestead/issues/22)
+to record actual public-DNS,
 physical-phone, keyboard/contrast, share-preview and upgrade/rollback verification
 before promoting the release candidate.

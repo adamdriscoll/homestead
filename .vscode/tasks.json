@@ -1,0 +1,49 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Homestead: build",
+      "type": "process",
+      "command": "dotnet",
+      "args": ["build", "${workspaceFolder}/Homestead.slnx", "--configuration", "Debug"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": "$msCompile",
+      "group": { "kind": "build", "isDefault": true }
+    },
+    {
+      "label": "Homestead: prepare local launch",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/.vscode/prepare-local.ps1"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    },
+    {
+      "label": "Homestead: prepare .NET launch",
+      "dependsOn": ["Homestead: build", "Homestead: prepare local launch"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    },
+    {
+      "label": "Homestead: build and start persistent container",
+      "type": "process",
+      "command": "pwsh",
+      "args": ["-NoProfile", "-File", "${workspaceFolder}/.vscode/start-persistent.ps1"],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": [],
+      "group": "build"
+    },
+    {
+      "label": "Homestead: stop persistent container",
+      "type": "process",
+      "command": "pwsh",
+      "args": [
+        "-NoProfile", "-File",
+        "${workspaceFolder}/.agents/skills/homestead-local/scripts/homestead-local.ps1",
+        "-RepoPath", "${workspaceFolder}", "-Environment", "Persistent", "-Action", "Stop"
+      ],
+      "options": { "cwd": "${workspaceFolder}" },
+      "problemMatcher": []
+    }
+  ]
+}

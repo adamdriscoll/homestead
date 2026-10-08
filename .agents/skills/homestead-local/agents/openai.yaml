@@ -1,0 +1,4 @@
+interface:
+  display_name: "Homestead Local"
+  short_description: "Run sandboxes and test persistent container upgrades"
+  default_prompt: "Use $homestead-local to run the latest sandbox and my persistent upgrade test instance."

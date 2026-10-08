@@ -7,6 +7,7 @@
 **/wwwroot/favicon.ico
 **/wwwroot/css/site.css
 data
+.homestead-local
 **/*.db*
 **/.env
 TestResults
