@@ -43,7 +43,7 @@
         </div>
         <p>@Page.Settings.Description</p>
         <nav aria-label="Main navigation" class="flex flex-wrap gap-1">
-            @foreach (var (path, label) in Navigation)
+            @foreach (var (path, label, type) in Navigation.Where(x => x.Type is null || Page.Settings.IsPostTypeEnabled(x.Type.Value)))
             { <a class="btn min-h-11" href="@path" aria-current="@(Page.Path == path ? "page" : null)">@label</a> }
         </nav>
     </header>
@@ -117,8 +117,8 @@
 @code {
     [Parameter] public string Region { get; set; } = "main";
     [Parameter, EditorRequired] public PublicPage Page { get; set; } = null!;
-    private static readonly (string, string)[] Navigation = [("/", "Home"), ("/notes/", "Notes"), ("/articles/", "Articles"),
-        ("/reviews/", "Reviews"), ("/guides/", "Guides"), ("/galleries/", "Galleries"), ("/checkins/", "Check-ins"), ("/about/", "About")];
+    private static readonly (string Path, string Label, PostType? Type)[] Navigation = [("/", "Home", null), ("/notes/", "Notes", PostType.Microblog), ("/articles/", "Articles", PostType.Article),
+        ("/reviews/", "Reviews", PostType.Review), ("/guides/", "Guides", PostType.Guide), ("/galleries/", "Galleries", PostType.Gallery), ("/checkins/", "Check-ins", PostType.Checkin), ("/about/", "About", null)];
     private string Title => Page.Article is { } post ? $"{post.DisplayTitle} · {Page.Settings.Title}"
         : Page.Path == "/" ? Page.Settings.Title : $"{Page.Heading} · {Page.Settings.Title}";
     private string Description => Page.Article is { } post ? DiscoveryFiles.Description(post)

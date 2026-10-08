@@ -101,6 +101,12 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
         builder.Entity<SiteSettings>(e =>
         {
             e.Property(x => x.ThemeId).HasDefaultValue("porch");
+            e.Property(x => x.EnableNotes).HasDefaultValue(true);
+            e.Property(x => x.EnableArticles).HasDefaultValue(true);
+            e.Property(x => x.EnableReviews).HasDefaultValue(true);
+            e.Property(x => x.EnableGuides).HasDefaultValue(true);
+            e.Property(x => x.EnableGalleries).HasDefaultValue(true);
+            e.Property(x => x.EnableCheckins).HasDefaultValue(true);
             e.ToTable("SiteSettings", t => t.HasCheckConstraint("CK_Settings_Singleton", "Id = 1"));
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.AvatarMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.LogoMediaId).OnDelete(DeleteBehavior.Restrict);

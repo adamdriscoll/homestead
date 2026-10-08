@@ -16,6 +16,24 @@ public sealed class SiteSettings
     public string AuthorBio { get; set; } = "";
     public string FooterText { get; set; } = "";
     public bool HideHomesteadCredit { get; set; }
+    public bool EnableNotes { get; set; } = true;
+    public bool EnableArticles { get; set; } = true;
+    public bool EnableReviews { get; set; } = true;
+    public bool EnableGuides { get; set; } = true;
+    public bool EnableGalleries { get; set; } = true;
+    public bool EnableCheckins { get; set; } = true;
+    [NotMapped] public PostType[] EnabledPostTypes => Enum.GetValues<PostType>().Where(IsPostTypeEnabled).ToArray();
+
+    public bool IsPostTypeEnabled(PostType type) => type switch
+    {
+        PostType.Microblog => EnableNotes,
+        PostType.Article => EnableArticles,
+        PostType.Review => EnableReviews,
+        PostType.Guide => EnableGuides,
+        PostType.Gallery => EnableGalleries,
+        PostType.Checkin => EnableCheckins,
+        _ => false
+    };
     public string AccentColor { get; set; } = "Porch";
     public string ThemeId { get; set; } = "porch";
     public string ThemePrimaryColor { get; set; } = "";

@@ -33,6 +33,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
     {
         var post = await FindAsync(id);
         if (post is not null || newPostType is null || id == Guid.Empty || await db.Posts.AnyAsync(x => x.Id == id)) return post;
+        if (!(await db.SiteSettings.AsNoTracking().SingleAsync()).IsPostTypeEnabled(newPostType.Value)) return null;
         return NewEditor(newPostType.Value, id);
     }
 

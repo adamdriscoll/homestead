@@ -23,6 +23,12 @@ public sealed class SettingsInput : IValidatableObject
     [StringLength(500), Display(Name = "Author bio")] public string? AuthorBio { get; set; }
     [StringLength(300), Display(Name = "Footer text")] public string? FooterText { get; set; }
     [Display(Name = "Hide Homestead credit")] public bool HideHomesteadCredit { get; set; }
+    [Display(Name = "Notes")] public bool EnableNotes { get; set; } = true;
+    [Display(Name = "Articles")] public bool EnableArticles { get; set; } = true;
+    [Display(Name = "Reviews")] public bool EnableReviews { get; set; } = true;
+    [Display(Name = "Guides")] public bool EnableGuides { get; set; } = true;
+    [Display(Name = "Galleries")] public bool EnableGalleries { get; set; } = true;
+    [Display(Name = "Check-ins")] public bool EnableCheckins { get; set; } = true;
     [Required, Display(Name = "Accent preset")] public string AccentColor { get; set; } = "Porch";
     [Required, StringLength(80), Display(Name = "Public theme")] public string ThemeId { get; set; } = "porch";
     [StringLength(7), Display(Name = "Primary color")] public string? ThemePrimaryColor { get; set; }
@@ -75,6 +81,12 @@ public sealed class SettingsInput : IValidatableObject
         AuthorBio = s.AuthorBio,
         FooterText = s.FooterText,
         HideHomesteadCredit = s.HideHomesteadCredit,
+        EnableNotes = s.EnableNotes,
+        EnableArticles = s.EnableArticles,
+        EnableReviews = s.EnableReviews,
+        EnableGuides = s.EnableGuides,
+        EnableGalleries = s.EnableGalleries,
+        EnableCheckins = s.EnableCheckins,
         AccentColor = s.AccentColor,
         ThemeId = s.ThemeId,
         ThemePrimaryColor = s.ThemePrimaryColor,
@@ -94,6 +106,12 @@ public sealed class SettingsInput : IValidatableObject
         s.AuthorBio = AuthorBio ?? "";
         s.FooterText = FooterText ?? "";
         s.HideHomesteadCredit = HideHomesteadCredit;
+        s.EnableNotes = EnableNotes;
+        s.EnableArticles = EnableArticles;
+        s.EnableReviews = EnableReviews;
+        s.EnableGuides = EnableGuides;
+        s.EnableGalleries = EnableGalleries;
+        s.EnableCheckins = EnableCheckins;
         s.AccentColor = AccentColor;
         s.ThemeId = ThemeId;
         s.ThemePrimaryColor = ThemePrimaryColor ?? "";

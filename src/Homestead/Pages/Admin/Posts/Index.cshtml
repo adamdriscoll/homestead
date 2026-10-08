@@ -6,11 +6,8 @@
     @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
     @if (Model.Site.RecoveryError is not null) { <p class="alert" role="alert">@Model.Site.RecoveryError</p> }
     <div class="flex flex-wrap gap-2">
-        <form method="post" asp-page-handler="New"><button class="btn btn-primary">New article</button></form>
-        <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="Microblog" /><button class="btn">New note</button></form>
-        @foreach (var type in new[] { "Review", "Guide", "Gallery" })
-        { <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="@type" /><button class="btn">New @type.ToLowerInvariant()</button></form> }
-        <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="Checkin" /><button class="btn">New check-in</button></form>
+        @foreach (var type in Model.EnabledPostTypes)
+        { <form method="post" asp-page-handler="New"><input type="hidden" name="type" value="@type" /><button class="btn">New @(type switch { Homestead.Data.Entities.PostType.Microblog => "note", Homestead.Data.Entities.PostType.Checkin => "check-in", _ => type.ToString().ToLowerInvariant() })</button></form> }
         <form method="post" asp-page-handler="Rebuild"><button class="btn">Rebuild site</button></form>
         <a class="btn" href="/">View public site</a>
     </div>
@@ -19,7 +16,8 @@
         @foreach (var status in new[] { "Draft", "Published", "Unpublished" })
         { <a class="btn" href="/admin/posts?status=@status">@status</a> }
     </nav>
-    @if (Model.Posts.Count == 0) { <p>No posts here yet. Choose a post type to start.</p> }
+    @if (Model.EnabledPostTypes.Length == 0) { <p>Enable a post type in <a class="link" href="/admin/settings#posts">Settings</a> to start writing.</p> }
+    else if (Model.Posts.Count == 0) { <p>No posts here yet. Choose a post type to start.</p> }
     @foreach (var post in Model.Posts)
     {
         var live = Model.Site.Current?.Articles.SingleOrDefault(x => x.PostId == post.Id);
