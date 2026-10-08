@@ -39,13 +39,13 @@ for (const javaScriptEnabled of [true, false]) {
       await newPost(page, 'check-in');
       if (javaScriptEnabled) await page.getByRole('tab', { name: 'Details', exact: true }).click();
       await page.getByLabel('Place name (required to publish)', { exact: true }).fill('Equator café');
-      await page.getByLabel('Latitude (optional)', { exact: true }).fill('0');
-      await page.getByLabel('Longitude (optional)', { exact: true }).fill('0');
+      await page.getByLabel('Latitude', { exact: true }).fill('0');
+      await page.getByLabel('Longitude', { exact: true }).fill('0');
       const publicPath = await publish(page);
       const editorPath = new URL(page.url()).pathname;
       if (javaScriptEnabled) await page.getByRole('tab', { name: 'Details', exact: true }).click();
       await page.getByLabel('Place name (required to publish)', { exact: true }).fill('Private draft place');
-      await page.getByLabel('Latitude (optional)', { exact: true }).fill('42');
+      await page.getByLabel('Latitude', { exact: true }).fill('42');
       await page.getByRole('button', { name: 'Save draft', exact: true }).click();
       await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
       await page.goto('/');
@@ -99,8 +99,8 @@ test('every post has a marker and overlapping markers expose safe links to all p
     await newPost(page, 'check-in');
     await page.getByRole('tab', { name: 'Details', exact: true }).click();
     await page.getByLabel('Place name (required to publish)', { exact: true }).fill(place);
-    await page.getByLabel('Latitude (optional)', { exact: true }).fill(latitude);
-    await page.getByLabel('Longitude (optional)', { exact: true }).fill(longitude);
+    await page.getByLabel('Latitude', { exact: true }).fill(latitude);
+    await page.getByLabel('Longitude', { exact: true }).fill(longitude);
     await publish(page);
   }
   await page.goto('/map/');

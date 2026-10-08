@@ -19,7 +19,7 @@ test('ordinary forms save, preview and publish an article without JavaScript', a
   await page.getByLabel('Title', { exact: false }).fill('Browser forms article');
   await page.getByLabel('Body').fill('Written without JavaScript.');
   await page.getByLabel('Tags (comma separated)').fill('Home');
-  await page.getByLabel('Place name (optional)', { exact: true }).fill('Quiet café');
+  await page.getByLabel('Place name', { exact: true }).fill('Quiet café');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
   const popup = page.waitForEvent('popup');

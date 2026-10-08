@@ -19,7 +19,7 @@ test('untouched editors and empty previews leave no drafts', async ({ owner: pag
   await expect(page.getByText('No posts here yet. Choose a post type to start.')).toBeVisible();
   await newPost(page, 'guide');
   await page.getByRole('button', { name: 'Add step', exact: true }).click();
-  await expect(page.getByRole('textbox', { name: 'Step 1 instructions (Markdown)', exact: true })).toBeVisible();
+  await expect(page.getByRole('textbox', { name: 'Step 1 instructions (required to publish)', exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Your guide', exact: true })).toBeVisible();
   await page.goto('/admin/posts');
@@ -95,15 +95,15 @@ test('Details supports keyboard navigation and saves metadata across editor tabs
   await expect(page.locator('#editor-write')).toBeHidden();
   await expect(page.locator('#editor-details')).toBeVisible();
   await page.getByLabel('Tags (comma separated)').fill('Home, Writing');
-  await page.getByLabel('Place name (optional)', { exact: true }).fill('Quiet café');
-  await page.getByLabel('Latitude (optional)', { exact: true }).fill('41.88');
-  await page.getByLabel('Longitude (optional)', { exact: true }).fill('-87.63');
+  await page.getByLabel('Place name', { exact: true }).fill('Quiet café');
+  await page.getByLabel('Latitude', { exact: true }).fill('41.88');
+  await page.getByLabel('Longitude', { exact: true }).fill('-87.63');
   await saved(page);
   await page.reload();
   await expect(page.getByLabel('Body')).toHaveValue('A focused writing experience.');
   await details.click();
   expect((await page.getByLabel('Tags (comma separated)').inputValue()).split(', ').sort()).toEqual(['Home', 'Writing']);
-  await expect(page.getByLabel('Place name (optional)', { exact: true })).toHaveValue('Quiet café');
+  await expect(page.getByLabel('Place name', { exact: true })).toHaveValue('Quiet café');
   await expect(page.getByLabel('Cover image')).toBeVisible();
   await details.focus();
   await page.keyboard.press('ArrowRight');
@@ -120,12 +120,12 @@ test('Details supports keyboard navigation and saves metadata across editor tabs
   await details.click();
   await page.screenshot({ path: testInfo.outputPath('editor-details.png'), fullPage: true });
   // Native validation must reveal an invalid field even when its tab is hidden.
-  await page.getByLabel('Latitude (optional)', { exact: true }).fill('91');
+  await page.getByLabel('Latitude', { exact: true }).fill('91');
   await write.click();
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(details).toHaveAttribute('aria-selected', 'true');
-  await expect(page.getByLabel('Latitude (optional)', { exact: true })).toBeFocused();
-  await page.getByLabel('Latitude (optional)', { exact: true }).fill('41.88');
+  await expect(page.getByLabel('Latitude', { exact: true })).toBeFocused();
+  await page.getByLabel('Latitude', { exact: true }).fill('41.88');
   await page.getByRole('tab', { name: 'Preview', exact: true }).click();
   await expect(page.frameLocator('#draft-preview').getByText('Location:', { exact: false })).toContainText('Quiet café');
   await expect(page.locator('#post-state')).toHaveText('Draft');
@@ -160,11 +160,11 @@ test('Add Location autosaves coordinates and keeps later location changes privat
   await expect(page.getByRole('tab', { name: 'Write', exact: true })).toHaveAttribute('aria-selected', 'true');
   await page.reload();
   await page.getByRole('tab', { name: 'Details', exact: true }).click();
-  await expect(page.getByLabel('Latitude (optional)', { exact: true })).toHaveValue('41.88');
-  await expect(page.getByLabel('Longitude (optional)', { exact: true })).toHaveValue('-87.63');
+  await expect(page.getByLabel('Latitude', { exact: true })).toHaveValue('41.88');
+  await expect(page.getByLabel('Longitude', { exact: true })).toHaveValue('-87.63');
   await expect(page.locator('#post-state')).toHaveText('Draft');
   await page.getByRole('tab', { name: 'Write', exact: true }).click();
-  await page.getByLabel('Note (Markdown)', { exact: true }).fill('A note with browser coordinates.');
+  await page.getByLabel('Note', { exact: true }).fill('A note with browser coordinates.');
   const publicPath = await publish(page);
   expect(await (await page.request.get(publicPath)).text()).toContain('41.88, -87.63');
   await context.setGeolocation({ latitude: 0, longitude: 0 });
@@ -172,8 +172,8 @@ test('Add Location autosaves coordinates and keeps later location changes privat
   await expect(page.locator('#location-status')).toHaveText('Location added.');
   await saved(page);
   await page.getByRole('tab', { name: 'Details', exact: true }).click();
-  await expect(page.getByLabel('Latitude (optional)', { exact: true })).toHaveValue('0');
-  await expect(page.getByLabel('Longitude (optional)', { exact: true })).toHaveValue('0');
+  await expect(page.getByLabel('Latitude', { exact: true })).toHaveValue('0');
+  await expect(page.getByLabel('Longitude', { exact: true })).toHaveValue('0');
   expect(await (await page.request.get(publicPath)).text()).toContain('41.88, -87.63');
   await page.screenshot({ path: testInfo.outputPath('editor-location.png'), fullPage: true });
 });
@@ -187,8 +187,8 @@ for (const [code, message] of [[1, 'Location permission was denied.'], [2, 'Your
     }, code);
     await newPost(page);
     await page.getByRole('tab', { name: 'Details', exact: true }).click();
-    await page.getByLabel('Latitude (optional)', { exact: true }).fill('10');
-    await page.getByLabel('Longitude (optional)', { exact: true }).fill('20');
+    await page.getByLabel('Latitude', { exact: true }).fill('10');
+    await page.getByLabel('Longitude', { exact: true }).fill('20');
     await saved(page);
     await page.getByRole('tab', { name: 'Write', exact: true }).click();
     const button = page.getByRole('button', { name: 'Add Location', exact: true });
@@ -199,7 +199,7 @@ for (const [code, message] of [[1, 'Location permission was denied.'], [2, 'Your
     await expect(page.locator('#location-status')).toContainText(message);
     await page.reload();
     await page.getByRole('tab', { name: 'Details', exact: true }).click();
-    await expect(page.getByLabel('Latitude (optional)', { exact: true })).toHaveValue('10');
-    await expect(page.getByLabel('Longitude (optional)', { exact: true })).toHaveValue('20');
+    await expect(page.getByLabel('Latitude', { exact: true })).toHaveValue('10');
+    await expect(page.getByLabel('Longitude', { exact: true })).toHaveValue('20');
   });
 }

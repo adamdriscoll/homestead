@@ -33,15 +33,19 @@
         <div id="editor-write" class="p-4 space-y-4">
         @if (review)
         {
-            <label class="block space-y-2"><span>Subject</span><input asp-for="Input.Subject" class="input w-full" maxlength="300" /></label>
-            <label class="block space-y-2"><span>Rating (1–5)</span><input asp-for="Input.Rating" type="number" min="1" max="5" step="1" class="input w-full" /></label>
-            <label class="block space-y-2"><span>Subject URL (optional · HTTP or HTTPS)</span><input asp-for="Input.ExternalUrl" type="url" class="input w-full" maxlength="2000" /></label>
+            <label class="block space-y-2"><span class="inline-flex items-center gap-1">Subject
+                <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+            </span><input asp-for="Input.Subject" class="input w-full" maxlength="300" /></label>
+            <label class="block space-y-2"><span class="inline-flex items-center gap-1">Rating (1–5)
+                <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+            </span><input asp-for="Input.Rating" type="number" min="1" max="5" step="1" class="input w-full" /></label>
+            <label class="block space-y-2"><span>Subject URL</span><input asp-for="Input.ExternalUrl" type="url" class="input w-full" maxlength="2000" /></label>
         }
         else
         {
             <label class="block space-y-2">
-                <span class="inline-flex items-center gap-1">@(note || gallery || checkin ? "Title (optional)" : "Title")
-                    @if (Model.Post.Type == PostType.Article)
+                <span class="inline-flex items-center gap-1">Title
+                    @if (Model.Post.Type == PostType.Article || guide)
                     {
                         <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
                     }
@@ -54,8 +58,8 @@
             <label class="block space-y-2"><span>Summary</span><textarea asp-for="Input.Summary" class="textarea w-full" maxlength="1000" rows="2"></textarea></label>
         }
         <div class="space-y-2">
-        <label for="Input_BodyMarkdown" class="inline-flex items-center gap-1">@(note ? "Note (Markdown)" : review ? "Review (Markdown)" : checkin ? "Visit (optional · Markdown)" : guide || gallery ? "Introduction (optional · Markdown)" : "Body")
-            @if (Model.Post.Type == PostType.Article)
+        <label for="Input_BodyMarkdown" class="inline-flex items-center gap-1">@(note ? "Note" : review ? "Review" : checkin ? "Visit" : guide || gallery ? "Introduction" : "Body")
+            @if (Model.Post.Type == PostType.Article || review)
             {
                 <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
             }
@@ -76,12 +80,13 @@
         {
             <section class="space-y-4" aria-labelledby="steps-title">
                 <h2 id="steps-title" class="text-xl font-semibold">Steps</h2>
-                <p>Each step needs instructions before publishing. Select a step for each photo below.</p>
                 @for (var i = 0; i < Model.Input.Steps.Count; i++)
                 {
                     <div class="border border-base-300 rounded-lg p-4 space-y-3">
                         <input asp-for="Input.Steps[i].Id" type="hidden" />
-                        <label class="block space-y-2"><span>Step @(i + 1) instructions (Markdown)</span><textarea asp-for="Input.Steps[i].BodyMarkdown" class="textarea w-full font-mono" rows="6" maxlength="200000"></textarea></label>
+                        <label class="block space-y-2"><span class="inline-flex items-center gap-1">Step @(i + 1) instructions
+                            <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                        </span><textarea asp-for="Input.Steps[i].BodyMarkdown" class="textarea w-full font-mono" rows="6" maxlength="200000"></textarea></label>
                         <div class="flex flex-wrap gap-2">
                             <button class="btn" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="step-up:@i" disabled="@(i == 0)">Move step up</button>
                             <button class="btn" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="step-down:@i" disabled="@(i == Model.Input.Steps.Count - 1)">Move step down</button>
@@ -116,7 +121,7 @@
                     <img src="/admin/media/@image.MediaAssetId" alt="@(image.AltText ?? "")" class="max-h-40 max-w-full" />
                     <label class="block">Image description (alt text)<input name="Input.AltText[@image.MediaAssetId]" value="@(Model.Input.AltText.GetValueOrDefault(image.MediaAssetId) ?? image.AltText)" class="input w-full" maxlength="1000" /></label>
                     @if (gallery || guide || review || checkin)
-                    { <label class="block">Caption (optional)<input name="Input.Captions[@image.MediaAssetId]" value="@(Model.Input.Captions.GetValueOrDefault(image.MediaAssetId) ?? image.Caption)" class="input w-full" maxlength="1000" /></label> }
+                    { <label class="block">Caption<input name="Input.Captions[@image.MediaAssetId]" value="@(Model.Input.Captions.GetValueOrDefault(image.MediaAssetId) ?? image.Caption)" class="input w-full" maxlength="1000" /></label> }
                     @if (guide)
                     {
                         <label class="block">Photo placement<select name="Input.StepImages[@image.MediaAssetId]" class="select w-full">
@@ -137,7 +142,13 @@
         </div>
         <div class="space-y-3 border-t border-base-300 pt-4">
             <h3 class="text-lg font-semibold">Add a photo</h3>
-            <label class="block space-y-2"><span>Photos (JPEG, PNG, WebP · up to 20 MB each · five per upload)</span><input asp-for="Uploads" form="image-upload" class="file-input w-full" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif" /></label>
+            <label class="block space-y-2"><span class="inline-flex items-center gap-1">Photos
+                @if (gallery)
+                {
+                    <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                }
+            </span><input asp-for="Uploads" form="image-upload" class="file-input w-full" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif" /></label>
+            <p class="text-sm">JPEG, PNG, WebP · up to 20 MB each · five per upload</p>
             <label class="block space-y-2"><span>Image description (alt text)</span><input asp-for="UploadAlt" form="image-upload" class="input w-full" maxlength="1000" /></label>
             <p class="text-sm">HEIC/HEIF: export as JPEG or select Most Compatible in your camera settings.</p>
             <noscript><p class="text-sm">Save your draft before uploading a photo.</p></noscript>
@@ -147,12 +158,17 @@
         </div>
         <div id="editor-details" class="p-4 space-y-5" aria-label="Post settings">
             <fieldset class="fieldset border-b border-base-300 pb-5">
-                <legend class="fieldset-legend">Location @(checkin ? "" : "(optional)")</legend>
+                <legend class="fieldset-legend">Location</legend>
                 <p>These details become public when you publish.</p>
-                <label class="block space-y-2"><span>Place name @(checkin ? "(required to publish)" : "(optional)")</span><input asp-for="Input.LocationName" class="input w-full" maxlength="300" /></label>
-                <label class="block space-y-2"><span>Address (optional)</span><input asp-for="Input.LocationAddress" class="input w-full" maxlength="1000" /></label>
-                <label class="block space-y-2"><span>Latitude (optional)</span><input asp-for="Input.Latitude" type="number" min="-90" max="90" step="any" class="input w-full" /></label>
-                <label class="block space-y-2"><span>Longitude (optional)</span><input asp-for="Input.Longitude" type="number" min="-180" max="180" step="any" class="input w-full" /></label>
+                <label class="block space-y-2"><span class="inline-flex items-center gap-1">Place name
+                    @if (checkin)
+                    {
+                        <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                    }
+                </span><input asp-for="Input.LocationName" class="input w-full" maxlength="300" /></label>
+                <label class="block space-y-2"><span>Address</span><input asp-for="Input.LocationAddress" class="input w-full" maxlength="1000" /></label>
+                <label class="block space-y-2"><span>Latitude</span><input asp-for="Input.Latitude" type="number" min="-90" max="90" step="any" class="input w-full" /></label>
+                <label class="block space-y-2"><span>Longitude</span><input asp-for="Input.Longitude" type="number" min="-180" max="180" step="any" class="input w-full" /></label>
                 <p>Enter both coordinates, or leave both empty.</p>
             </fieldset>
             <section class="space-y-2 border-b border-base-300 pb-5">

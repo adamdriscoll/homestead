@@ -6,9 +6,9 @@ test('a check-in autosaves its location, previews privately, and publishes witho
   await expect(page.getByRole('status').filter({ hasText: 'A check-in needs' })).toContainText('place name');
   await page.getByRole('tab', { name: 'Details', exact: true }).click();
   await page.getByLabel('Place name (required to publish)', { exact: true }).fill('Browser café');
-  await page.getByLabel('Address (optional)', { exact: true }).fill('123 Quiet Street');
-  await page.getByLabel('Latitude (optional)', { exact: true }).fill('41.88');
-  await page.getByLabel('Longitude (optional)', { exact: true }).fill('-87.63');
+  await page.getByLabel('Address', { exact: true }).fill('123 Quiet Street');
+  await page.getByLabel('Latitude', { exact: true }).fill('41.88');
+  await page.getByLabel('Longitude', { exact: true }).fill('-87.63');
   await saved(page);
   await page.reload();
   await page.getByRole('tab', { name: 'Details', exact: true }).click();
@@ -33,7 +33,7 @@ test('a check-in autosaves its location, previews privately, and publishes witho
 
 test('a text note publishes without a title and public navigation works without JavaScript', async ({ owner: page, browser, site }) => {
   await newPost(page, 'note');
-  await page.getByLabel('Note (Markdown)', { exact: true }).fill('A quiet browser-tested afternoon.');
+  await page.getByLabel('Note', { exact: true }).fill('A quiet browser-tested afternoon.');
   await page.getByRole('tab', { name: 'Details', exact: true }).click();
   await page.getByLabel('Tags (comma separated)').fill('Home');
   const publicPath = await publish(page);
@@ -55,12 +55,12 @@ test('a text note publishes without a title and public navigation works without 
 
 test('review validation keeps an incomplete draft private, then publishes its rating', async ({ owner: page, context }) => {
   await newPost(page, 'review');
-  await page.getByLabel('Subject', { exact: true }).fill('Browser coffee');
-  await page.getByLabel('Review (Markdown)', { exact: true }).fill('A **warm** cup.');
+  await page.getByLabel('Subject (required to publish)', { exact: true }).fill('Browser coffee');
+  await page.getByLabel('Review (required to publish)', { exact: true }).fill('A **warm** cup.');
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'A review needs' })).toContainText('rating');
   expect((await page.request.get('/posts/browser-coffee/')).status()).toBe(404);
-  await page.getByLabel('Rating (1–5)', { exact: true }).fill('5');
+  await page.getByLabel('Rating (1–5) (required to publish)', { exact: true }).fill('5');
   const publicPath = await publish(page);
   const publicPage = await context.newPage();
   await publicPage.goto(publicPath);
@@ -71,13 +71,13 @@ test('review validation keeps an incomplete draft private, then publishes its ra
 
 test('guide steps can be added and reordered before publication', async ({ owner: page, context }) => {
   await newPost(page, 'guide');
-  await page.getByLabel('Title', { exact: true }).fill('Browser guide');
+  await page.getByLabel('Title (required to publish)', { exact: true }).fill('Browser guide');
   await page.getByRole('button', { name: 'Add step', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Step 1 instructions (Markdown)', exact: true }).fill('Open the door.');
+  await page.getByRole('textbox', { name: 'Step 1 instructions (required to publish)', exact: true }).fill('Open the door.');
   await page.getByRole('button', { name: 'Add step', exact: true }).click();
-  await page.getByRole('textbox', { name: 'Step 2 instructions (Markdown)', exact: true }).fill('Put the kettle on.');
+  await page.getByRole('textbox', { name: 'Step 2 instructions (required to publish)', exact: true }).fill('Put the kettle on.');
   await page.getByRole('button', { name: 'Move step up', exact: true }).nth(1).click();
-  await expect(page.getByRole('textbox', { name: 'Step 1 instructions (Markdown)', exact: true })).toHaveValue('Put the kettle on.');
+  await expect(page.getByRole('textbox', { name: 'Step 1 instructions (required to publish)', exact: true })).toHaveValue('Put the kettle on.');
   const publicPath = await publish(page);
   const publicPage = await context.newPage();
   await publicPage.goto(publicPath);
