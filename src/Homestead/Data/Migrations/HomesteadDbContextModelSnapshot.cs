@@ -433,6 +433,9 @@ namespace Homestead.Data.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("EnableLocationMap")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("EnableNotes")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")

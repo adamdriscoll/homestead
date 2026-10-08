@@ -85,7 +85,10 @@
         </div>
     </header>
     <main id="main" class="max-w-5xl mx-auto px-4 py-8">@RenderBody()</main>
-    <footer class="max-w-5xl mx-auto p-4 text-sm border-t border-base-300">Your home on the internet.</footer>
+    <footer class="max-w-5xl mx-auto p-4 text-sm border-t border-base-300 space-y-4">
+        @await RenderSectionAsync("Footer", required: false)
+        <p>Your home on the internet.</p>
+    </footer>
 </body>
 @await RenderSectionAsync("Scripts", required: false)
 </html>

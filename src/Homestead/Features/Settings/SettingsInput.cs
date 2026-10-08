@@ -23,6 +23,7 @@ public sealed class SettingsInput : IValidatableObject
     [StringLength(500), Display(Name = "Author bio")] public string? AuthorBio { get; set; }
     [StringLength(300), Display(Name = "Footer text")] public string? FooterText { get; set; }
     [Display(Name = "Hide Homestead credit")] public bool HideHomesteadCredit { get; set; }
+    [Display(Name = "Enable location map")] public bool EnableLocationMap { get; set; }
     [Display(Name = "Notes")] public bool EnableNotes { get; set; } = true;
     [Display(Name = "Articles")] public bool EnableArticles { get; set; } = true;
     [Display(Name = "Reviews")] public bool EnableReviews { get; set; } = true;
@@ -81,6 +82,7 @@ public sealed class SettingsInput : IValidatableObject
         AuthorBio = s.AuthorBio,
         FooterText = s.FooterText,
         HideHomesteadCredit = s.HideHomesteadCredit,
+        EnableLocationMap = s.EnableLocationMap,
         EnableNotes = s.EnableNotes,
         EnableArticles = s.EnableArticles,
         EnableReviews = s.EnableReviews,
@@ -106,6 +108,7 @@ public sealed class SettingsInput : IValidatableObject
         s.AuthorBio = AuthorBio ?? "";
         s.FooterText = FooterText ?? "";
         s.HideHomesteadCredit = HideHomesteadCredit;
+        s.EnableLocationMap = EnableLocationMap;
         s.EnableNotes = EnableNotes;
         s.EnableArticles = EnableArticles;
         s.EnableReviews = EnableReviews;

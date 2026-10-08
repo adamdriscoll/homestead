@@ -1,32 +1,54 @@
 @page "/admin"
 @model Homestead.Pages.Admin.IndexModel
+@using Homestead.Data.Entities
 @{ ViewData["Title"] = "Dashboard"; }
-<div class="space-y-8">
-    <div class="space-y-2"><p class="text-sm">YOUR HOMESTEAD</p><h1 class="text-3xl font-semibold">@Model.SiteTitle</h1><p>A little space for everything you want to share.</p></div>
-    <div class="alert" role="status">Choose a post type, add content, and publish it to your public site.</div>
-    <section aria-labelledby="create-title" class="space-y-4">
-        <h2 id="create-title" class="text-xl font-semibold">Create something</h2>
-        <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach (var type in Model.EnabledPostTypes)
-            {
-                <article class="card border border-base-300">
-                    <div class="card-body">
-                        <h3 class="card-title">@type</h3>
-                        <p>@(type switch { Homestead.Data.Entities.PostType.Microblog => "A thought, a moment, a photo.", Homestead.Data.Entities.PostType.Article => "Room for a longer story.", Homestead.Data.Entities.PostType.Review => "Share what you think.", Homestead.Data.Entities.PostType.Guide => "Show how it is done.", _ => "A collection of moments." })</p>
-                        <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New"><input type="hidden" name="type" value="@type" /><button class="btn">Create @(type == Homestead.Data.Entities.PostType.Microblog ? "note" : type.ToString().ToLowerInvariant())</button></form>
-                    </div>
-                </article>
-            }
-        </div>
+<div class="space-y-6">
+    <div class="space-y-2"><p class="text-sm">YOUR HOMESTEAD</p><h1 class="text-3xl font-semibold">@Model.SiteTitle</h1></div>
+    <div class="flex flex-wrap gap-2" aria-label="Create a post">
+        @foreach (var type in Model.EnabledPostTypes.Where(x => x != PostType.Microblog))
+        {
+            <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New">
+                <input type="hidden" name="type" value="@type" />
+                <button class="btn">New @(type == PostType.Checkin ? "check-in" : type.ToString().ToLowerInvariant())</button>
+            </form>
+        }
+    </div>
+    @if (Model.EnabledPostTypes.Contains(PostType.Microblog))
+    {
+        <partial name="Posts/_PostEditor" model="Model" />
+    }
+    else
+    {
+        @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
         @if (Model.EnabledPostTypes.Length == 0) { <p>Enable a post type in <a class="link" href="/admin/settings#posts">Settings</a> to start writing.</p> }
-    </section>
-    <section class="space-y-2"><h2 class="text-xl font-semibold">Recent posts</h2>
-        @foreach (var post in Model.RecentPosts) { <p><a class="underline" href="/admin/posts/@post.Id/edit">@(post.Review?.Subject is { Length: > 0 } subject ? subject : string.IsNullOrWhiteSpace(post.Draft?.Title) ? $"Untitled {(post.Type == Homestead.Data.Entities.PostType.Microblog ? "note" : post.Type.ToString().ToLowerInvariant())}" : post.Draft.Title)</a> · @post.Status</p> }
-        <a class="btn" href="/admin/posts">All posts</a>
-    </section>
-    <section class="space-y-2"><h2 class="text-xl font-semibold">Public site</h2>
-        @if (Model.Site.Current is { } generation) { <p>Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }
-        @if (Model.Site.RecoveryError is not null) { <p role="alert">@Model.Site.RecoveryError</p> }
-        @if (Model.LatestBuild?.Status == Homestead.Data.Entities.GenerationStatus.Failed) { <p role="alert">The last build failed. The previous public site remains active. Rebuild from Posts to retry.</p> }
+    }
+    <div class="divider" role="separator"></div>
+    <section class="grid gap-4 sm:grid-cols-2" aria-label="Recent posts">
+        @foreach (var post in Model.RecentPosts)
+        {
+            var note = post.Type == PostType.Microblog;
+            var body = post.Draft?.BodyMarkdown ?? "";
+            var title = Homestead.Pages.Admin.Posts.IndexModel.DraftTitle(post);
+            <article class="card border border-base-300 min-w-0">
+                <div class="card-body">
+                    <div class="flex flex-wrap items-center justify-between gap-2">
+                        <span class="text-sm">@(note ? "Note" : post.Type == PostType.Checkin ? "Check-in" : post.Type.ToString())</span>
+                        <span class="badge">@post.Status</span>
+                    </div>
+                    <h2 class="card-title break-words"><a class="link" href="/admin/posts/@post.Id/edit">@(note && !string.IsNullOrWhiteSpace(body) ? body[..Math.Min(body.Length, 120)] + (body.Length > 120 ? "…" : "") : title)</a></h2>
+                    @if (!note && !string.IsNullOrWhiteSpace(body)) { <p class="break-words">@(body[..Math.Min(body.Length, 180)] + (body.Length > 180 ? "…" : ""))</p> }
+                    <time class="text-sm text-base-content/60" datetime="@post.UpdatedAtUtc.ToString("O")">@post.UpdatedAtUtc.ToLocalTime().ToString("g")</time>
+                </div>
+            </article>
+        }
     </section>
 </div>
+@section Footer {
+    <section class="space-y-2" aria-label="Public site">
+        <h2 class="font-semibold">Public site</h2>
+        @if (Model.Site.Current is { } generation) { <p>Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }
+        @if (Model.Site.RecoveryError is not null) { <p role="alert">@Model.Site.RecoveryError</p> }
+        @if (Model.LatestBuild?.Status == GenerationStatus.Failed) { <p role="alert">The last build failed. The previous public site remains active. Rebuild from Posts to retry.</p> }
+    </section>
+}
+@section Scripts { <script src="/js/article-editor.js" defer></script> }

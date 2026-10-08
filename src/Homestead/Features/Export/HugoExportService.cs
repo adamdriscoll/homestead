@@ -25,6 +25,13 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             "[markup.goldmark.renderer]\nunsafe = false\n", ct);
         foreach (var (path, text) in HugoTemplates.Files)
             await ArchiveFiles.TextAsync(zip, path, path == "layouts/baseof.html" ? HugoTemplates.ThemedLayout(settings, theme) : text, ct);
+        if (settings.EnableLocationMap)
+        {
+            await ArchiveFiles.TextAsync(zip, "content/map/index.md", "---\ntitle: \"Location map\"\nlayout: \"location-map\"\nurl: \"/map/\"\n---\n", ct);
+            await ArchiveFiles.TextAsync(zip, "layouts/location-map.html", HugoTemplates.LocationMap, ct);
+            foreach (var (relative, source) in LocationMapAssets.Files(environment.ContentRootPath))
+                await ArchiveFiles.CopyAsync(zip, "static/" + relative, source, ct);
+        }
         await ArchiveFiles.CopyAsync(zip, "static/assets/site.css", Path.Combine(environment.WebRootPath, "css", "site.css"), ct);
         foreach (var (file, bytes) in theme.Files)
         {
@@ -66,7 +73,7 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
         await ArchiveFiles.TextAsync(zip, "README.md", $"# Homestead Hugo export\n\nTested with Hugo {SupportedHugoVersion} (standard or extended). Run `hugo` in this directory; serve `public/`.\n\n" +
             "All nondeleted posts are included. Active published snapshots build by default. Drafts, unpublished posts, hidden post types, pending publications, and separate working bundles containing unpublished edits use `draft: true`. Hidden types retain their saved published snapshot alongside any working edits; `homestead_type_disabled` records the saved setting. If a settings rebuild failed, actually public snapshots still build by default. Use `hugo --buildDrafts` only to preview private work.\n\n" +
             "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), `location` (name/address/latitude/longitude), and ordered `steps` (id/body_markdown/images). Locations, steps, and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
-            "Raw HTML is disabled. This minimal layout renders all six types and carries the selected theme assets, layout, and colors. The original package files are in homestead-theme/. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
+            "Raw HTML is disabled. This minimal layout renders all six types and carries the selected theme assets, layout, and colors. When enabled, /map/ shows coordinates from nondraft post bundles using bundled Leaflet and online OpenStreetMap tiles. The original package files are in homestead-theme/. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
 
         async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug, bool disabled = false)
         {

@@ -201,6 +201,7 @@ public sealed class EditorTests
         Assert.Contains("aria-label=\"Bold (Ctrl/", html); Assert.Contains("/icons/toolbar.svg#bold", html);
         Assert.Contains("data-preview-url", html); Assert.Contains("enctype=\"multipart/form-data\"", html);
         Assert.Contains("id=\"images-tab\"", html); Assert.Contains("aria-label=\"Post settings\"", html);
+        Assert.Contains("id=\"details-tab\"", html); Assert.Contains("id=\"editor-details\"", html);
         Assert.Contains("id=\"delete-post-dialog\"", html); Assert.DoesNotContain("Open preview", html);
         var token = WebUtility.HtmlDecode(Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
         using var form = new MultipartFormDataContent(); form.Add(new StringContent(token), "__RequestVerificationToken");

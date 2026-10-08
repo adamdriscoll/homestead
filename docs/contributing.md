@@ -159,6 +159,12 @@ to latitude -90–90 and longitude -180–180. `LocationTests` and the existing
 lifecycle/portability fixtures cover locations and check-ins, draft isolation,
 validation, stable URLs, and legacy snapshots. Browser tests cover check-in
 autosave, private preview, and public navigation without JavaScript.
+`LocationMapTests` covers the optional public map, snapshot privacy, all post
+types, removals, failed activation, and restart. Portability tests build the Hugo
+map and retain it in static exports and restored backups. Browser tests check
+Leaflet markers, shared-place popups, safe text, tile failures, and navigation
+without JavaScript on desktop and mobile viewports. Automated tests mock tile
+requests rather than repeatedly downloading OpenStreetMap tiles.
 
 Choose work from [GitHub issues](https://github.com/PoshTools/homestead/issues),
 and define scope and acceptance before implementing deferred proposals. See

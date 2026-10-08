@@ -1,0 +1,240 @@
+@model Homestead.Pages.Admin.Posts.PostEditorModel
+@using Homestead.Data.Entities
+@{ var note = Model.Post.Type == PostType.Microblog; var gallery = Model.Post.Type == PostType.Gallery; var guide = Model.Post.Type == PostType.Guide; var review = Model.Post.Type == PostType.Review; var checkin = Model.Post.Type == PostType.Checkin; var newPostType = Model.IsNew ? Model.NewPostType : null; }
+<div class="space-y-6">
+    @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
+    @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-error" role="alert"></div> }
+    @if (!Model.IsTypeEnabled) { <p role="status">This post type is disabled. Your content is kept and draft edits can still be saved. Enable it in <a class="link" href="/admin/settings#posts">Settings</a> to publish. @(Model.Live is not null ? "The previous post is still public. Rebuild from Posts to apply saved settings." : "")</p> }
+    <form method="post" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Save" asp-route-newPostType="@newPostType" id="article-editor" data-post-type="@Model.Post.Type" data-new-post="@Model.IsNew.ToString().ToLowerInvariant()" data-preview-url="/admin/posts/@Model.Post.Id/preview" class="space-y-6">
+        <input type="hidden" asp-for="Input.Version" />
+        @if (Model.IsNew) { <input type="hidden" asp-for="NewPostType" /> }
+        <section class="min-w-0 border border-base-300 rounded-lg" aria-label="Post editor">
+        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-3">
+        <div id="editor-tabs" role="tablist" aria-label="Editor mode" class="tabs tabs-border" hidden>
+            <button type="button" id="write-tab" role="tab" class="tab tab-active min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="true" aria-controls="editor-write">
+                <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#pen"></use></svg>Write
+            </button>
+            <button type="button" id="preview-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-preview" tabindex="-1">
+                <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#eye"></use></svg>Preview
+            </button>
+            <button type="button" id="images-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-images" tabindex="-1">
+                <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#images"></use></svg>Images
+            </button>
+            <button type="button" id="details-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-details" tabindex="-1">
+                <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#gear"></use></svg>Details
+            </button>
+        </div>
+        <p id="save-status" class="badge badge-soft my-2 ml-auto shrink-0" role="status" aria-live="polite"><svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#circle-check"></use></svg><span id="save-status-text">@(Model.IsNew ? "Not saved" : "Draft loaded")</span></p>
+        </div>
+        <p id="save-error" class="alert alert-error m-4" role="alert" hidden></p>
+        <p id="inline-upload-status" class="px-4 py-2 text-sm" role="status" aria-live="polite" hidden></p>
+        <div id="editor-write" class="p-4 space-y-4">
+        @if (review)
+        {
+            <label class="block space-y-2"><span class="inline-flex items-center gap-1">Subject
+                <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+            </span><input asp-for="Input.Subject" class="input w-full" maxlength="300" /></label>
+            <label class="block space-y-2"><span class="inline-flex items-center gap-1">Rating (1–5)
+                <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+            </span><input asp-for="Input.Rating" type="number" min="1" max="5" step="1" class="input w-full" /></label>
+            <label class="block space-y-2"><span>Subject URL</span><input asp-for="Input.ExternalUrl" type="url" class="input w-full" maxlength="2000" /></label>
+        }
+        else if (!note)
+        {
+            <label class="block space-y-2">
+                <span class="inline-flex items-center gap-1">Title
+                    @if (Model.Post.Type == PostType.Article || guide)
+                    {
+                        <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                    }
+                </span>
+                <input asp-for="Input.Title" class="input w-full" maxlength="300" />
+            </label>
+        }
+        @if (note) { <input type="hidden" asp-for="Input.Title" /> }
+        @if (Model.Post.Type == PostType.Article)
+        {
+            <label class="block space-y-2"><span>Summary</span><textarea asp-for="Input.Summary" class="textarea w-full" maxlength="1000" rows="2"></textarea></label>
+        }
+        <div class="space-y-2">
+        <label for="Input_BodyMarkdown" class="inline-flex items-center gap-1">@(note ? "Note" : review ? "Review" : checkin ? "Visit" : guide || gallery ? "Introduction" : "Body")
+            @if (Model.Post.Type == PostType.Article || review)
+            {
+                <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+            }
+        </label>
+        <div class="border border-base-300 rounded-lg overflow-hidden">
+        <div class="flex flex-wrap gap-1 border-b border-base-300 bg-base-200 p-2 rounded-t-lg" role="group" aria-label="Markdown formatting">
+            @foreach (var (action, icon, label) in new[] { ("bold", "bold", "Bold (Ctrl/⌘+B)"), ("italic", "italic", "Italic (Ctrl/⌘+I)"), ("heading", "heading", "Heading"), ("link", "link", "Link"), ("list", "list-ul", "Bulleted list"), ("ordered-list", "list-ol", "Numbered list"), ("quote", "quote-left", "Quote"), ("code", "code", "Code"), ("image", "image", "Upload and insert image") })
+            {
+                <button type="button" class="btn btn-ghost btn-square min-h-11" data-format="@action" aria-label="@label" title="@label">
+                    <svg class="size-5 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#@icon"></use></svg>
+                </button>
+            }
+        </div>
+        <textarea asp-for="Input.BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px]" maxlength="200000" rows="@(note || gallery || guide || checkin ? 6 : 16)"></textarea>
+        </div>
+        </div>
+        @if (guide)
+        {
+            <section class="space-y-4" aria-labelledby="steps-title">
+                <h2 id="steps-title" class="text-xl font-semibold">Steps</h2>
+                @for (var i = 0; i < Model.Input.Steps.Count; i++)
+                {
+                    <div class="border border-base-300 rounded-lg p-4 space-y-3">
+                        <input asp-for="Input.Steps[i].Id" type="hidden" />
+                        <label class="block space-y-2"><span class="inline-flex items-center gap-1">Step @(i + 1) instructions
+                            <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                        </span><textarea asp-for="Input.Steps[i].BodyMarkdown" class="textarea w-full font-mono" rows="6" maxlength="200000"></textarea></label>
+                        <div class="flex flex-wrap gap-2">
+                            <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="step-up:@i" disabled="@(i == 0)">Move step up</button>
+                            <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="step-down:@i" disabled="@(i == Model.Input.Steps.Count - 1)">Move step down</button>
+                            <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="remove-step:@i">Remove step</button>
+                        </div>
+                    </div>
+                }
+                <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="add-step">Add step</button>
+            </section>
+        }
+        </div>
+        <div id="editor-preview" class="p-4" hidden>
+            <iframe id="draft-preview" title="Private post preview" class="w-full min-h-160 border border-base-300" sandbox="allow-same-origin"></iframe>
+        </div>
+        <div id="editor-images" class="p-4 space-y-4">
+        <h2 class="text-xl font-semibold">Images</h2>
+        <p class="text-sm">Removing pasted Markdown excludes that image from preview and publication. Originals stay private for reinsertion and backups.</p>
+        @if (note) { <p>Photos added here appear with this note. Pasted images appear where you insert them in the text.</p> }
+        @if (gallery)
+        {
+            <p>Photos appear in this order. Add captions and descriptions before publishing.</p>
+            @if (Model.Post.Media.Any(x => string.IsNullOrWhiteSpace(Model.Input.AltText.GetValueOrDefault(x.MediaAssetId))))
+            { <p class="alert" role="status">Some photos are missing alt text. Describe them so more readers can enjoy the gallery.</p> }
+        }
+        <div id="article-images" class="space-y-4">
+            @foreach (var image in Model.Post.Media.OrderBy(x => x.SortOrder))
+            {
+                var url = $"/media/{image.MediaAssetId:D}/{image.MediaAsset.StoredFilename}";
+                <div class="border border-base-300 rounded-lg p-4 space-y-2" data-media="@url">
+                    @if (image.InlineOnly) { <p class="text-sm">Inline image · appears only while referenced in Markdown or selected as the cover.</p> }
+                    <input type="hidden" name="Input.MediaOrder" value="@image.MediaAssetId" />
+                    <img src="/admin/media/@image.MediaAssetId" alt="@(image.AltText ?? "")" class="max-h-40 max-w-full" />
+                    <label class="block">Image description (alt text)<input name="Input.AltText[@image.MediaAssetId]" value="@(Model.Input.AltText.GetValueOrDefault(image.MediaAssetId) ?? image.AltText)" class="input w-full" maxlength="1000" /></label>
+                    @if (gallery || guide || review || checkin)
+                    { <label class="block">Caption<input name="Input.Captions[@image.MediaAssetId]" value="@(Model.Input.Captions.GetValueOrDefault(image.MediaAssetId) ?? image.Caption)" class="input w-full" maxlength="1000" /></label> }
+                    @if (guide)
+                    {
+                        <label class="block">Photo placement<select name="Input.StepImages[@image.MediaAssetId]" class="select w-full">
+                            <option value="">Introduction</option>
+                            @for (var i = 0; i < Model.Input.Steps.Count; i++)
+                            { <option value="@Model.Input.Steps[i].Id" selected="@(Model.Input.StepImages.GetValueOrDefault(image.MediaAssetId) == Model.Input.Steps[i].Id)">Step @(i + 1)</option> }
+                        </select></label>
+                    }
+                    <div class="flex flex-wrap gap-2">
+                        <button type="button" class="btn" data-insert-image="@url">Insert image</button>
+                        <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="photo-up:@image.MediaAssetId">Move photo up</button>
+                        <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="photo-down:@image.MediaAssetId">Move photo down</button>
+                        <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="remove-photo:@image.MediaAssetId">Remove photo</button>
+                    </div>
+                    @if (!gallery) { <p class="text-sm break-all">Markdown: ![description](@url)</p> }
+                </div>
+            }
+        </div>
+        <div class="space-y-3 border-t border-base-300 pt-4">
+            <h3 class="text-lg font-semibold">Add a photo</h3>
+            <label class="block space-y-2"><span class="inline-flex items-center gap-1">Photos
+                @if (gallery)
+                {
+                    <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                }
+            </span><input asp-for="Uploads" form="image-upload" class="file-input w-full" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif" /></label>
+            <p class="text-sm">JPEG, PNG, WebP · up to 20 MB each · five per upload</p>
+            <label class="block space-y-2"><span>Image description (alt text)</span><input asp-for="UploadAlt" form="image-upload" class="input w-full" maxlength="1000" /></label>
+            <p class="text-sm">HEIC/HEIF: export as JPEG or select Most Compatible in your camera settings.</p>
+            <noscript><p class="text-sm">Save your draft before uploading a photo.</p></noscript>
+            <button class="btn" type="submit" form="image-upload">Upload photo</button>
+            <p id="upload-status" role="status" aria-live="polite"></p>
+        </div>
+        </div>
+        <div id="editor-details" class="p-4 space-y-5" aria-label="Post settings">
+            <fieldset class="fieldset border-b border-base-300 pb-5">
+                <legend class="fieldset-legend">Location</legend>
+                <p>These details become public when you publish.</p>
+                <label class="block space-y-2"><span class="inline-flex items-center gap-1">Place name
+                    @if (checkin)
+                    {
+                        <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                    }
+                </span><input asp-for="Input.LocationName" class="input w-full" maxlength="300" /></label>
+                <label class="block space-y-2"><span>Address</span><input asp-for="Input.LocationAddress" class="input w-full" maxlength="1000" /></label>
+                <label class="block space-y-2"><span>Latitude</span><input asp-for="Input.Latitude" type="number" min="-90" max="90" step="any" class="input w-full" /></label>
+                <label class="block space-y-2"><span>Longitude</span><input asp-for="Input.Longitude" type="number" min="-180" max="180" step="any" class="input w-full" /></label>
+                <p>Enter both coordinates, or leave both empty.</p>
+            </fieldset>
+            <section class="space-y-2 border-b border-base-300 pb-5">
+                <label class="block space-y-2"><span class="font-semibold">Tags (comma separated)</span><input asp-for="Input.Tags" class="input w-full" maxlength="1000" /></label>
+            </section>
+            @if (Model.Post.Type == PostType.Article)
+            {
+                <section class="space-y-2 border-b border-base-300 pb-5">
+                    <label class="block space-y-2"><span class="font-semibold">Cover image</span>
+                        <select asp-for="Input.CoverMediaId" class="select w-full"><option value="">No cover</option>
+                            @foreach (var image in Model.Post.Media) { <option value="@image.MediaAssetId">@image.MediaAsset.OriginalFilename</option> }
+                        </select>
+                    </label>
+                    <p class="text-sm">Add photos in Images to choose a cover.</p>
+                </section>
+            }
+        </div>
+        <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-4 py-3" aria-label="Publication status">
+            @if (Model.Live is { } live)
+            {
+                <a id="post-state" class="badge badge-success badge-soft badge-lg min-h-11 gap-2 hover:badge-outline focus-visible:outline-2 focus-visible:outline-offset-2" href="/posts/@live.Slug/" title="View public post">
+                    <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#eye"></use></svg>Public post
+                    <svg class="size-3 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#chevron-right"></use></svg>
+                </a>
+                @if (Homestead.Features.Articles.ArticleService.HasDraftChanges(Model.Post, live))
+                {
+                    <span class="badge badge-warning badge-soft gap-2"><svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#pen"></use></svg>Unpublished edits</span>
+                }
+                @if (Homestead.Features.Articles.ArticleService.IsPublicationPending(Model.Post, live))
+                { <p class="w-full text-sm text-warning" role="alert">Saved publication changes are pending. The previous post is still public. Rebuild from Posts to retry.</p> }
+            }
+            else
+            {
+                <span id="post-state" class="badge badge-info badge-soft badge-lg gap-2"><svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#pen"></use></svg>Draft</span>
+                @if (Model.IsTypeEnabled && Model.Post.Status == PostStatus.Published)
+                { <p class="w-full text-sm text-warning" role="alert">Publication pending. Rebuild from Posts to retry.</p> }
+            }
+            <button type="button" id="add-location" class="btn btn-ghost min-h-11 ml-auto gap-2" hidden>
+                <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#location-dot"></use></svg><span>Add Location</span>
+            </button>
+            <p id="location-status" class="w-full text-sm" role="status" aria-live="polite" hidden></p>
+        </footer>
+        </section>
+        <div class="flex flex-wrap justify-end gap-2">
+            <button class="btn btn-outline btn-error" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Delete" asp-route-newPostType="@newPostType" data-delete-post>Delete post</button>
+            @if (Model.Post.FirstPublishedAtUtc is not null) { <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Unpublish" asp-route-newPostType="@newPostType">Unpublish</button> }
+            <button class="btn" type="submit">Save draft</button>
+            <button class="btn btn-primary" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Publish" asp-route-newPostType="@newPostType" disabled="@(!Model.IsTypeEnabled)">@(Model.Live is null ? "Publish" : "Update published post")</button>
+        </div>
+        <noscript>
+            <label class="flex items-center gap-2 py-3"><input type="checkbox" name="ConfirmDelete" value="true" class="checkbox" /> Permanently delete this post</label>
+            <a class="btn" href="/admin/posts/@Model.Post.Id/preview" target="_blank">Preview saved draft</a>
+        </noscript>
+    </form>
+    <form method="post" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Upload" asp-route-newPostType="@newPostType" enctype="multipart/form-data" id="image-upload">
+        @if (Model.IsNew) { <input type="hidden" name="NewPostType" value="@Model.NewPostType" /> }
+    </form>
+    <dialog id="delete-post-dialog" class="modal" aria-labelledby="delete-post-title" aria-describedby="delete-post-description">
+        <div class="modal-box">
+            <h2 id="delete-post-title" class="text-xl font-semibold">Delete this post?</h2>
+            <p id="delete-post-description" class="py-4">This permanently deletes the post and removes it from your public site after a successful rebuild. This cannot be undone.</p>
+            <div class="modal-action">
+                <button type="button" class="btn" data-cancel-delete autofocus>Cancel</button>
+                <button type="button" class="btn btn-error" data-confirm-delete>Delete post</button>
+            </div>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>Cancel</button></form>
+    </dialog>
+</div>
+

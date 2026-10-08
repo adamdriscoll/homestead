@@ -15,8 +15,11 @@ test('an empty form does not save a draft without JavaScript', async ({ owner: p
 test('ordinary forms save, preview and publish an article without JavaScript', async ({ owner: page, context }) => {
   await newPost(page);
   await expect(page.getByRole('tablist')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Add Location', exact: true })).toHaveCount(0);
   await page.getByLabel('Title', { exact: false }).fill('Browser forms article');
   await page.getByLabel('Body').fill('Written without JavaScript.');
+  await page.getByLabel('Tags (comma separated)').fill('Home');
+  await page.getByLabel('Place name', { exact: true }).fill('Quiet café');
   await page.getByRole('button', { name: 'Save draft', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
   const popup = page.waitForEvent('popup');
@@ -28,4 +31,6 @@ test('ordinary forms save, preview and publish an article without JavaScript', a
   const publicPage = await context.newPage();
   await publicPage.goto(publicPath);
   await expect(publicPage.getByText('Written without JavaScript.')).toBeVisible();
+  await expect(publicPage.getByText('Location:', { exact: false })).toContainText('Quiet café');
+  await expect(publicPage.getByRole('navigation', { name: 'Post tags' }).getByRole('link', { name: 'Home', exact: true })).toBeVisible();
 });

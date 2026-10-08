@@ -24,6 +24,13 @@
     @foreach (var style in Page.Theme!.Variant.Styles)
     { <link rel="stylesheet" href="@Page.Theme.AssetUrl(style, Page.Preview)" /> }
     <link rel="stylesheet" href="@(Page.Preview ? "/admin/themes/colors.css" : "/assets/theme-colors.css")" />
+    @if (Page.Path == "/map/" && !Page.Preview)
+    {
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+        <link rel="stylesheet" href="/assets/map/leaflet/leaflet.css" />
+        <script src="/assets/map/leaflet/leaflet.js" defer></script>
+        <script src="/assets/map/location-map.js" defer></script>
+    }
     @if (!Page.Preview)
     {
         @foreach (var script in Page.Theme.Variant.Scripts)
@@ -45,6 +52,8 @@
         <nav aria-label="Main navigation" class="flex flex-wrap gap-1">
             @foreach (var (path, label, type) in Navigation.Where(x => x.Type is null || Page.Settings.IsPostTypeEnabled(x.Type.Value)))
             { <a class="btn min-h-11" href="@path" aria-current="@(Page.Path == path ? "page" : null)">@label</a> }
+            @if (Page.Settings.EnableLocationMap)
+            { <a class="btn min-h-11" href="/map/" aria-current="@(Page.Path == "/map/" ? "page" : null)">Map</a> }
         </nav>
     </header>
 }
@@ -60,6 +69,11 @@
                 <PostContent Post="article" Preview="Page.Preview" />
                 @Tags(article)
             </article>
+        }
+        else if (Page.Path == "/map/")
+        {
+            <h1 class="text-3xl font-semibold">Location map</h1>
+            <LocationMap Posts="Page.Articles" />
         }
         else if (Page.Path == "/about/")
         {

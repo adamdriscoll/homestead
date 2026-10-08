@@ -16,17 +16,22 @@
   const writeTab = form.querySelector('#write-tab');
   const previewTab = form.querySelector('#preview-tab');
   const imagesTab = form.querySelector('#images-tab');
+  const detailsTab = form.querySelector('#details-tab');
   const writePanel = form.querySelector('#editor-write');
   const previewPanel = form.querySelector('#editor-preview');
   const imagesPanel = form.querySelector('#editor-images');
-  const editorTabs = [writeTab, previewTab, imagesTab];
-  const editorPanels = [writePanel, previewPanel, imagesPanel];
+  const detailsPanel = form.querySelector('#editor-details');
+  const editorTabs = [writeTab, previewTab, imagesTab, detailsTab];
+  const editorPanels = [writePanel, previewPanel, imagesPanel, detailsPanel];
+  const locationButton = form.querySelector('#add-location');
+  const locationStatus = form.querySelector('#location-status');
   const deleteDialog = document.querySelector('#delete-post-dialog');
   const deleteButton = form.querySelector('[data-delete-post]');
   const confirmDelete = document.createElement('input');
   confirmDelete.type = 'hidden'; confirmDelete.name = 'ConfirmDelete'; confirmDelete.value = 'false'; form.append(confirmDelete);
   let timer, revision = 0, saved = 0, conflict = false, submitting = false, uploading = false;
   let uploadTask = Promise.resolve();
+  let locationTask = Promise.resolve();
   let pending = Promise.resolve(true);
 
   function setStatus(state, message) {
@@ -50,7 +55,6 @@
   function persisted(editorUrl) {
     if (form.dataset.newPost !== 'true') return;
     form.dataset.newPost = 'false';
-    document.querySelector('#post-state').textContent = 'Draft · Not currently public';
     document.querySelectorAll('input[name="NewPostType"]').forEach(input => input.remove());
     history.replaceState(null, '', editorUrl);
   }
@@ -65,6 +69,40 @@
     clearTimeout(timer);
     if (!conflict && !submitting && !uploading) timer = setTimeout(() => save(), 900);
   }
+  function setLocationStatus(message, error = false) {
+    locationStatus.hidden = false; locationStatus.textContent = message;
+    locationStatus.classList.toggle('text-error', error);
+  }
+  async function addLocation() {
+    if (!window.isSecureContext) { setLocationStatus('Location requires HTTPS. Enter coordinates in Details, or open the editor over HTTPS.', true); return; }
+    if (!navigator.geolocation) { setLocationStatus('Location is unavailable in this browser. Enter coordinates in Details.', true); return; }
+    locationButton.disabled = true;
+    locationButton.setAttribute('aria-busy', 'true');
+    locationButton.querySelector('span').textContent = 'Locating…';
+    setLocationStatus('Finding your location…');
+    try {
+      const position = await new Promise((resolve, reject) => navigator.geolocation.getCurrentPosition(resolve, reject, {
+        enableHighAccuracy: true, timeout: 15000, maximumAge: 0
+      }));
+      form.querySelector('[name="Input.Latitude"]').value = position.coords.latitude;
+      form.querySelector('[name="Input.Longitude"]').value = position.coords.longitude;
+      changed();
+      setLocationStatus('Location added.');
+    } catch (error) {
+      const messages = {
+        1: 'Location permission was denied. Allow location access in your browser, or enter coordinates in Details.',
+        2: 'Your location is unavailable. Try again or enter coordinates in Details.',
+        3: 'Finding your location timed out. Try again or enter coordinates in Details.'
+      };
+      setLocationStatus(messages[error.code] || 'Your location could not be found. Try again or enter coordinates in Details.', true);
+    } finally {
+      locationButton.disabled = false;
+      locationButton.setAttribute('aria-busy', 'false');
+      locationButton.querySelector('span').textContent = 'Add Location';
+    }
+  }
+  locationButton.hidden = false;
+  locationButton.addEventListener('click', () => { if (!submitting) locationTask = addLocation(); });
   form.addEventListener('input', e => { if (e.target.form === form && e.target.name !== 'ConfirmDelete') changed(); });
   form.addEventListener('change', e => { if (e.target.tagName === 'SELECT') changed(); });
   form.addEventListener('focusin', e => {
@@ -129,6 +167,7 @@
     e.preventDefault(); clearTimeout(timer);
     const button = e.submitter;
     if (button === deleteButton && confirmDelete.value !== 'true') { deleteDialog.showModal(); return; }
+    await locationTask;
     await uploadTask;
     if (!await save()) { confirmDelete.value = 'false'; return; }
     submitting = true;
@@ -148,6 +187,7 @@
   }
   async function showPreview() {
     const request = ++previewRequest;
+    await locationTask;
     await uploadTask;
     if (!await save()) return false;
     if (form.dataset.newPost === 'true') { setStatus('empty', 'Add content to preview this post.'); return false; }
@@ -163,12 +203,18 @@
   selectTab(writeTab);
   writeTab.addEventListener('click', () => { previewRequest++; selectTab(writeTab); });
   imagesTab.addEventListener('click', () => { previewRequest++; selectTab(imagesTab); });
+  detailsTab.addEventListener('click', () => { previewRequest++; selectTab(detailsTab); });
   previewTab.addEventListener('click', showPreview);
+  form.addEventListener('invalid', () => {
+    const invalidField = form.querySelector('input:invalid, select:invalid, textarea:invalid');
+    const index = editorPanels.findIndex(panel => panel.contains(invalidField));
+    if (index >= 0) { previewRequest++; selectTab(editorTabs[index]); }
+  }, true);
   tabs.addEventListener('keydown', e => {
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     e.preventDefault();
     const index = editorTabs.indexOf(e.target);
-    const target = e.key === 'Home' ? writeTab : e.key === 'End' ? imagesTab : editorTabs[(index + (e.key === 'ArrowRight' ? 1 : -1) + editorTabs.length) % editorTabs.length];
+    const target = e.key === 'Home' ? writeTab : e.key === 'End' ? detailsTab : editorTabs[(index + (e.key === 'ArrowRight' ? 1 : -1) + editorTabs.length) % editorTabs.length];
     target.focus(); target.click();
   });
   deleteDialog.querySelector('[data-cancel-delete]').addEventListener('click', () => deleteDialog.close('cancel'));
@@ -212,7 +258,8 @@
     const insertButton = document.createElement('button'); insertButton.type = 'button'; insertButton.className = 'btn'; insertButton.dataset.insertImage = image.url; insertButton.textContent = 'Insert image'; actions.append(insertButton);
     for (const [command, text] of [['photo-up', 'Move photo up'], ['photo-down', 'Move photo down'], ['remove-photo', 'Remove photo']]) {
       const button = document.createElement('button'); button.type = 'submit'; button.className = 'btn'; button.name = 'command'; button.value = `${command}:${image.id}`;
-      button.formAction = form.action.replace(/\?.*$/, '') + '?handler=Arrange'; button.textContent = text; actions.append(button);
+      const arrangeUrl = new URL(form.action); arrangeUrl.searchParams.set('handler', 'Arrange');
+      button.formAction = arrangeUrl.href; button.textContent = text; actions.append(button);
     }
     container.append(actions); document.querySelector('#article-images').append(container);
     form.querySelector('[name="Input.CoverMediaId"]')?.add(new Option(filename, image.id));
