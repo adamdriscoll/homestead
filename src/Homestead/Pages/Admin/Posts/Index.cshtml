@@ -25,9 +25,13 @@
         <article class="border border-base-300 rounded-lg p-4 space-y-2">
             <h2 class="text-xl font-semibold"><a href="/admin/posts/@post.Id/edit">@Homestead.Pages.Admin.Posts.IndexModel.DraftTitle(post)</a></h2>
             <p>@(post.Type == Homestead.Data.Entities.PostType.Checkin ? "Check-in" : post.Type.ToString()) · @post.Status · @(live is null ? "Not currently public" : "Currently public")</p>
+            <p class="text-sm">Updated <time datetime="@post.UpdatedAtUtc.ToString("O")" title="@DateDisplay.Timestamp(post.UpdatedAtUtc, Model.TimeZone)" aria-label="@DateDisplay.Timestamp(post.UpdatedAtUtc, Model.TimeZone)">@DateDisplay.Relative(post.UpdatedAtUtc)</time></p>
             @if (live is not null && Homestead.Features.Articles.ArticleService.HasDraftChanges(post, live)) { <p>Unpublished edits</p> }
             @if (pending) { <p role="status">Publication pending. @(live is not null ? "The previous post is still public." : "This post is not public.") Rebuild to apply saved changes.</p> }
         </article>
     }
-    @if (Model.Site.Current is { } generation) { <p class="text-sm">Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }
+    @if (Model.Site.Current is { } generation)
+    {
+        <p class="text-sm">Last successful build: <time datetime="@generation.ActivatedAtUtc.ToString("O")" title="@DateDisplay.Timestamp(generation.ActivatedAtUtc, Model.TimeZone)" aria-label="@DateDisplay.Timestamp(generation.ActivatedAtUtc, Model.TimeZone)">@DateDisplay.Relative(generation.ActivatedAtUtc)</time></p>
+    }
 </div>

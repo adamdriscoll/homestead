@@ -11,6 +11,7 @@ namespace Homestead.Pages.Admin.Posts;
 public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, PublishingService publishing) : PageModel
 {
     public List<Post> Posts { get; private set; } = [];
+    public string TimeZone { get; private set; } = "UTC";
     public PostType[] EnabledPostTypes { get; private set; } = [];
     public ActiveSite Site => active;
     public static string DraftTitle(Post post) =>
@@ -21,7 +22,9 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Publish
     [TempData] public string? StatusMessage { get; set; }
     public async Task OnGetAsync(PostStatus? status)
     {
-        EnabledPostTypes = (await db.SiteSettings.AsNoTracking().SingleAsync()).EnabledPostTypes;
+        var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
+        EnabledPostTypes = settings.EnabledPostTypes;
+        TimeZone = settings.TimeZone;
         var liveIds = active.Current?.Articles.Select(x => x.PostId).ToArray() ?? [];
         var query = db.Posts.AsSplitQuery().Include(x => x.Draft).Include(x => x.PublishedSnapshot)
             .Include(x => x.Tags).ThenInclude(x => x.Tag).Include(x => x.Media)

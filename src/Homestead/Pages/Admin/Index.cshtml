@@ -37,7 +37,7 @@
                     </div>
                     <h2 class="card-title break-words"><a class="link" href="/admin/posts/@post.Id/edit">@(note && !string.IsNullOrWhiteSpace(body) ? body[..Math.Min(body.Length, 120)] + (body.Length > 120 ? "…" : "") : title)</a></h2>
                     @if (!note && !string.IsNullOrWhiteSpace(body)) { <p class="break-words">@(body[..Math.Min(body.Length, 180)] + (body.Length > 180 ? "…" : ""))</p> }
-                    <time class="text-sm text-base-content/60" datetime="@post.UpdatedAtUtc.ToString("O")">@post.UpdatedAtUtc.ToLocalTime().ToString("g")</time>
+                    <time class="text-sm text-base-content/60" datetime="@post.UpdatedAtUtc.ToString("O")" title="@DateDisplay.Timestamp(post.UpdatedAtUtc, Model.TimeZone)" aria-label="@DateDisplay.Timestamp(post.UpdatedAtUtc, Model.TimeZone)">@DateDisplay.Relative(post.UpdatedAtUtc)</time>
                 </div>
             </article>
         }
@@ -46,7 +46,10 @@
 @section Footer {
     <section class="space-y-2" aria-label="Public site">
         <h2 class="font-semibold">Public site</h2>
-        @if (Model.Site.Current is { } generation) { <p>Last successful build: @generation.ActivatedAtUtc.ToString("u")</p> }
+        @if (Model.Site.Current is { } generation)
+        {
+            <p>Last successful build: <time datetime="@generation.ActivatedAtUtc.ToString("O")" title="@DateDisplay.Timestamp(generation.ActivatedAtUtc, Model.TimeZone)" aria-label="@DateDisplay.Timestamp(generation.ActivatedAtUtc, Model.TimeZone)">@DateDisplay.Relative(generation.ActivatedAtUtc)</time></p>
+        }
         @if (Model.Site.RecoveryError is not null) { <p role="alert">@Model.Site.RecoveryError</p> }
         @if (Model.LatestBuild?.Status == GenerationStatus.Failed) { <p role="alert">The last build failed. The previous public site remains active. Rebuild from Posts to retry.</p> }
     </section>

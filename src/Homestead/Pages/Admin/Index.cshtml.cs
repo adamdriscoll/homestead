@@ -13,6 +13,7 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Article
     : PostEditorModel(articles, media, publishing, active, db)
 {
     public string SiteTitle { get; private set; } = "";
+    public string TimeZone { get; private set; } = "UTC";
     public PostType[] EnabledPostTypes { get; private set; } = [];
     public List<Post> RecentPosts { get; private set; } = [];
     public SiteGeneration? LatestBuild { get; private set; }
@@ -36,6 +37,7 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Article
     {
         var settings = await Database.SiteSettings.AsNoTracking().SingleAsync();
         SiteTitle = settings.Title; EnabledPostTypes = settings.EnabledPostTypes;
+        TimeZone = settings.TimeZone;
         RecentPosts = await Database.Posts.Include(x => x.Draft).Include(x => x.Review).Where(x => x.Status != PostStatus.Deleted && EnabledPostTypes.Contains(x.Type)).OrderByDescending(x => x.UpdatedAtUtc).Take(5).ToListAsync();
         LatestBuild = await Database.SiteGenerations.OrderByDescending(x => x.BuiltAtUtc).FirstOrDefaultAsync();
     }
