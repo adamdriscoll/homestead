@@ -12,6 +12,15 @@ post pages, type listings, tags, About page, RSS, sitemap, and sharing metadata 
 one complete site. Draft edits stay private until you publish an update. If a build
 fails, the previous site stays available and the administrator can retry.
 
+Choose the post types you use under **Settings → Posts → Post types**. Turning
+off a type hides its creation controls and posts from the dashboard and post list.
+A successful rebuild also removes its public pages, navigation, feed entries,
+tags, and photos. Posts, drafts, and original photos are kept; re-enabling the type
+restores its published snapshots at the same URLs without publishing pending edits.
+Backups retain everything, and Hugo exports include hidden posts as private drafts
+with separate published and working bundles when needed. If a rebuild fails, the
+previous public site remains live until **Rebuild site** succeeds.
+
 Every post can include a location: a place name, address, and optional paired
 latitude/longitude. Choose **New check-in** for a visit; only the place name is
 required to publish, with optional title, text, and photos. Location details appear

@@ -10,7 +10,7 @@
     <div class="grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
         <nav aria-label="Settings sections" data-settings-navigation>
             <ul class="menu menu-horizontal md:menu-vertical bg-base-200 rounded-box w-full p-2">
-                @foreach (var (label, icon) in new[] { ("General", "gear"), ("Theme", "palette"), ("About", "user"), ("Images", "images") })
+                @foreach (var (label, icon) in new[] { ("General", "gear"), ("Posts", "pen"), ("Theme", "palette"), ("About", "user"), ("Images", "images") })
                 {
                     <li>
                         <a id="tab-@label.ToLowerInvariant()" href="#@label.ToLowerInvariant()" class="min-h-11 content-center px-2 md:px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content" data-settings-tab>
@@ -38,6 +38,19 @@
                         <label asp-for="Input.Description"></label><textarea asp-for="Input.Description" class="textarea w-full" rows="3"></textarea>
                         <label asp-for="Input.TimeZone"></label><input asp-for="Input.TimeZone" class="input w-full" list="timezones" />
                         <datalist id="timezones">@foreach (var zone in TimeZoneInfo.GetSystemTimeZones()) { <option value="@zone.Id">@zone.DisplayName</option> }</datalist>
+                    </fieldset>
+                </section>
+                <section id="posts" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="posts-title" data-settings-panel>
+                    <h2 id="posts-title" class="text-xl font-semibold">Posts</h2>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Post types</legend>
+                        <p>Choose the types you use. Disabled types are hidden from your dashboard, post list, and public site after a successful rebuild. Posts and photos are kept; re-enable a type to show them again.</p>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableNotes" class="checkbox" /> Notes</label>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableArticles" class="checkbox" /> Articles</label>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableReviews" class="checkbox" /> Reviews</label>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableGuides" class="checkbox" /> Guides</label>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableGalleries" class="checkbox" /> Galleries</label>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableCheckins" class="checkbox" /> Check-ins</label>
                     </fieldset>
                 </section>
                 <section id="theme" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="theme-title" data-settings-panel>
@@ -89,7 +102,7 @@
                 </section>
                 <div class="space-y-2">
                     <button type="submit" class="btn btn-primary">Save settings</button>
-                    <p class="text-sm">Saves changes in General, Theme, and About.</p>
+                    <p class="text-sm">Saves changes in General, Posts, Theme, and About.</p>
                 </div>
             </form>
             <form method="post" id="theme-upload-form" asp-page-handler="Theme" enctype="multipart/form-data" hidden></form>

@@ -25,6 +25,8 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             if (post.Draft!.Version != version) throw new DraftConflictException();
             if (action == "publish")
             {
+                if (!(await db.SiteSettings.AsNoTracking().SingleAsync()).IsPostTypeEnabled(post.Type))
+                    return new(false, "This post type is disabled. Enable it in Settings before publishing.");
                 if (PostValidation.PublicationError(post) is { } error) return new(false, error);
                 var now = DateTime.UtcNow;
                 var title = post.Type == PostType.Review ? post.Review!.Subject : post.Type == PostType.Checkin && string.IsNullOrWhiteSpace(post.Draft.Title) ? $"checkin-{post.Draft.LocationName}" : post.Draft.Title;
@@ -82,6 +84,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             var snapshots = await db.PublishedSnapshots.AsNoTracking()
                 .Where(x => x.IsActive && x.Post.Status == PostStatus.Published).Select(x => x.SnapshotJson).ToListAsync();
             var posts = snapshots.Select(x => JsonSerializer.Deserialize<ArticleSnapshot>(x) ?? throw new InvalidOperationException("Invalid article snapshot."))
+                .Where(x => settings.IsPostTypeEnabled(x.Type))
                 .OrderByDescending(x => x.PublishedAtUtc).ThenBy(x => x.PostId).ToArray();
             if (posts.Any(x => x.Tags.Length > 0 && x.TagSlugs.Count == 0))
             {
@@ -116,7 +119,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 (PostType.Microblog, "/notes/", "Notes"), (PostType.Review, "/reviews/", "Reviews"),
                 (PostType.Guide, "/guides/", "Guides"), (PostType.Gallery, "/galleries/", "Galleries"),
                 (PostType.Checkin, "/checkins/", "Check-ins") })
-                await Page(path, heading, posts.Where(x => x.Type == type).ToArray());
+                if (settings.IsPostTypeEnabled(type)) await Page(path, heading, posts.Where(x => x.Type == type).ToArray());
             await Page("/about/", "About", []);
             foreach (var tag in posts.SelectMany(post => post.Tags.Select(name => (Name: name, Slug: post.TagSlug(name))))
                 .DistinctBy(x => x.Slug))

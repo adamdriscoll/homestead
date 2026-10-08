@@ -3,11 +3,11 @@
 @{ ViewData["Title"] = "Dashboard"; }
 <div class="space-y-8">
     <div class="space-y-2"><p class="text-sm">YOUR HOMESTEAD</p><h1 class="text-3xl font-semibold">@Model.SiteTitle</h1><p>A little space for everything you want to share.</p></div>
-    <div class="alert" role="status">Write an article, add a photo, and publish it to your public site.</div>
+    <div class="alert" role="status">Choose a post type, add content, and publish it to your public site.</div>
     <section aria-labelledby="create-title" class="space-y-4">
         <h2 id="create-title" class="text-xl font-semibold">Create something</h2>
         <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            @foreach (var type in Enum.GetValues<Homestead.Data.Entities.PostType>())
+            @foreach (var type in Model.EnabledPostTypes)
             {
                 <article class="card border border-base-300">
                     <div class="card-body">
@@ -18,6 +18,7 @@
                 </article>
             }
         </div>
+        @if (Model.EnabledPostTypes.Length == 0) { <p>Enable a post type in <a class="link" href="/admin/settings#posts">Settings</a> to start writing.</p> }
     </section>
     <section class="space-y-2"><h2 class="text-xl font-semibold">Recent posts</h2>
         @foreach (var post in Model.RecentPosts) { <p><a class="underline" href="/admin/posts/@post.Id/edit">@(post.Review?.Subject is { Length: > 0 } subject ? subject : string.IsNullOrWhiteSpace(post.Draft?.Title) ? $"Untitled {(post.Type == Homestead.Data.Entities.PostType.Microblog ? "note" : post.Type.ToString().ToLowerInvariant())}" : post.Draft.Title)</a> · @post.Status</p> }

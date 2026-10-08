@@ -69,7 +69,9 @@ On Linux, use `npx playwright install --with-deps chromium` to install the brows
 system dependencies too. By default, each test run builds the current checkout.
 To reuse an image you have already built, set `HOMESTEAD_PLAYWRIGHT_IMAGE` to its
 local tag or image ID; the suite resolves it to an immutable ID before testing.
-CI reuses the image built for the Docker smoke test.
+Playwright tests are temporarily excluded from CI. Continue adding browser coverage
+and running the suite locally for relevant changes; CI still runs the .NET checks
+and Docker smoke test.
 
 Every test creates its own uniquely named Compose project, fresh data and TLS
 volumes, Docker-allocated network, random setup secret, and dynamically assigned
@@ -91,9 +93,8 @@ Use `npm run test:headed --prefix tests/Homestead.Playwright` for a visible brow
 `npm run test:desktop --prefix tests/Homestead.Playwright` for desktop only.
 Screenshots, videos, traces, and container logs are retained on failure under
 `output/playwright`; the HTML report is available with
-`npm run report --prefix tests/Homestead.Playwright`. CI uploads this directory even
-when the browser tests fail. These tests supplement the .NET integration tests and
-deployment/portability smoke rather than replacing them.
+`npm run report --prefix tests/Homestead.Playwright`. These tests supplement the
+.NET integration tests and deployment/portability smoke rather than replacing them.
 
 ### Application checks
 

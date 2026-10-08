@@ -1,15 +1,17 @@
+using Homestead.Data;
 using Homestead.Data.Entities;
 using Homestead.Features.Articles;
 using Homestead.Features.Media;
 using Homestead.Features.Publishing;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace Homestead.Pages.Admin.Posts;
 
 [RequestSizeLimit(5 * MediaService.MaximumBytes + 1024 * 1024)]
 [RequestFormLimits(MultipartBodyLengthLimit = 5 * MediaService.MaximumBytes + 1024 * 1024)]
-public sealed class EditModel(ArticleService articles, MediaService media, PublishingService publishing, ActiveSite active) : PageModel
+public sealed class EditModel(ArticleService articles, MediaService media, PublishingService publishing, ActiveSite active, HomesteadDbContext db) : PageModel
 {
     [BindProperty] public ArticleInput Input { get; set; } = new();
     [BindProperty(SupportsGet = true)] public PostType? NewPostType { get; set; }
@@ -21,6 +23,7 @@ public sealed class EditModel(ArticleService articles, MediaService media, Publi
     [TempData] public string? StatusMessage { get; set; }
     public Post Post { get; private set; } = null!;
     public bool IsNew { get; private set; }
+    public bool IsTypeEnabled { get; private set; }
     public ArticleSnapshot? Live => active.Current?.Articles.SingleOrDefault(x => x.PostId == Post.Id);
     public string TypeLabel => Post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", _ => Post.Type.ToString().ToLowerInvariant() };
     public async Task<IActionResult> OnGetAsync(Guid id)
@@ -155,6 +158,7 @@ public sealed class EditModel(ArticleService articles, MediaService media, Publi
         post ??= await articles.FindOrNewAsync(id, NewPostType);
         if (post is null) return false;
         Post = post;
+        IsTypeEnabled = (await db.SiteSettings.AsNoTracking().SingleAsync()).IsPostTypeEnabled(post.Type);
         return true;
     }
     private async Task<IActionResult> InvalidAsync(Guid id, string error, int status)

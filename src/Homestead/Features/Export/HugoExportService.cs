@@ -51,21 +51,24 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             var slug = post.Slug ?? PrivateSlug($"draft-{post.Id:N}");
             var working = ArticleService.Snapshot(post, slug, post.UpdatedAtUtc);
             var live = active.Current?.Articles.SingleOrDefault(x => x.PostId == id);
+            var disabled = !settings.IsPostTypeEnabled(post.Type);
+            var published = live ?? (disabled && post.PublishedSnapshot is { IsActive: true } saved
+                ? JsonSerializer.Deserialize<ArticleSnapshot>(saved.SnapshotJson) : null);
             // Only an actually public snapshot builds by default. Unpublished work is portable but remains a draft.
-            if (post.Status == PostStatus.Published && live is not null)
+            if (post.Status == PostStatus.Published && published is not null)
             {
-                await Bundle(live, false, false, slug);
-                if (ArticleService.HasDraftChanges(post, live) || post.Media.Any(image => live.Media.All(x => x.Id != image.MediaAssetId)))
-                    await Bundle(working, true, false, PrivateSlug($"{slug}-working-{id:N}"));
+                await Bundle(published, live is null, false, slug, disabled);
+                if (ArticleService.HasDraftChanges(post, published) || post.Media.Any(image => published.Media.All(x => x.Id != image.MediaAssetId)))
+                    await Bundle(working, true, false, PrivateSlug($"{slug}-working-{id:N}"), disabled);
             }
-            else await Bundle(working, true, post.Status == PostStatus.Unpublished, slug);
+            else await Bundle(working, true, post.Status == PostStatus.Unpublished, slug, disabled);
         }
         await ArchiveFiles.TextAsync(zip, "README.md", $"# Homestead Hugo export\n\nTested with Hugo {SupportedHugoVersion} (standard or extended). Run `hugo` in this directory; serve `public/`.\n\n" +
-            "All nondeleted posts are included. Active published snapshots build by default. Drafts, unpublished posts, pending publications, and separate working bundles containing unpublished edits use `draft: true`. Use `hugo --buildDrafts` only to preview private work.\n\n" +
+            "All nondeleted posts are included. Active published snapshots build by default. Drafts, unpublished posts, hidden post types, pending publications, and separate working bundles containing unpublished edits use `draft: true`. Hidden types retain their saved published snapshot alongside any working edits; `homestead_type_disabled` records the saved setting. If a settings rebuild failed, actually public snapshots still build by default. Use `hugo --buildDrafts` only to preview private work.\n\n" +
             "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), `location` (name/address/latitude/longitude), and ordered `steps` (id/body_markdown/images). Locations, steps, and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
             "Raw HTML is disabled. This minimal layout renders all six types and carries the selected theme assets, layout, and colors. The original package files are in homestead-theme/. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
 
-        async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug)
+        async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug, bool disabled = false)
         {
             if (string.IsNullOrEmpty(bundleSlug) || bundleSlug.Any(c => c is not (>= 'a' and <= 'z' or >= '0' and <= '9' or '-')))
                 throw new InvalidDataException("Invalid export slug.");
@@ -90,6 +93,7 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
                 url = $"/posts/{bundleSlug}/",
                 homestead_id = snapshot.PostId,
                 homestead_unpublished = unpublished,
+                homestead_type_disabled = disabled,
                 summary = snapshot.Summary,
                 cover = snapshot.Media.SingleOrDefault(x => x.Id == snapshot.CoverMediaId)?.Filename,
                 images,

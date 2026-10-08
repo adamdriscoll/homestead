@@ -11,6 +11,7 @@ namespace Homestead.Pages.Admin.Posts;
 public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, PublishingService publishing) : PageModel
 {
     public List<Post> Posts { get; private set; } = [];
+    public PostType[] EnabledPostTypes { get; private set; } = [];
     public ActiveSite Site => active;
     public static string DraftTitle(Post post) =>
         post.Type == PostType.Review && !string.IsNullOrWhiteSpace(post.Review?.Subject) ? post.Review.Subject :
@@ -20,17 +21,24 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Publish
     [TempData] public string? StatusMessage { get; set; }
     public async Task OnGetAsync(PostStatus? status)
     {
+        EnabledPostTypes = (await db.SiteSettings.AsNoTracking().SingleAsync()).EnabledPostTypes;
         var liveIds = active.Current?.Articles.Select(x => x.PostId).ToArray() ?? [];
         var query = db.Posts.AsSplitQuery().Include(x => x.Draft).Include(x => x.PublishedSnapshot)
             .Include(x => x.Tags).ThenInclude(x => x.Tag).Include(x => x.Media)
             .Include(x => x.Review).Include(x => x.Steps)
             .Where(x => x.Status != PostStatus.Deleted || liveIds.Contains(x.Id));
+        query = query.Where(x => EnabledPostTypes.Contains(x.Type));
         if (status is not null) query = query.Where(x => x.Status == status);
         Posts = await query.OrderByDescending(x => x.UpdatedAtUtc).ToListAsync();
     }
-    public IActionResult OnPostNew(PostType type = PostType.Article)
+    public async Task<IActionResult> OnPostNewAsync(PostType type = PostType.Article)
     {
         if (!ModelState.IsValid || !Enum.IsDefined(type)) return BadRequest();
+        if (!(await db.SiteSettings.AsNoTracking().SingleAsync()).IsPostTypeEnabled(type))
+        {
+            StatusMessage = "This post type is disabled. Enable it in Settings to start writing.";
+            return RedirectToPage();
+        }
         return RedirectToPage("Edit", new { id = Guid.NewGuid(), newPostType = type });
     }
     public async Task<IActionResult> OnPostRebuildAsync()

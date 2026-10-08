@@ -9,6 +9,7 @@
     @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
     @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-error" role="alert"></div> }
     <p id="post-state">@(Model.IsNew ? "New post · add content to save a draft" : Model.Post.Status.ToString()) · @(Model.Live is null ? "Not currently public" : "Currently public")</p>
+    @if (!Model.IsTypeEnabled) { <p role="status">This post type is disabled. Your content is kept and draft edits can still be saved. Enable it in <a class="link" href="/admin/settings#posts">Settings</a> to publish. @(Model.Live is not null ? "The previous post is still public. Rebuild from Posts to apply saved settings." : "")</p> }
     @if (Model.Live is { } live)
     {
         <a class="btn" href="/posts/@live.Slug/">Open public post</a>
@@ -16,7 +17,7 @@
         @if (Homestead.Features.Articles.ArticleService.IsPublicationPending(Model.Post, live))
         { <p role="alert">Saved publication changes are pending. The previous post is still public. Rebuild from Posts to retry.</p> }
     }
-    else if (Model.Post.Status == Homestead.Data.Entities.PostStatus.Published) { <p role="alert">Publication pending. Rebuild from Posts to retry.</p> }
+    else if (Model.IsTypeEnabled && Model.Post.Status == Homestead.Data.Entities.PostStatus.Published) { <p role="alert">Publication pending. Rebuild from Posts to retry.</p> }
     <form method="post" asp-page-handler="Save" asp-route-newPostType="@newPostType" id="article-editor" data-post-type="@Model.Post.Type" data-new-post="@Model.IsNew.ToString().ToLowerInvariant()" data-preview-url="/admin/posts/@Model.Post.Id/preview" class="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
         <input type="hidden" asp-for="Input.Version" />
         @if (Model.IsNew) { <input type="hidden" asp-for="NewPostType" /> }
@@ -183,7 +184,7 @@
             <button class="btn btn-outline btn-error" asp-page-handler="Delete" asp-route-newPostType="@newPostType" data-delete-post>Delete post</button>
             @if (Model.Post.FirstPublishedAtUtc is not null) { <button class="btn" asp-page-handler="Unpublish" asp-route-newPostType="@newPostType">Unpublish</button> }
             <button class="btn" type="submit">Save draft</button>
-            <button class="btn btn-primary" asp-page-handler="Publish" asp-route-newPostType="@newPostType">@(Model.Live is null ? "Publish" : "Update published post")</button>
+            <button class="btn btn-primary" asp-page-handler="Publish" asp-route-newPostType="@newPostType" disabled="@(!Model.IsTypeEnabled)">@(Model.Live is null ? "Publish" : "Update published post")</button>
         </div>
         <noscript>
             <label class="flex items-center gap-2 py-3"><input type="checkbox" name="ConfirmDelete" value="true" class="checkbox" /> Permanently delete this post</label>
