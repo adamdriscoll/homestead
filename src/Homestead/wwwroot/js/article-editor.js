@@ -258,7 +258,8 @@
     const insertButton = document.createElement('button'); insertButton.type = 'button'; insertButton.className = 'btn'; insertButton.dataset.insertImage = image.url; insertButton.textContent = 'Insert image'; actions.append(insertButton);
     for (const [command, text] of [['photo-up', 'Move photo up'], ['photo-down', 'Move photo down'], ['remove-photo', 'Remove photo']]) {
       const button = document.createElement('button'); button.type = 'submit'; button.className = 'btn'; button.name = 'command'; button.value = `${command}:${image.id}`;
-      button.formAction = form.action.replace(/\?.*$/, '') + '?handler=Arrange'; button.textContent = text; actions.append(button);
+      const arrangeUrl = new URL(form.action); arrangeUrl.searchParams.set('handler', 'Arrange');
+      button.formAction = arrangeUrl.href; button.textContent = text; actions.append(button);
     }
     container.append(actions); document.querySelector('#article-images').append(container);
     form.querySelector('[name="Input.CoverMediaId"]')?.add(new Option(filename, image.id));
