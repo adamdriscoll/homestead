@@ -16,13 +16,19 @@ internal static class HugoTemplates
         foreach (var file in theme.Variant.Styles)
             head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme/" + file + "\" | relURL }}\">");
         head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme-colors.css\" | relURL }}\">");
+        if (settings.EnableLocationMap)
+            head.Append("{{ if eq .Layout \"location-map\" }}<meta name=\"referrer\" content=\"strict-origin-when-cross-origin\">" +
+                "<link rel=\"stylesheet\" href=\"{{ \"assets/map/leaflet/leaflet.css\" | relURL }}\">" +
+                "<script defer src=\"{{ \"assets/map/leaflet/leaflet.js\" | relURL }}\"></script>" +
+                "<script defer src=\"{{ \"assets/map/location-map.js\" | relURL }}\"></script>{{ end }}");
         foreach (var file in theme.Variant.Scripts)
             head.Append("<script defer src=\"{{ \"assets/theme/" + file + "\" | relURL }}\"></script>");
         head.Append("{{ with .OutputFormats.Get \"rss\" }}<link rel=\"alternate\" type=\"application/rss+xml\" href=\"{{ .Permalink }}\">{{ end }}</head><body>" +
             "<a href=\"#main\" class=\"btn absolute -top-20 focus:top-2 left-2\">Skip to content</a>");
         var regions = new Dictionary<string, string>
         {
-            ["header"] = "<header class=\"max-w-3xl mx-auto px-4 py-8 border-b border-base-300 space-y-4\"><div><a class=\"text-2xl font-semibold\" href=\"{{ .Site.Home.RelPermalink }}\">{{ .Site.Title }}</a></div><nav aria-label=\"Main navigation\"><a class=\"btn\" href=\"{{ .Site.Home.RelPermalink }}\">Home</a> <a class=\"btn\" href=\"{{ \"about/\" | relURL }}\">About</a></nav></header>",
+            ["header"] = "<header class=\"max-w-3xl mx-auto px-4 py-8 border-b border-base-300 space-y-4\"><div><a class=\"text-2xl font-semibold\" href=\"{{ .Site.Home.RelPermalink }}\">{{ .Site.Title }}</a></div><nav aria-label=\"Main navigation\"><a class=\"btn\" href=\"{{ .Site.Home.RelPermalink }}\">Home</a> <a class=\"btn\" href=\"{{ \"about/\" | relURL }}\">About</a>" +
+                (settings.EnableLocationMap ? " <a class=\"btn\" href=\"{{ \"map/\" | relURL }}\">Map</a>" : "") + "</nav></header>",
             ["main"] = "<main id=\"main\" class=\"max-w-3xl mx-auto px-4 py-8 space-y-6\">{{ block \"main\" . }}{{ end }}</main>",
             ["footer"] = "<footer class=\"max-w-3xl mx-auto p-4 border-t border-base-300 space-y-4\"><a class=\"underline\" href=\"{{ \"index.xml\" | relURL }}\">RSS feed</a>" +
                 (settings.HideHomesteadCredit ? "" : "<p class=\"text-sm\">Made at home with <a class=\"link\" href=\"https://github.com/PoshTools/homestead\">Homestead</a></p>") + "</footer>"
@@ -30,6 +36,37 @@ internal static class HugoTemplates
         var body = System.Text.RegularExpressions.Regex.Replace(theme.Layout, "\\{\\{(header|main|footer)\\}\\}", m => regions[m.Groups[1].Value]);
         return head + body + "</body></html>";
     }
+
+    public const string LocationMap = """
+        {{ define "main" }}
+        {{ $posts := slice }}
+        {{ range (where (where .Site.RegularPages "Section" "posts") "Draft" false).ByDate.Reverse }}
+          {{ $post := . }}
+          {{ with .Params.location }}
+            {{ if and (ne .latitude nil) (ne .longitude nil) }}
+              {{ if and (ge .latitude -90) (le .latitude 90) (ge .longitude -180) (le .longitude 180) }}
+                {{ $posts = $posts | append $post }}
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+        <h1 class="text-3xl font-semibold">Location map</h1>
+        <p>Explore posts by place. Select a marker to open its posts, or use the list below.</p>
+        <div id="location-map" class="h-[28rem] w-full isolate rounded-lg border border-base-300" role="region" aria-label="World map" hidden></div>
+        <p data-map-status role="status" hidden>Map tiles could not be loaded. Markers and the post list are still available.</p>
+        <noscript><p>Enable JavaScript to explore the interactive map, or choose a post below.</p></noscript>
+        {{ if eq (len $posts) 0 }}<p>No published posts with coordinates yet. Explore <a class="link" href="{{ .Site.Home.RelPermalink }}">the home feed</a>.</p>
+        {{ else }}
+          <section aria-labelledby="mapped-posts-title" class="space-y-3">
+            <h2 id="mapped-posts-title" class="text-xl font-semibold">Posts on the map</h2>
+            <ul class="space-y-3">{{ range $posts }}
+              <li data-map-post data-latitude="{{ .Params.location.latitude }}" data-longitude="{{ .Params.location.longitude }}"><a class="link inline-flex items-center min-h-11 break-words" href="{{ .RelPermalink }}">{{ .Title }}</a>
+              <p>{{ with .Params.location.name }}{{ . }} · {{ end }}{{ with .Params.location.address }}{{ . }} · {{ end }}{{ .Params.location.latitude }}, {{ .Params.location.longitude }}</p></li>
+            {{ end }}</ul>
+          </section>
+        {{ end }}
+        {{ end }}
+        """;
 
     public static readonly (string Path, string Text)[] Files =
     [

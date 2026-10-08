@@ -52,6 +52,11 @@
                         <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableGalleries" class="checkbox" /> Galleries</label>
                         <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableCheckins" class="checkbox" /> Check-ins</label>
                     </fieldset>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Location map</legend>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableLocationMap" class="checkbox" aria-describedby="location-map-help" /> Enable location map</label>
+                        <p id="location-map-help">Add a public world map linking to posts with published latitude and longitude. Locations with only a name or address do not appear. Draft locations stay private.</p>
+                    </fieldset>
                 </section>
                 <section id="theme" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="theme-title" data-settings-panel>
                     <h2 id="theme-title" class="text-xl font-semibold">Theme</h2>

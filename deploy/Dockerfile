@@ -12,6 +12,7 @@ COPY src/Homestead/Features/Publishing/SafeMarkdown.cs ./Features/Publishing/Saf
 COPY src/Homestead/Features/Export/HugoTemplates.cs ./Features/Export/HugoTemplates.cs
 COPY src/Homestead/Styles ./Styles
 COPY src/Homestead/build-icons.mjs ./build-icons.mjs
+COPY src/Homestead/build-maps.mjs ./build-maps.mjs
 RUN npm run build:css
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -22,6 +23,7 @@ RUN dotnet restore src/Homestead/Homestead.csproj
 COPY src/Homestead/ src/Homestead/
 COPY --from=styles /work/wwwroot/css/site.css src/Homestead/wwwroot/css/site.css
 COPY --from=styles /work/wwwroot/icons/ src/Homestead/wwwroot/icons/
+COPY --from=styles /work/Maps/leaflet/ src/Homestead/Maps/leaflet/
 RUN dotnet publish src/Homestead/Homestead.csproj -c Release --no-restore -p:BuildFrontend=false -o /app
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime

@@ -1,0 +1,36 @@
+@using System.Globalization
+@using Homestead.Features.Articles
+
+<p>Explore posts by place. Select a marker to open its posts, or use the list below.</p>
+<div id="location-map" class="h-[28rem] w-full isolate rounded-lg border border-base-300" role="region" aria-label="World map" hidden></div>
+<p data-map-status role="status" hidden>Map tiles could not be loaded. Markers and the post list are still available.</p>
+<noscript><p>Enable JavaScript to explore the interactive map, or choose a post below.</p></noscript>
+@if (MappedPosts.Length == 0)
+{
+    <p>No published posts with coordinates yet. Explore <a class="link" href="/">the home feed</a>.</p>
+}
+else
+{
+    <section aria-labelledby="mapped-posts-title" class="space-y-3">
+        <h2 id="mapped-posts-title" class="text-xl font-semibold">Posts on the map</h2>
+        <ul class="space-y-3">
+            @foreach (var post in MappedPosts)
+            {
+                <li data-map-post data-latitude="@Number(post.Location!.Latitude!.Value)" data-longitude="@Number(post.Location.Longitude!.Value)">
+                    <a class="link inline-flex items-center min-h-11 break-words" href="@($"/posts/{post.Slug}/")">@post.DisplayTitle</a>
+                    <p>@string.Join(" · ", new[] { post.Location!.Name, post.Location.Address, post.Location.Coordinates }.Where(x => !string.IsNullOrWhiteSpace(x)))</p>
+                </li>
+            }
+        </ul>
+    </section>
+}
+
+@code {
+    [Parameter, EditorRequired] public ArticleSnapshot[] Posts { get; set; } = [];
+    private ArticleSnapshot[] MappedPosts { get; set; } = [];
+
+    protected override void OnParametersSet() => MappedPosts = Posts.Where(post =>
+        post.Location is { Latitude: >= -90 and <= 90, Longitude: >= -180 and <= 180 }).ToArray();
+
+    private static string Number(double value) => value.ToString("G", CultureInfo.InvariantCulture);
+}

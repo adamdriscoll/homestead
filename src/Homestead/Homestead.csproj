@@ -15,6 +15,8 @@
     <Content Include="wwwroot/css/site.css" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="Themes/**" />
     <Content Include="Themes/**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Remove="Maps/**" />
+    <Content Include="Maps/location-map.js;Maps/leaflet/leaflet.js;Maps/leaflet/leaflet.css;Maps/leaflet/LICENSE.txt;Maps/leaflet/images/marker-icon.png;Maps/leaflet/images/marker-icon-2x.png;Maps/leaflet/images/marker-shadow.png;Maps/leaflet/images/layers.png;Maps/leaflet/images/layers-2x.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="wwwroot/icons/**" />
     <Content Include="wwwroot/icons/toolbar.svg;wwwroot/icons/LICENSE.txt" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>

@@ -16,6 +16,7 @@ public sealed class SiteSettings
     public string AuthorBio { get; set; } = "";
     public string FooterText { get; set; } = "";
     public bool HideHomesteadCredit { get; set; }
+    public bool EnableLocationMap { get; set; }
     public bool EnableNotes { get; set; } = true;
     public bool EnableArticles { get; set; } = true;
     public bool EnableReviews { get; set; } = true;

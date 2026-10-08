@@ -121,6 +121,8 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 (PostType.Checkin, "/checkins/", "Check-ins") })
                 if (settings.IsPostTypeEnabled(type)) await Page(path, heading, posts.Where(x => x.Type == type).ToArray());
             await Page("/about/", "About", []);
+            if (settings.EnableLocationMap)
+                await Page("/map/", "Location map", posts);
             foreach (var tag in posts.SelectMany(post => post.Tags.Select(name => (Name: name, Slug: post.TagSlug(name))))
                 .DistinctBy(x => x.Slug))
             {
@@ -140,6 +142,15 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             Directory.CreateDirectory(Path.Combine(root, "assets"));
             File.Copy(Path.Combine(environment.WebRootPath, "css", "site.css"), Path.Combine(root, "assets", "site.css"));
             files.Add("assets/site.css");
+            if (settings.EnableLocationMap)
+            {
+                foreach (var (relative, source) in LocationMapAssets.Files(environment.ContentRootPath))
+                {
+                    var destination = Path.Combine(root, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.Copy(source, destination); files.Add(relative);
+                }
+            }
             foreach (var (file, contents) in theme.Files.Where(x => x.Key != "theme.json" && !x.Key.EndsWith(".html", StringComparison.Ordinal)))
             {
                 var relative = "assets/theme/" + file;

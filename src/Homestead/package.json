@@ -2,12 +2,13 @@
   "name": "homestead-admin",
   "private": true,
   "scripts": {
-    "build:css": "node build-icons.mjs && tailwindcss -i Styles/site.css -o wwwroot/css/site.css --minify"
+    "build:css": "node build-icons.mjs && node build-maps.mjs && tailwindcss -i Styles/site.css -o wwwroot/css/site.css --minify"
   },
   "devDependencies": {
     "@fortawesome/fontawesome-free": "7.3.1",
     "@tailwindcss/cli": "4.3.3",
     "daisyui": "5.7.47",
+    "leaflet": "1.9.4",
     "tailwindcss": "4.3.3"
   }
 }

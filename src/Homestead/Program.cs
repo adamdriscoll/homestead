@@ -138,11 +138,15 @@ if (!app.Environment.IsDevelopment())
 app.Use(async (context, next) =>
 {
     context.Response.Headers.XContentTypeOptions = "nosniff";
-    context.Response.Headers["Referrer-Policy"] = "same-origin";
+    var locationMap = context.Request.Path.Equals("/map", StringComparison.OrdinalIgnoreCase) ||
+        context.Request.Path.Equals("/map/", StringComparison.OrdinalIgnoreCase) ||
+        context.Request.Path.Equals("/map/index.html", StringComparison.OrdinalIgnoreCase);
+    context.Response.Headers["Referrer-Policy"] = locationMap ? "strict-origin-when-cross-origin" : "same-origin";
     var preview = context.Request.Path.StartsWithSegments("/admin/posts") && context.Request.Path.Value!.EndsWith("/preview", StringComparison.OrdinalIgnoreCase);
     var frameAncestors = preview ? "'self'" : "'none'";
     var scripts = preview ? "'none'" : "'self'";
-    context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src {scripts}; style-src 'self'; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
+    var mapImages = locationMap ? " https://tile.openstreetmap.org" : "";
+    context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src {scripts}; style-src 'self'; img-src 'self' data:{mapImages}; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
     if (context.Request.Path.StartsWithSegments("/admin") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/setup"))
         context.Response.Headers.CacheControl = "no-store";
     await next(context);

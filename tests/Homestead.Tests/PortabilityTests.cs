@@ -154,6 +154,14 @@ public sealed class PortabilityTests
         Assert.Contains("Gallery caption 日本語", allPublic);
         Assert.Contains("Second instruction", allPublic);
         Assert.Contains("5/5", allPublic);
+        var map = File.ReadAllText(Path.Combine(output.Path, "public", "map", "index.html"));
+        Assert.Contains("Location map", map);
+        Assert.Contains("data-latitude=\"41.88\" data-longitude=\"-87.63\"", map);
+        foreach (var post in active.Articles) Assert.Contains($"href=\"/posts/{post.Slug}/\"", map);
+        Assert.DoesNotContain("PRIVATE", map);
+        foreach (var asset in new[] { "leaflet/leaflet.js", "leaflet/leaflet.css", "leaflet/images/marker-icon.png", "location-map.js" })
+            Assert.True(File.Exists(Path.Combine(output.Path, "public", "assets", "map", asset)));
+        Assert.Contains("/assets/map/leaflet/leaflet.js", map);
         Assert.True(File.Exists(Path.Combine(output.Path, "public", "tags", "travel", "index.html")));
         var fixtures = Environment.GetEnvironmentVariable("HOMESTEAD_FIXTURE_OUTPUT");
         if (!string.IsNullOrWhiteSpace(fixtures))
@@ -195,6 +203,7 @@ public sealed class PortabilityTests
             Assert.Equal(ids.Order(), (await db.Posts.Select(x => x.Id).ToArrayAsync()).Order());
             Assert.Equal("Restored café 日本語", (await db.SiteSettings.SingleAsync()).Title);
             Assert.True((await db.SiteSettings.SingleAsync()).HideHomesteadCredit);
+            Assert.True((await db.SiteSettings.SingleAsync()).EnableLocationMap);
             Assert.Contains("PRIVATE DRAFT", (await db.PostDrafts.ToArrayAsync()).Select(x => x.BodyMarkdown));
         });
         foreach (var (relative, hash) in mediaHashes)
@@ -204,6 +213,8 @@ public sealed class PortabilityTests
         Assert.Equal("Fixture place", fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Single(x => x.Type == PostType.Checkin).Location!.Name);
         Assert.DoesNotContain("PRIVATE DRAFT", await client.GetStringAsync("/"));
         Assert.DoesNotContain("Made at home with", await client.GetStringAsync("/"));
+        Assert.Contains("Fixture place", await client.GetStringAsync("/map/"));
+        Assert.DoesNotContain("PRIVATE DRAFT", await client.GetStringAsync("/map/"));
         await Assert.ThrowsAsync<InvalidOperationException>(() => BackupService.RestoreAsync(archivePath, restored.Path));
     }
 
@@ -251,6 +262,7 @@ public sealed class PortabilityTests
 
     internal static async Task Fixture(TestApplication app)
     {
+        await app.WithDatabase(async db => { (await db.SiteSettings.SingleAsync()).EnableLocationMap = true; await db.SaveChangesAsync(); });
         await using var scope = app.Services.CreateAsyncScope();
         var articles = scope.ServiceProvider.GetRequiredService<ArticleService>();
         var publishing = scope.ServiceProvider.GetRequiredService<PublishingService>();

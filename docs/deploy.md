@@ -83,6 +83,23 @@ This follows [ASP.NET Core's trusted proxy guidance](https://learn.microsoft.com
 
 ## Storage, upgrades, and health
 
+Enable **Settings → Posts → Enable location map** to add `/map/` and a Map
+navigation link. It starts disabled. The map uses published coordinates from
+enabled post types; places with only a name or address are omitted. Draft location
+edits appear only after Publish/Update. Leaflet provides pan, zoom, and one marker
+per post. Marker popups link to posts; shared coordinates list all posts at that
+spot. A linked list below also works without JavaScript. Leaflet 1.9.4 and its
+assets are bundled locally. The map loads online tiles directly from
+`https://tile.openstreetmap.org` with OpenStreetMap attribution, without an API key.
+Only map responses allow that tile host in the image Content Security Policy and
+send an origin referrer. Follow the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/);
+tiles are subject to provider availability and are not bundled for offline use.
+If tiles fail, markers and the post list remain available. Static exports preserve
+the active map and its Leaflet assets; Hugo exports include a map
+layout when the saved setting is enabled. Disabling removes the page and its
+navigation link after a successful rebuild. A failed rebuild keeps the previous
+complete site, including its map.
+
 The image runs as the unprivileged .NET `app` user. A named volume inherits `/data`
 ownership from the image. For a bind mount, prepare the directory for that user
 before starting (obtain the UID using `docker run --rm --entrypoint id homestead-smoke -u`
