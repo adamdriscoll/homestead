@@ -8,13 +8,21 @@
   };
   apply();
   document.addEventListener("DOMContentLoaded", () => {
-    const select = document.getElementById("admin-appearance");
-    if (!select) return;
-    select.value = appearance;
-    select.addEventListener("change", () => {
-      appearance = select.value;
-      apply();
-      try { localStorage.setItem("homestead-admin-appearance", appearance); } catch { /* Storage is optional. */ }
+    const controls = document.getElementById("admin-appearance");
+    if (!controls) return;
+    const buttons = controls.querySelectorAll("[data-admin-appearance]");
+    const updateButtons = () => {
+      buttons.forEach(button => button.setAttribute("aria-pressed", String(button.dataset.adminAppearance === appearance)));
+    };
+    updateButtons();
+    controls.classList.replace("hidden", "flex");
+    buttons.forEach(button => {
+      button.addEventListener("click", () => {
+        appearance = button.dataset.adminAppearance;
+        apply();
+        updateButtons();
+        try { localStorage.setItem("homestead-admin-appearance", appearance); } catch { /* Storage is optional. */ }
+      });
     });
   });
 })();

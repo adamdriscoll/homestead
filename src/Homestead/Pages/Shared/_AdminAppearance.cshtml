@@ -1,0 +1,8 @@
+<div id="admin-appearance" role="group" aria-label="Administration appearance" class="hidden items-center gap-1">
+    @foreach (var (value, label, icon) in new[] { ("system", "System", "desktop"), ("light", "Light", "sun"), ("dark", "Dark", "moon") })
+    {
+        <button type="button" class="btn btn-ghost btn-square size-11 aria-pressed:bg-base-300" data-admin-appearance="@value" aria-label="@label appearance" aria-pressed="false" title="@label appearance">
+            <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#@icon"></use></svg>
+        </button>
+    }
+</div>

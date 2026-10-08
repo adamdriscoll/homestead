@@ -6,6 +6,7 @@
 @source "../Features/Export/HugoTemplates.cs";
 @source "../wwwroot/js/article-editor.js";
 @source "../wwwroot/js/settings.js";
+@source "../wwwroot/js/admin-appearance.js";
 @plugin "daisyui" {
   themes: light --default, dark --prefersdark;
   logs: false;
