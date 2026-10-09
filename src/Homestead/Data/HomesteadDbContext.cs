@@ -19,6 +19,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<PostTag> PostTags => Set<PostTag>();
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
+    public DbSet<BackupSettings> BackupSettings => Set<BackupSettings>();
     public DbSet<SiteGeneration> SiteGenerations => Set<SiteGeneration>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
@@ -27,6 +28,11 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<BackupSettings>(e => e.ToTable("BackupSettings", t =>
+        {
+            t.HasCheckConstraint("CK_BackupSettings_Id", "Id = 1");
+            t.HasCheckConstraint("CK_BackupSettings_Frequency", "Frequency BETWEEN 0 AND 2");
+        }));
         builder.Entity<ApplicationUser>(e =>
         {
             e.HasIndex(x => x.AdminSlot).IsUnique();

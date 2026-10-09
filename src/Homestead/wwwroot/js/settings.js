@@ -20,7 +20,7 @@
       if (selected && focus) tab.focus();
     });
     sectionInput.value = id;
-    form.hidden = id === 'images';
+    form.hidden = id === 'images' || id === 'backup';
     history.replaceState(null, '', `#${id}`);
   }
 
@@ -67,6 +67,6 @@
     if (invalidPanel) selectSection(invalidPanel.id);
   }, true);
   window.addEventListener('hashchange', () => selectSection(location.hash.slice(1)));
-  const errorPanel = form.querySelector('.input-validation-error, [data-settings-error="true"]')?.closest('[data-settings-panel]');
+  const errorPanel = settings.querySelector('.input-validation-error, [data-settings-error="true"]')?.closest('[data-settings-panel]');
   selectSection(errorPanel?.id || location.hash.slice(1) || sectionInput.value);
 })();

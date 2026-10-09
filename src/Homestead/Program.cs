@@ -73,6 +73,10 @@ builder.Services.AddSingleton<RazorThemeCompiler>();
 builder.Services.AddScoped<StaticExportService>();
 builder.Services.AddScoped<HugoExportService>();
 builder.Services.AddScoped<BackupService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddSingleton<IBackupUploader, S3BackupUploader>();
+builder.Services.AddScoped<AutomatedBackupService>();
+builder.Services.AddHostedService<AutomatedBackupWorker>();
 builder.Services.AddScoped<IStaticPageRenderer, StaticPageRenderer>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {

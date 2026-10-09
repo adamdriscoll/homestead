@@ -2,6 +2,7 @@ using System.Text.Json;
 using Homestead.Data;
 using Homestead.Data.Entities;
 using Homestead.Features.Articles;
+using Homestead.Features.Export;
 using Homestead.Features.Media;
 using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
@@ -13,7 +14,8 @@ public sealed record PublicationResult(bool Succeeded, string Message, string? U
 
 public sealed class PublishingService(HomesteadDbContext db, ArticleService articles, PublicationLock writer,
     IStaticPageRenderer renderer, SafeMarkdown markdown, MediaService media, StoragePaths paths,
-    ActiveSite active, IGenerationActivation activation, ThemeService themes, IWebHostEnvironment environment, ILogger<PublishingService> logger)
+    ActiveSite active, IGenerationActivation activation, ThemeService themes, IWebHostEnvironment environment, ILogger<PublishingService> logger,
+    AutomatedBackupService automatedBackups)
 {
     public async Task<PublicationResult> TransitionAsync(Guid id, string action, long version)
     {
@@ -72,6 +74,8 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
     // Caller holds the publication lock, including when saving settings.
     public async Task<PublicationResult> BuildLockedAsync()
     {
+        var backup = await automatedBackups.RunLockedAsync(beforePublication: true);
+        if (!backup.Succeeded) return new(false, backup.Message + " The previous public site remains active; saved changes are pending. Retry the backup or disable automated backups, then rebuild.");
         var generation = new SiteGeneration { BuiltAtUtc = DateTime.UtcNow, Status = GenerationStatus.Building };
         generation.OutputRoot = generation.Id.ToString("N");
         db.SiteGenerations.Add(generation); await db.SaveChangesAsync();

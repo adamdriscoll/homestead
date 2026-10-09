@@ -34,6 +34,13 @@ Settings are saved before building. A successful build atomically activates all
 theme changes. If it fails, the previous complete site stays public; Settings
 shows the active theme and the rebuild failure. Use **Rebuild site** to retry.
 
+If **Settings → Backup** is configured to back up before publication, the engine
+uploads a complete private backup before rendering any theme. A failed upload
+keeps the active generation and theme unchanged, with saved changes pending.
+This applies to all built-in and custom themes. Backup configuration and credentials
+are private and are absent from public theme models and generation manifests.
+Theme templates need no backup handling; private previews do not trigger backups.
+
 The shared footer shows “Made at home with Homestead”,
 with Homestead linking to the project repository. To remove it, check
 **Settings → About → Hide Homestead credit** and save. The preference also

@@ -34,10 +34,10 @@ internal static class ArchiveFiles
     // The lock prevents publication pruning and media mutations during archive capture.
     // Only a completed private file is returned; MVC disposes it after the download.
     public static async Task<FileStream> CreateAsync(StoragePaths paths, PublicationLock writer,
-        Func<ZipArchive, Task> write, CancellationToken ct)
+        Func<ZipArchive, Task> write, CancellationToken ct, bool lockHeld = false)
     {
         var path = Path.Combine(paths.DataRoot, "backups", $"download-{Guid.NewGuid():N}.zip");
-        await writer.Semaphore.WaitAsync(ct);
+        if (!lockHeld) await writer.Semaphore.WaitAsync(ct);
         try
         {
             await using (var output = new FileStream(path, FileMode.CreateNew, FileAccess.Write, FileShare.None))
@@ -48,6 +48,6 @@ internal static class ArchiveFiles
             return new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read, 81920, FileOptions.DeleteOnClose);
         }
         catch { File.Delete(path); throw; }
-        finally { writer.Semaphore.Release(); }
+        finally { if (!lockHeld) writer.Semaphore.Release(); }
     }
 }

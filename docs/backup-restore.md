@@ -31,6 +31,53 @@ An export is different from a backup: static exports have public files only;
 Hugo exports are a migration project and do not preserve administrator credentials
 or the complete authoritative database.
 
+## Automated backups to S3-compatible storage
+
+Open **Settings → Backup** and enable automated backups. Enter the bucket,
+signing region, object key prefix, and an access key ID and secret access key.
+Leave the endpoint empty for Amazon S3, or enter the compatible provider's HTTPS
+service endpoint without a path, credentials, query, or fragment. Path-style
+bucket URLs are enabled by default for compatible providers; disable them when
+your provider requires virtual-hosted bucket URLs. The bucket must already exist.
+
+Choose one frequency:
+
+- **Before publishing a new version of the site:** upload before every public
+  build, including publish/update, unpublish/delete, settings changes, manual
+  rebuild, and startup rebuild when no active generation exists. Capture includes
+  already committed desired changes and private drafts. A failed backup prevents
+  the build, preserves the previous active site, and leaves saved desired changes
+  pending. Retry after correcting backup settings, or disable backups and rebuild.
+- **Once a day:** upload when first enabled, then 24 hours after the last success.
+- **Once a week:** upload when first enabled, then seven days after the last success.
+
+The in-process scheduler checks every minute and catches up once after downtime;
+it does not create an archive for each missed interval. Failed scheduled uploads
+retry after 15 minutes. Schedule and upload status survive restart. Changing the
+destination, frequency, or enabled state starts a fresh schedule. Choose
+**Back up now** to try the saved enabled configuration immediately.
+
+Each upload is the same complete, checksum-verified restore format as a manual
+backup. It uses a unique UTC timestamp/ID object name beneath the prefix and never
+overwrites or deletes previous backups. Large uploads use the AWS SDK's
+[multipart transfer utility](https://docs.aws.amazon.com/sdkfornet/v4/apidocs/items/S3/TTransferUtility.html).
+Grant object upload and multipart-abort permissions for that prefix. Set bucket
+lifecycle rules for retention and abandoned multipart uploads. Uploads have a
+30-minute limit. Archive capture and upload hold the shared mutation lock, so
+authoring and publication can wait; static public traffic continues. Temporary
+ZIP/database files are removed after completion or failure.
+
+Credentials are protected using the persisted Data Protection key ring and never
+displayed after saving. Blank credential fields retain saved values; disabling
+backups and selecting **Clear saved credentials** removes them. Credentials and
+their key ring are included in complete backups, so treat archives as capable of
+restoring access to the bucket. A restored installation retains the enabled
+schedule; use a separate bucket or disable backups before operating a restored
+copy alongside the original. Bucket access, encryption at rest, and retention
+remain the operator's responsibility; Homestead sends no public ACL and does not
+create buckets. Status in the Backup tab reports attempts, successes, object keys,
+and safe failure guidance without signed URLs or provider credentials.
+
 ## Offline restore with Docker Compose
 
 Use the **same Homestead application version** shown in the manifest (currently

@@ -10,7 +10,7 @@
     <div class="grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
         <nav aria-label="Settings sections" data-settings-navigation>
             <ul class="menu menu-horizontal md:menu-vertical bg-base-200 rounded-box w-full p-2">
-                @foreach (var (label, icon) in new[] { ("General", "gear"), ("Posts", "pen"), ("Social", "share-nodes"), ("Theme", "palette"), ("About", "user"), ("Images", "images") })
+                @foreach (var (label, icon) in new[] { ("General", "gear"), ("Posts", "pen"), ("Social", "share-nodes"), ("Theme", "palette"), ("About", "user"), ("Images", "images"), ("Backup", "gear") })
                 {
                     <li>
                         <a id="tab-@label.ToLowerInvariant()" href="#@label.ToLowerInvariant()" class="min-h-11 content-center px-2 md:px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content" data-settings-tab>
@@ -129,6 +129,43 @@
                 </div>
             </form>
             <form method="post" id="theme-upload-form" asp-page-handler="Theme" enctype="multipart/form-data" hidden></form>
+            <section id="backup" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="backup-title" data-settings-panel>
+                <h2 id="backup-title" class="text-xl font-semibold">Backup</h2>
+                <p>Upload complete backups to a private S3-compatible bucket. Archives include drafts, originals, administrator credentials, and encryption keys. Configure bucket encryption and retention with your storage provider.</p>
+                <form method="post" asp-page-handler="Backup" class="space-y-4">
+                    <div asp-validation-summary="All" role="alert" class="text-error"></div>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Automated backups</legend>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Backup.Enabled" class="checkbox" /> Enable automated backups</label>
+                        <label asp-for="Backup.Frequency"></label>
+                        <select asp-for="Backup.Frequency" class="select w-full">
+                            <option value="BeforePublication">Before publishing a new version of the site</option>
+                            <option value="Daily">Once a day</option>
+                            <option value="Weekly">Once a week</option>
+                        </select>
+                        <p>Daily and weekly backups start when next checked, then run 24 hours or seven days after the last successful upload. Missed backups run after restart. A failed before-publication backup leaves saved changes pending and the previous site active.</p>
+                        <label asp-for="Backup.Endpoint"></label><input asp-for="Backup.Endpoint" class="input w-full" type="url" placeholder="https://s3.example.com" />
+                        <p>Leave the endpoint blank for Amazon S3. Use an HTTPS service endpoint for compatible storage.</p>
+                        <label asp-for="Backup.Region"></label><input asp-for="Backup.Region" class="input w-full" />
+                        <label asp-for="Backup.Bucket"></label><input asp-for="Backup.Bucket" class="input w-full" />
+                        <label asp-for="Backup.Prefix"></label><input asp-for="Backup.Prefix" class="input w-full" />
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Backup.ForcePathStyle" class="checkbox" /> Use path-style bucket URLs</label>
+                        <label asp-for="Backup.AccessKey"></label><input asp-for="Backup.AccessKey" class="input w-full" type="password" autocomplete="new-password" />
+                        <label asp-for="Backup.SecretKey"></label><input asp-for="Backup.SecretKey" class="input w-full" type="password" autocomplete="new-password" />
+                        <p>Credentials saved: @(Model.BackupStatus.ProtectedAccessKey.Length > 0 && Model.BackupStatus.ProtectedSecretKey.Length > 0 ? "Yes" : "No"). Leave credential fields blank to retain them. Saved values are protected and never displayed.</p>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Backup.ClearCredentials" class="checkbox" /> Clear saved credentials</label>
+                    </fieldset>
+                    <button class="btn" type="submit">Save backup settings</button>
+                </form>
+                <div class="space-y-2">
+                    <p>Last attempt (UTC): @(Model.BackupStatus.LastAttemptAtUtc?.ToString("u") ?? "Never")</p>
+                    <p>Last successful upload (UTC): @(Model.BackupStatus.LastSuccessAtUtc?.ToString("u") ?? "Never")</p>
+                    @if (Model.BackupStatus.LastObjectKey is { } key) { <p class="break-all">Last object: @key</p> }
+                    @if (Model.BackupStatus.LastError is { } error) { <p class="text-error">@error</p> }
+                </div>
+                <form method="post" asp-page-handler="BackupNow"><button class="btn" type="submit">Back up now</button></form>
+                <p>Save backup settings first. Back up now uses the saved configuration when enabled. Uploads can delay authoring; public pages remain available.</p>
+            </section>
             <section id="images" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="images-title" data-settings-panel>
                 <h2 id="images-title" class="text-xl font-semibold">Images</h2>
                 <p>Upload your avatar, logo, and header. Save changes in the other sections before uploading. JPEG, PNG, or WebP, up to 20 MB.</p>

@@ -19,7 +19,10 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
     public static string ApplicationVersion => System.Reflection.CustomAttributeExtensions
         .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>(typeof(BackupService).Assembly)!.InformationalVersion.Split('+')[0];
 
-    public Task<FileStream> CreateAsync(CancellationToken ct = default) => ArchiveFiles.CreateAsync(paths, writer, async zip =>
+    public Task<FileStream> CreateAsync(CancellationToken ct = default) => CreateCoreAsync(false, ct);
+    public Task<FileStream> CreateLockedAsync(CancellationToken ct = default) => CreateCoreAsync(true, ct);
+
+    private Task<FileStream> CreateCoreAsync(bool lockHeld, CancellationToken ct) => ArchiveFiles.CreateAsync(paths, writer, async zip =>
     {
         var temporary = Path.Combine(paths.DataRoot, "backups", $"sqlite-{Guid.NewGuid():N}.db");
         try
@@ -71,7 +74,7 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
             }
         }
         finally { File.Delete(temporary); }
-    }, ct);
+    }, ct, lockHeld);
 
     public static async Task RestoreAsync(string archivePath, string destination, CancellationToken ct = default)
     {

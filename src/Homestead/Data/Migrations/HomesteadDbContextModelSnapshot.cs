@@ -90,6 +90,67 @@ namespace Homestead.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Homestead.Data.Entities.BackupSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Bucket")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Endpoint")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("ForcePathStyle")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("Frequency")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastAttemptAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastObjectKey")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastSuccessAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Prefix")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedAccessKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedSecretKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Region")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("BackupSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_BackupSettings_Frequency", "Frequency BETWEEN 0 AND 2");
+
+                            t.HasCheckConstraint("CK_BackupSettings_Id", "Id = 1");
+                        });
+                });
+
             modelBuilder.Entity("Homestead.Data.Entities.GuideStep", b =>
                 {
                     b.Property<Guid>("Id")

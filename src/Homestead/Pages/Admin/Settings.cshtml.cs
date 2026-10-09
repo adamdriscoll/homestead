@@ -1,5 +1,6 @@
 using Homestead.Data;
 using Homestead.Data.Entities;
+using Homestead.Features.Export;
 using Homestead.Features.Media;
 using Homestead.Features.Publishing;
 using Homestead.Features.Settings;
@@ -11,7 +12,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Homestead.Pages.Admin;
 
 [RequestSizeLimit(MediaService.MaximumBytes + 1024 * 1024)]
-public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment environment, PublicationLock writer, PublishingService publishing, MediaService media, ThemeService themes, ActiveSite active) : PageModel
+public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment environment, PublicationLock writer, PublishingService publishing, MediaService media, ThemeService themes, ActiveSite active, AutomatedBackupService automatedBackups) : PageModel
 {
     [BindProperty] public SettingsInput Input { get; set; } = new();
     [BindProperty] public string? Section { get; set; } = "general";
@@ -19,14 +20,52 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
     [BindProperty] public IFormFile? Upload { get; set; }
     [BindProperty] public string? Slot { get; set; }
     public SiteSettings Settings { get; private set; } = null!;
+    [BindProperty] public BackupInput Backup { get; set; } = new();
+    public BackupSettings BackupStatus { get; private set; } = new();
     public IReadOnlyList<ThemeSnapshot> Themes { get; private set; } = [];
     public ThemeSnapshot? ActiveTheme => active.Current?.Theme;
     private void LoadThemes() => Themes = themes.Installed();
     public async Task OnGetAsync()
     {
         Settings = await db.SiteSettings.SingleAsync(); Input = SettingsInput.From(Settings); PadProfiles(); LoadThemes();
+        BackupStatus = await db.BackupSettings.AsNoTracking().SingleOrDefaultAsync() ?? new();
+        Backup = BackupInput.From(BackupStatus);
     }
     private void PadProfiles() { while (Input.ProfileLinks.Count < 5) Input.ProfileLinks.Add(new()); }
+
+    public async Task<IActionResult> OnPostBackupAsync()
+    {
+        // This independent form does not submit the public settings model.
+        foreach (var key in ModelState.Keys.Where(key => !key.StartsWith("Backup.", StringComparison.Ordinal)).ToArray())
+            ModelState.Remove(key);
+        TryValidateModel(Backup, nameof(Backup));
+        if (ModelState.IsValid)
+        {
+            try
+            {
+                await automatedBackups.SaveAsync(Backup, HttpContext.RequestAborted);
+                StatusMessage = "Backup settings saved.";
+                return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "backup");
+            }
+            catch (InvalidOperationException ex) { ModelState.AddModelError("Backup.Enabled", ex.Message); }
+        }
+        if (ModelState.TryGetValue("Backup.AccessKey", out var accessState) && accessState.Errors.Count > 0 ||
+            ModelState.TryGetValue("Backup.SecretKey", out var secretState) && secretState.Errors.Count > 0)
+            ModelState.AddModelError("Backup", "Credential fields must be at most 1024 characters. Enter them again after correcting the form.");
+        Backup.AccessKey = null; Backup.SecretKey = null;
+        ModelState.Remove("Backup.AccessKey"); ModelState.Remove("Backup.SecretKey");
+        Settings = await db.SiteSettings.AsNoTracking().SingleAsync(); Input = SettingsInput.From(Settings); PadProfiles(); LoadThemes();
+        BackupStatus = await db.BackupSettings.AsNoTracking().SingleOrDefaultAsync() ?? new();
+        Section = "backup";
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostBackupNowAsync()
+    {
+        var result = await automatedBackups.RunAsync(ct: HttpContext.RequestAborted);
+        StatusMessage = result.Message;
+        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "backup");
+    }
 
     public async Task<IActionResult> OnPostThemeAsync()
     {
@@ -79,7 +118,10 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
             ModelState.AddModelError("Input.CanonicalBaseUrl", "Use HTTPS in production.");
         if (!ModelState.IsValid)
         {
-            Settings = await db.SiteSettings.AsNoTracking().SingleAsync(); PadProfiles(); LoadThemes(); return Page();
+            Settings = await db.SiteSettings.AsNoTracking().SingleAsync(); PadProfiles(); LoadThemes();
+            BackupStatus = await db.BackupSettings.AsNoTracking().SingleOrDefaultAsync() ?? new();
+            Backup = BackupInput.From(BackupStatus);
+            return Page();
         }
         await writer.Semaphore.WaitAsync();
         try

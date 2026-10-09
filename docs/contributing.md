@@ -50,6 +50,19 @@ For backup and rollback operations, follow the repository's
 
 ## Quality checks
 
+`AutomatedBackupTests` covers persisted schedules, concurrent checks, retry timing,
+private protected credentials, authenticated/antiforgery settings forms, disabled
+backups, pre-build failure with pending desired state, archive cleanup, and full
+restore with the saved key ring. Browser backup tests exercise the Backup tab,
+credential retention, safe upload errors, disabling, mobile layout, light/dark
+appearance, and ordinary forms without JavaScript. Automated tests use isolated
+data and fake upload destinations; no developer bucket receives test backups.
+`S3BackupUploaderTests` exercises signed single-object and multipart uploads over
+a disposable loopback server, checking complete payloads and path-style requests.
+The automated-backups migration creates a separate private configuration/status
+table. It does not alter posts or public theme models, and existing installations
+start with backups disabled.
+
 ### Browser tests
 
 `tests/Homestead.Playwright` is a separate Node.js 24 project using Playwright Test.

@@ -167,7 +167,11 @@ Track real-device publishing acceptance in the
 Use **Maintenance** for static ZIP, Hugo ZIP, full backup, and rebuild. Static
 ZIPs are public and contain the active site. Hugo ZIPs include private drafts and
 original photos; use Hugo 0.152.2 to build them. Backups additionally contain
-credentials and encryption keys. Store backup ZIPs securely off-host daily (or
+credentials and encryption keys. **Settings → Backup** can upload full backups to
+a private S3-compatible bucket before publication, daily, or weekly. Configure an
+HTTPS endpoint (or leave it blank for Amazon S3), signing region, bucket, prefix,
+and credentials. See [automated backups](backup-restore.md#automated-backups-to-s3-compatible-storage)
+for scheduling, failure behavior, permissions, and retention. Store backup ZIPs securely off-host daily (or
 after substantial authoring), weekly, and before upgrades. Rehearse restoration
 monthly. See [backup/restore](backup-restore.md) for commands and archive limits.
 
