@@ -1,0 +1,70 @@
+@if (Model.Post is { } post)
+{
+    <article class="card" data-town-post data-town-type="@post.Type.ToString().ToLowerInvariant()" data-town-listing="@(Model.IsListing ? "true" : "false")">
+        <div class="card-body">
+            <header data-town-byline>
+                <a class="avatar avatar-placeholder" href="/about/" aria-label="@($"About {Model.Site.DisplayAuthor}")">
+                    <div>
+                        @if (Model.Site.Avatar is { } avatar)
+                        {
+                            <img src="@avatar.Url" alt="" loading="lazy" />
+                        }
+                        else
+                        {
+                            <span aria-hidden="true">@Initial(Model.Site.DisplayAuthor)</span>
+                        }
+                    </div>
+                </a>
+                <div>
+                    <a data-town-author href="/about/">@Model.Site.DisplayAuthor</a>
+                    <p><a href="@post.Url"><time datetime="@post.PublishedAtUtc.ToString("O")">@post.DisplayDate</time></a> · @post.TypeLabel</p>
+                </div>
+            </header>
+            @if (Model.IsListing)
+            {
+                <h2 class="@(string.IsNullOrWhiteSpace(post.Title) && post.Type == PostType.Microblog ? "sr-only" : "card-title")"><a href="@post.Url">@post.DisplayTitle</a></h2>
+            }
+            else
+            {
+                <h1 class="card-title">@post.DisplayTitle</h1>
+            }
+            @if (!Model.IsListing || post.Type is PostType.Microblog or PostType.Gallery or PostType.Checkin)
+            {
+                <div class="prose-content">@post.ContentHtml</div>
+            }
+            else
+            {
+                @if (post.Type == PostType.Review && post.Review is { } review)
+                {
+                    <p data-town-review><strong>@review.Subject</strong>
+                        @if (review.Rating is { } rating) { <span aria-label="@($"Rated {rating} out of 5")"> · @rating/5</span> }
+                    </p>
+                }
+                @if (post.Location is { } location)
+                {
+                    <p data-town-location>Location: @string.Join(" · ", new[] { location.Name, location.Address, location.Coordinates }.Where(x => !string.IsNullOrWhiteSpace(x)))</p>
+                }
+                @if (!string.IsNullOrWhiteSpace(post.Description)) { <p data-town-excerpt>@post.Description</p> }
+                @if ((post.Cover ?? post.Media.FirstOrDefault()) is { } cover)
+                {
+                    <figure>
+                        <img src="@cover.Url" alt="@cover.AltText" loading="lazy" />
+                        @if (!string.IsNullOrWhiteSpace(cover.Caption)) { <figcaption>@cover.Caption</figcaption> }
+                    </figure>
+                }
+            }
+            <div class="card-actions" data-town-actions>
+                <a class="link" href="@post.Url">@(Model.IsListing ? "Open post" : "Permalink") <span aria-hidden="true">↗</span></a>
+                @if (post.Tags.Length > 0)
+                {
+                    <nav aria-label="Post tags">
+                        @foreach (var tag in post.Tags) { <a class="link" href="@tag.Url">#@tag.Name</a> }
+                    </nav>
+                }
+            </div>
+        </div>
+    </article>
+}
+@code {
+    private static string Initial(string text) => string.IsNullOrWhiteSpace(text) ? "T" : System.Globalization.StringInfo.GetNextTextElement(text.Trim()).ToUpperInvariant();
+}

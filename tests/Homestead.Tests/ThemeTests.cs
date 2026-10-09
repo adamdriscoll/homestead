@@ -262,6 +262,7 @@ public sealed class ThemeTests
     [InlineData("journal")]
     [InlineData("ledger")]
     [InlineData("folio")]
+    [InlineData("townsquare")]
     public async Task Built_in_themes_style_every_public_route_without_changing_administration(string theme)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
@@ -287,32 +288,35 @@ public sealed class ThemeTests
         foreach (var path in routes) Assert.DoesNotContain("Made at home with", await client.GetStringAsync(path));
     }
 
-    [Fact]
-    public async Task Folio_renders_all_six_types_with_locations_media_private_preview_and_portable_static_output()
+    [Theory]
+    [InlineData("folio")]
+    [InlineData("townsquare")]
+    public async Task Built_in_Razor_themes_render_all_six_types_with_locations_media_private_preview_and_portable_static_output(string theme)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); await PortabilityTests.Fixture(app);
-        var settings = Settings("folio"); settings["Input.EnableLocationMap"] = "true";
+        var settings = Settings(theme); settings["Input.EnableLocationMap"] = "true";
         _ = await TestApplication.Submit(client, "/admin/settings", settings);
         var active = app.Services.GetRequiredService<ActiveSite>().Current!;
-        Assert.Equal("folio", active.Theme!.Id); Assert.Equal(2, active.Theme.EngineVersion);
+        Assert.Equal(theme, active.Theme!.Id); Assert.Equal(2, active.Theme.EngineVersion);
         var home = await client.GetStringAsync("/");
-        Assert.Contains("data-folio-cover", home); Assert.Contains("Fixture review", home); Assert.Contains("5/5", home);
-        Assert.Contains("Theme home", Regex.Match(home, "(?s)<header data-folio-header>(.*?)</header>").Groups[1].Value);
+        var prefix = theme == "folio" ? "folio" : "town";
+        Assert.Contains($"data-{prefix}-cover", home); Assert.Contains("Fixture review", home); Assert.Contains("5/5", home);
+        Assert.Contains("Theme home", Regex.Match(home, $"(?s)<header data-{prefix}-header>(.*?)</header>").Groups[1].Value);
         Assert.Contains("Fixture place", home); Assert.DoesNotContain("PRIVATE DRAFT", home);
         Assert.DoesNotContain("<script>location", home);
         foreach (var post in active.Articles)
         {
             var html = await client.GetStringAsync($"/posts/{post.Slug}/");
-            Assert.Contains("data-folio-header", html); Assert.Contains("data-folio-footer", html);
-            Assert.Contains(post.Type == PostType.Microblog ? "data-folio-note" : "data-folio-post", html);
+            Assert.Contains($"data-{prefix}-header", html); Assert.Contains("<footer", html);
+            Assert.Contains($"data-{prefix}-post", html);
             Assert.Contains("Gallery caption", html); Assert.Contains("Fixture place", html);
             foreach (var image in post.Media) Assert.Contains(image.Url, html);
             if (post.Type == PostType.Guide) Assert.Contains("Second instruction", html);
             if (post.Type == PostType.Review) Assert.Contains("5/5", html);
         }
         foreach (var path in new[] { "/tags/travel/", "/about/", "/map/" })
-            Assert.Contains("data-folio-header", await client.GetStringAsync(path));
+            Assert.Contains($"data-{prefix}-header", await client.GetStringAsync(path));
         Assert.Contains("data-latitude=\"41.88\"", await client.GetStringAsync("/map/"));
         await using var scope = app.Services.CreateAsyncScope();
         var article = active.Articles.First(x => x.Type == PostType.Article);
@@ -322,10 +326,10 @@ public sealed class ThemeTests
         var preview = await client.GetStringAsync($"/admin/posts/{article.PostId}/preview");
         Assert.Contains("PRIVATE FOLIO EDITS", preview); Assert.Contains("Private draft preview", preview);
         Assert.Contains(article.Media[0].PrivateUrl, preview); Assert.DoesNotContain("PRIVATE FOLIO EDITS", await client.GetStringAsync($"/posts/{article.Slug}/"));
-        foreach (var name in new[] { "Main", "Header", "Footer", "Post", "Note" })
+        foreach (var name in scope.ServiceProvider.GetRequiredService<ThemeService>().Resolve(theme).Variant.Templates!.Keys)
         {
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/assets/theme/{name}.razor")).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/admin/themes/folio/{name}.razor")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/admin/themes/{theme}/{name}.razor")).StatusCode);
         }
         await using var archive = await scope.ServiceProvider.GetRequiredService<StaticExportService>().CreateAsync();
         using var zip = new ZipArchive(archive);

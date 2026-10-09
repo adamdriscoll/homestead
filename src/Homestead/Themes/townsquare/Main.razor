@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en" data-public-theme="@Model.ThemeId" data-accent="@Model.Site.AccentColor.ToLowerInvariant()">
+    @Model.Head
+    <body>
+        <a class="btn" data-town-skip href="#main">Skip to content</a>
+        @Model.Header
+        @if (Model.Path == "/" && Model.IsListing)
+        {
+            <section class="card" data-town-profile aria-labelledby="town-profile-title">
+                <div data-town-cover>
+                    @if (Model.Site.HeaderImage is { } image)
+                    {
+                        <img src="@image.Url" alt="@image.AltText" />
+                    }
+                </div>
+                <div class="card-body">
+                    <div class="avatar avatar-placeholder" data-town-profile-avatar>
+                        <div>
+                            @if (Model.Site.Avatar is { } avatar)
+                            {
+                                <img src="@avatar.Url" alt="" />
+                            }
+                            else
+                            {
+                                <span aria-hidden="true">@Initial(Model.Site.DisplayAuthor)</span>
+                            }
+                        </div>
+                    </div>
+                    <div>
+                        <h1 id="town-profile-title">@Model.Site.DisplayAuthor</h1>
+                        @if (!string.IsNullOrWhiteSpace(Model.Site.Description))
+                        {
+                            <p>@Model.Site.Description</p>
+                        }
+                    </div>
+                    <a class="btn" href="/about/">About me</a>
+                </div>
+            </section>
+        }
+        <div data-town-layout>
+            <aside aria-labelledby="town-intro-title">
+                <section class="card">
+                    <div class="card-body">
+                        <h2 class="card-title" id="town-intro-title">A little about me</h2>
+                        <p>@Model.Site.DisplayAuthor</p>
+                        @if (!string.IsNullOrWhiteSpace(Model.Site.AuthorBio))
+                        {
+                            <p>@Model.Site.AuthorBio</p>
+                        }
+                        <a class="link" href="/about/">More about me</a>
+                    </div>
+                </section>
+                <p data-town-subscribe>Keep up with the latest <a class="link" href="/rss.xml">via RSS</a>.</p>
+            </aside>
+            @Model.Content
+        </div>
+        @Model.Footer
+    </body>
+</html>
+@code {
+    private static string Initial(string text) => string.IsNullOrWhiteSpace(text) ? "T" : System.Globalization.StringInfo.GetNextTextElement(text.Trim()).ToUpperInvariant();
+}

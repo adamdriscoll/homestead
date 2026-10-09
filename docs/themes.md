@@ -3,7 +3,9 @@
 Select a theme in **Settings → Public theme** and save. Porch is the original
 single-column feed, Journal uses a narrower serif reading layout, Ledger uses
 a wider masthead and two-column feed on larger screens, and Folio pairs a bold
-accent-colored cover with spacious typography and serif reading text. Each supports every post
+accent-colored cover with spacious typography and serif reading text. Town Square
+uses a Facebook-inspired social feed with author avatars, rounded post cards,
+a profile cover, and a desktop introduction sidebar. Each supports every post
 type, ordinary navigation without JavaScript, system light/dark appearance, the
 four accent presets, and optional primary, background, and text colors.
 
@@ -13,6 +15,12 @@ listings. Its original templates and styling take inspiration from
 [Typology by Meks on ThemeForest](https://themeforest.net/item/typology-text-based-minimal-wordpress-blog-theme/19547842).
 No purchased assets or external fonts are required. The sources in
 `src/Homestead/Themes/folio` also serve as a built-in Razor authoring example.
+
+Town Square is included as a built-in option under **Settings → Public theme**.
+Its engine 2 Razor sources live in `src/Homestead/Themes/townsquare`. Notes,
+galleries, and check-ins show their full content in the feed; articles, reviews,
+and guides link from previews to their complete post. All navigation works without
+JavaScript. Styling is original, with no Facebook assets or external fonts.
 
 Colors use six-digit hex values such as `#25613e`. Empty fields restore theme
 defaults. Overrides apply in both light and dark mode, so check that your text and

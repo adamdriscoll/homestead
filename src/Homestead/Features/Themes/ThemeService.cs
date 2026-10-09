@@ -12,7 +12,7 @@ public sealed class ThemeService(StoragePaths paths, IWebHostEnvironment environ
 {
     public const int MaximumUploadBytes = 5 * 1024 * 1024;
     public const int MaximumExpandedBytes = 20 * 1024 * 1024;
-    public static IReadOnlyList<string> BuiltInIds { get; } = ["porch", "journal", "ledger", "folio"];
+    public static IReadOnlyList<string> BuiltInIds { get; } = ["porch", "journal", "ledger", "folio", "townsquare"];
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
     // Engine 1 packages declaring the original types also render check-ins through shared regions.
     private static readonly string[] RequiredPostTypes = ["microblog", "article", "review", "guide", "gallery"];

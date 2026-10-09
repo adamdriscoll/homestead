@@ -1,0 +1,145 @@
+/* Original social feed styling inspired by Facebook's author-led post cards. */
+html[data-public-theme="townsquare"] {
+  color-scheme: light dark;
+  --color-base-100: #ffffff;
+  --color-base-200: #f0f2f5;
+  --color-base-300: #dce0e5;
+  --color-base-content: #242526;
+}
+html[data-public-theme="townsquare"]:where([data-accent="porch"]) {
+  --color-primary: #1765ce;
+  --color-primary-content: #ffffff;
+}
+@media (prefers-color-scheme: dark) {
+  html[data-public-theme="townsquare"] {
+    --color-base-100: #242526;
+    --color-base-200: #18191a;
+    --color-base-300: #45474b;
+    --color-base-content: #e4e6eb;
+  }
+  html[data-public-theme="townsquare"]:where([data-accent="porch"]) {
+    --color-primary: #85b8ff;
+    --color-primary-content: #18191a;
+  }
+}
+html[data-public-theme="townsquare"] body {
+  margin: 0;
+  background: color-mix(in srgb, var(--color-base-100) 92%, var(--color-base-content));
+  color: var(--color-base-content);
+  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  line-height: 1.5;
+}
+html[data-public-theme="townsquare"] :is(a, h1, h2, p) { overflow-wrap: anywhere; }
+html[data-public-theme="townsquare"] a { text-underline-offset: 0.2em; }
+html[data-public-theme="townsquare"] a:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 4px; }
+html[data-public-theme="townsquare"] [data-town-skip] { position: absolute; top: -10rem; left: 1rem; z-index: 10; }
+html[data-public-theme="townsquare"] [data-town-skip]:focus { top: 1rem; }
+html[data-public-theme="townsquare"] [data-town-header] {
+  background: var(--color-base-100);
+  border-bottom: 1px solid var(--color-base-300);
+  box-shadow: 0 1px 4px color-mix(in srgb, var(--color-base-content) 8%, transparent);
+}
+html[data-public-theme="townsquare"] .navbar {
+  max-width: 72rem;
+  margin: auto;
+  padding: 0.75rem 1.5rem;
+  gap: 0.5rem 2rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+html[data-public-theme="townsquare"] [data-town-wordmark] {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-primary);
+  font-weight: 800;
+  font-size: 1.6rem;
+  letter-spacing: -0.055em;
+  text-decoration: none;
+}
+html[data-public-theme="townsquare"] [data-town-wordmark] img { max-width: 3rem; max-height: 2.5rem; }
+html[data-public-theme="townsquare"] nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1rem; }
+html[data-public-theme="townsquare"] nav a { display: inline-flex; align-items: center; min-height: 2.75rem; }
+html[data-public-theme="townsquare"] [data-town-header] nav { font-size: 0.9rem; font-weight: 600; }
+html[data-public-theme="townsquare"] [data-town-header] nav a { padding-inline: 0.25rem; text-decoration: none; }
+html[data-public-theme="townsquare"] [data-town-header] nav a[aria-current="page"] { box-shadow: inset 0 -3px var(--color-primary); }
+html[data-public-theme="townsquare"] .card {
+  background: var(--color-base-100);
+  border: 1px solid var(--color-base-300);
+  border-radius: 0.75rem;
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--color-base-content) 6%, transparent);
+  min-width: 0;
+}
+html[data-public-theme="townsquare"] .card-body { padding: 1.25rem; gap: 0.85rem; }
+html[data-public-theme="townsquare"] [data-town-profile] { max-width: 69rem; margin: 1.5rem auto 0; overflow: hidden; }
+html[data-public-theme="townsquare"] [data-town-cover] {
+  height: clamp(8rem, 20vw, 16rem);
+  background: linear-gradient(125deg, color-mix(in srgb, var(--color-primary) 22%, var(--color-base-100)), var(--color-base-200));
+}
+html[data-public-theme="townsquare"] [data-town-cover] img { width: 100%; height: 100%; object-fit: cover; }
+html[data-public-theme="townsquare"] [data-town-profile] > .card-body { flex-direction: row; align-items: center; gap: 1.5rem; padding: 1.5rem 2rem; }
+html[data-public-theme="townsquare"] [data-town-profile] h1 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 750; letter-spacing: -0.035em; }
+html[data-public-theme="townsquare"] [data-town-profile] p { margin-top: 0.25rem; max-width: 40rem; }
+html[data-public-theme="townsquare"] [data-town-profile] .btn { margin-left: auto; flex-shrink: 0; background: var(--color-base-200); color: var(--color-base-content); }
+html[data-public-theme="townsquare"] .avatar > div {
+  width: 2.75rem;
+  height: 2.75rem;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--color-base-content) 10%, var(--color-base-100));
+  color: var(--color-base-content);
+  font-weight: 700;
+}
+html[data-public-theme="townsquare"] .avatar img { width: 100%; height: 100%; object-fit: cover; }
+html[data-public-theme="townsquare"] [data-town-profile-avatar] { margin-top: -3.5rem; }
+html[data-public-theme="townsquare"] [data-town-profile-avatar] > div { width: 7rem; height: 7rem; border: 4px solid var(--color-base-100); font-size: 2.5rem; }
+html[data-public-theme="townsquare"] [data-town-layout] {
+  max-width: 64rem;
+  margin: 1.75rem auto 3rem;
+  padding-inline: 1.5rem;
+  display: grid;
+  grid-template-columns: minmax(0, 19rem) minmax(0, 40rem);
+  align-items: start;
+  gap: 1.5rem;
+}
+html[data-public-theme="townsquare"] [data-town-layout] aside { min-width: 0; }
+html[data-public-theme="townsquare"] [data-town-layout] aside .card-title { font-size: 1.15rem; }
+html[data-public-theme="townsquare"] [data-town-subscribe] { padding: 1rem 0.5rem; font-size: 0.85rem; }
+html[data-public-theme="townsquare"] main#main { width: 100%; min-width: 0; margin: 0; padding: 0; }
+html[data-public-theme="townsquare"] main#main > h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; }
+html[data-public-theme="townsquare"] main#main > :not(.card, h1) { background: var(--color-base-100); border-radius: 0.75rem; padding: 1.25rem; }
+html[data-public-theme="townsquare"] [data-town-byline] { display: flex; align-items: center; gap: 0.75rem; }
+html[data-public-theme="townsquare"] [data-town-author] { font-weight: 650; text-decoration: none; }
+html[data-public-theme="townsquare"] [data-town-byline] p { font-size: 0.8rem; }
+html[data-public-theme="townsquare"] [data-town-byline] p a { text-decoration: none; }
+html[data-public-theme="townsquare"] [data-town-byline] a:hover { text-decoration: underline; }
+html[data-public-theme="townsquare"] [data-town-post] .card-title { font-size: 1.4rem; line-height: 1.3; letter-spacing: -0.025em; display: block; }
+html[data-public-theme="townsquare"] [data-town-post] .card-title a { text-decoration: none; }
+html[data-public-theme="townsquare"] [data-town-post] .card-title a:hover { text-decoration: underline; }
+html[data-public-theme="townsquare"] [data-town-listing="false"] .card-title { font-size: clamp(1.6rem, 4vw, 2.25rem); }
+html[data-public-theme="townsquare"] .prose-content { line-height: 1.7; }
+html[data-public-theme="townsquare"] .prose-content > :first-child { margin-top: 0; }
+html[data-public-theme="townsquare"] .prose-content > :last-child { margin-bottom: 0; }
+html[data-public-theme="townsquare"] [data-town-excerpt] { line-height: 1.7; }
+html[data-public-theme="townsquare"] [data-town-location] { font-size: 0.9rem; }
+html[data-public-theme="townsquare"] [data-town-post] figure { display: block; margin-block: 1rem; }
+html[data-public-theme="townsquare"] [data-town-post] figure img { width: 100%; height: auto; max-height: 38rem; object-fit: contain; border-radius: 0.5rem; }
+html[data-public-theme="townsquare"] [data-town-post] figcaption { padding-top: 0.5rem; font-size: 0.85rem; }
+html[data-public-theme="townsquare"] [data-town-actions] { border-top: 1px solid var(--color-base-300); padding-top: 0.5rem; align-items: center; justify-content: space-between; gap: 0.25rem 1rem; font-size: 0.85rem; }
+html[data-public-theme="townsquare"] [data-town-actions] > a { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; }
+html[data-public-theme="townsquare"] body > footer { max-width: 64rem; margin: auto; padding: 1.5rem; border-color: var(--color-base-300); font-size: 0.85rem; }
+@media (max-width: 72rem) {
+  html[data-public-theme="townsquare"] [data-town-profile] { margin-inline: 1.5rem; }
+}
+@media (max-width: 52rem) {
+  html[data-public-theme="townsquare"] [data-town-layout] { grid-template-columns: minmax(0, 40rem); justify-content: center; }
+  html[data-public-theme="townsquare"] [data-town-layout] aside { display: none; }
+  html[data-public-theme="townsquare"] [data-town-profile] > .card-body { flex-wrap: wrap; gap: 0.75rem; padding: 1.25rem; }
+  html[data-public-theme="townsquare"] [data-town-profile-avatar] { margin-top: -3rem; }
+  html[data-public-theme="townsquare"] [data-town-profile] .btn { margin-left: 0; }
+}
+@media (max-width: 30rem) {
+  html[data-public-theme="townsquare"] .navbar { padding-inline: 1rem; }
+  html[data-public-theme="townsquare"] [data-town-profile] { margin-inline: 0.75rem; }
+  html[data-public-theme="townsquare"] [data-town-layout] { padding-inline: 0.75rem; }
+  html[data-public-theme="townsquare"] .card-body { padding: 1rem; }
+}

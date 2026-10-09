@@ -10,6 +10,71 @@ for (const javaScriptEnabled of [true, false]) {
   test.describe(`Razor theme with JavaScript ${javaScriptEnabled ? 'enabled' : 'disabled'}`, () => {
     test.use({ javaScriptEnabled });
 
+    test('selects built-in Town Square and reads its social feed and posts', async ({ owner: page }, testInfo) => {
+      await newPost(page, 'article');
+      await page.getByLabel('Title', { exact: false }).fill('Small rituals, lasting stories');
+      await page.getByLabel('Body').fill('## A little room to think\n\nThe best stories start with noticing the everyday.');
+      const articlePath = await publish(page);
+      await newPost(page, 'note');
+      await page.getByLabel('Note', { exact: true }).fill('A small observation from the garden today.');
+      const notePath = await publish(page);
+      const editorPath = new URL(page.url()).pathname;
+      await page.getByLabel('Note', { exact: true }).fill('PRIVATE TOWN SQUARE DRAFT');
+      await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+      await expect(page.getByRole('status').filter({ hasText: 'Draft saved.' })).toBeVisible();
+
+      await page.goto('/admin/settings');
+      await page.locator('#tab-general').click();
+      await page.getByLabel('Site title', { exact: true }).fill('Everyday Ada');
+      await page.getByLabel('Description', { exact: true }).fill('Little moments, good reads, and places worth remembering.');
+      await page.locator('#tab-about').click();
+      await page.getByLabel('Author display name', { exact: true }).fill('Ada');
+      await page.getByRole('button', { name: 'Save settings', exact: true }).click();
+      await page.locator('#tab-theme').click();
+      await page.getByLabel('Accent preset', { exact: true }).selectOption('Porch');
+      await page.getByLabel('Public theme', { exact: true }).selectOption('townsquare');
+      await page.getByRole('button', { name: 'Save settings', exact: true }).click();
+      await expect(page.getByRole('status')).toContainText('Settings saved and public site rebuilt.');
+
+      await page.goto('/');
+      await expect(page.locator('html')).toHaveAttribute('data-public-theme', 'townsquare');
+      await expect(page.locator('[data-town-header]').getByRole('link', { name: 'Everyday Ada' })).toBeVisible();
+      await expect(page.getByRole('heading', { level: 1, name: 'Ada', exact: true })).toBeVisible();
+      await expect(page.locator('[data-town-post]')).toHaveCount(2);
+      await expect(page.getByText('A small observation from the garden today.', { exact: true })).toBeVisible();
+      await expect(page.getByText('PRIVATE TOWN SQUARE DRAFT', { exact: true })).toHaveCount(0);
+      await page.keyboard.press('Tab');
+      await expect(page.getByRole('link', { name: 'Skip to content', exact: true })).toBeFocused();
+      await page.keyboard.press('Enter');
+      await expect(page).toHaveURL(/\/#main$/);
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath('townsquare-home.png'), fullPage: true });
+      await page.getByRole('heading', { name: 'Small rituals, lasting stories', exact: true }).getByRole('link').click();
+      await expect(page).toHaveURL(new RegExp(articlePath + '$'));
+      await expect(page.getByRole('heading', { name: 'A little room to think', exact: true })).toBeVisible();
+      await expect(page.locator('[data-town-author]')).toHaveText('Ada');
+      await page.screenshot({ path: testInfo.outputPath('townsquare-article.png'), fullPage: true });
+      await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Notes', exact: true }).click();
+      await page.getByRole('link', { name: 'Open post', exact: false }).click();
+      await expect(page).toHaveURL(new RegExp(notePath + '$'));
+      await expect(page.getByText('A small observation from the garden today.', { exact: true })).toBeVisible();
+      await page.emulateMedia({ colorScheme: 'dark' });
+      await page.goto('/');
+      expect(await page.locator('[data-town-post]').first().evaluate(el => getComputedStyle(el).backgroundColor)).toBe('rgb(36, 37, 38)');
+      expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      await page.screenshot({ path: testInfo.outputPath('townsquare-dark.png'), fullPage: true });
+      expect((await page.request.get('/assets/theme/Main.razor')).status()).toBe(404);
+      await page.goto('/admin/settings#theme');
+      await page.getByLabel('Primary color', { exact: true }).fill('#245734');
+      await page.getByRole('button', { name: 'Save settings', exact: true }).click();
+      await page.goto('/');
+      expect(await page.locator('[data-town-wordmark]').evaluate(el => getComputedStyle(el).color)).toBe('rgb(36, 87, 52)');
+      await page.goto(editorPath.replace(/\/edit$/, '/preview'));
+      await expect(page.getByText('Private draft preview', { exact: false })).toBeVisible();
+      await expect(page.getByText('PRIVATE TOWN SQUARE DRAFT', { exact: true })).toBeVisible();
+      expect(await page.locator('script').count()).toBe(0);
+    });
+
     test('selects built-in Folio and reads its cover, feed and posts', async ({ owner: page }, testInfo) => {
       await newPost(page, 'article');
       await page.getByLabel('Title', { exact: false }).fill('Small rituals, lasting stories');

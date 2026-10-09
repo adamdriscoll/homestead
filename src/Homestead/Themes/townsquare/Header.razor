@@ -1,0 +1,17 @@
+<header data-town-header>
+    <div class="navbar">
+        <a data-town-wordmark href="/">
+            @if (Model.Site.Logo is { } logo)
+            {
+                <img src="@logo.Url" alt="" />
+            }
+            <span>@Model.Site.Title</span>
+        </a>
+        <nav aria-label="Main navigation">
+            @foreach (var link in Model.Navigation)
+            {
+                <a class="link" href="@link.Url" aria-current="@(Model.Path == link.Url ? "page" : null)">@link.Label</a>
+            }
+        </nav>
+    </div>
+</header>
