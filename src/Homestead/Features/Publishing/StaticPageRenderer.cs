@@ -12,6 +12,7 @@ public sealed record PublicPage(SiteSettings Settings, ArticleSnapshot? Article,
     bool Preview = false, string Path = "/", string Heading = "Welcome home.", ArticleMedia[]? Branding = null, ThemePackage? Theme = null)
 {
     public IReadOnlyDictionary<Guid, string>? RenderedPosts { get; init; }
+    public Homestead.Features.Newsletter.NewsletterFormModel? NewsletterForm { get; init; }
 }
 
 public interface IStaticPageRenderer

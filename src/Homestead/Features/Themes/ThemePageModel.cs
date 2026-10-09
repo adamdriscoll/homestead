@@ -9,7 +9,10 @@ namespace Homestead.Features.Themes;
 public sealed record ThemeSiteModel(string Title, string Description, string CanonicalBaseUrl, string DisplayAuthor,
     string AuthorBio, string FooterText, bool HideHomesteadCredit, string TimeZone, string AccentColor,
     bool EnableLocationMap, ImmutableArray<PostType> EnabledPostTypes, ImmutableArray<ThemeLinkModel> ProfileLinks,
-    MarkupString AboutHtml, ThemeMediaModel? Avatar, ThemeMediaModel? Logo, ThemeMediaModel? HeaderImage);
+    MarkupString AboutHtml, ThemeMediaModel? Avatar, ThemeMediaModel? Logo, ThemeMediaModel? HeaderImage)
+{
+    public bool EnableNewsletter { get; init; }
+}
 public sealed record ThemeLinkModel(string Label, string Url);
 public sealed record ThemeMediaModel(Guid Id, string Url, string MimeType, string AltText, string? Caption, Guid? GuideStepId);
 public sealed record ThemeTagModel(string Name, string Url);
@@ -66,11 +69,13 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             if (settings.IsPostTypeEnabled(type)) navigation.Add(new(label, path));
         navigation.Add(new("About", "/about/"));
         if (settings.EnableLocationMap) navigation.Add(new("Map", "/map/"));
+        if (settings.EnableNewsletter) navigation.Add(new("Newsletter", DiscoveryFiles.Absolute(settings, "/newsletter/")));
         return new(new(settings.Title, settings.Description, settings.CanonicalBaseUrl, settings.DisplayAuthor,
             settings.AuthorBio, settings.FooterText, settings.HideHomesteadCredit, settings.TimeZone, settings.AccentColor,
             settings.EnableLocationMap, settings.EnabledPostTypes.ToImmutableArray(), settings.ProfileLinks.Select(x => new ThemeLinkModel(x.Label ?? "", x.Url ?? "")).ToImmutableArray(),
-            new(markdown.Render(about, page.Preview)), Brand(settings.AvatarMediaId), Brand(settings.LogoMediaId), Brand(settings.HeaderMediaId)),
-            page.Path, page.Heading, page.Preview, page.Article is null && page.Path is not ("/about/" or "/map/"), page.Theme!.Id,
+            new(markdown.Render(about, page.Preview)), Brand(settings.AvatarMediaId), Brand(settings.LogoMediaId), Brand(settings.HeaderMediaId))
+        { EnableNewsletter = settings.EnableNewsletter },
+            page.Path, page.Heading, page.Preview, page.Article is null && page.Path is not ("/about/" or "/map/" or "/newsletter/"), page.Theme!.Id,
             DiscoveryFiles.Absolute(settings, page.Article is { } article ? $"/posts/{article.Slug}/" : page.Path),
             page.Article is { } current ? Post(current) : null, page.Articles.Select(Post).ToImmutableArray())
         { Navigation = navigation.ToImmutableArray() };

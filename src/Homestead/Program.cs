@@ -6,6 +6,7 @@ using Homestead.Features.Articles;
 using Homestead.Features.Authentication;
 using Homestead.Features.Export;
 using Homestead.Features.Media;
+using Homestead.Features.Newsletter;
 using Homestead.Features.Publishing;
 using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
@@ -77,6 +78,9 @@ builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IBackupUploader, S3BackupUploader>();
 builder.Services.AddScoped<AutomatedBackupService>();
 builder.Services.AddHostedService<AutomatedBackupWorker>();
+builder.Services.AddHttpClient<INewsletterEmailSender, BrevoEmailSender>(client => client.Timeout = TimeSpan.FromSeconds(15));
+builder.Services.AddScoped<NewsletterService>();
+builder.Services.AddHostedService<NewsletterWorker>();
 builder.Services.AddScoped<IStaticPageRenderer, StaticPageRenderer>();
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
 {
@@ -90,6 +94,9 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("newsletter", context => !HttpMethods.IsPost(context.Request.Method) ? RateLimitPartition.GetNoLimiter("read") : RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
+        { PermitLimit = 10, Window = TimeSpan.FromMinutes(15), QueueLimit = 0 }));
     options.AddPolicy("authentication", context => RateLimitPartition.GetFixedWindowLimiter(
         context.Connection.RemoteIpAddress?.ToString() ?? "unknown", _ => new FixedWindowRateLimiterOptions
         { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0 }));
@@ -152,8 +159,9 @@ app.Use(async (context, next) =>
     var scripts = preview ? "'none'" : "'self'";
     var mapImages = locationMap ? " https://tile.openstreetmap.org" : "";
     context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src {scripts}; style-src 'self'; img-src 'self' data:{mapImages}; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
-    if (context.Request.Path.StartsWithSegments("/admin") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/setup"))
+    if (context.Request.Path.StartsWithSegments("/admin") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/setup") || context.Request.Path.StartsWithSegments("/newsletter"))
         context.Response.Headers.CacheControl = "no-store";
+    if (context.Request.Path.StartsWithSegments("/newsletter")) context.Response.Headers["Referrer-Policy"] = "no-referrer";
     await next(context);
 });
 app.UseStaticFiles(); // Only compiled admin assets in wwwroot; /data is never registered.

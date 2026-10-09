@@ -20,7 +20,7 @@
       if (selected && focus) tab.focus();
     });
     sectionInput.value = id;
-    form.hidden = id === 'images' || id === 'backup';
+    form.hidden = id === 'images' || id === 'backup' || id === 'newsletter';
     history.replaceState(null, '', `#${id}`);
   }
 

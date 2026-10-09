@@ -266,6 +266,171 @@ namespace Homestead.Data.Migrations
                     b.ToTable("MediaAssets");
                 });
 
+            modelBuilder.Entity("Homestead.Data.Entities.NewsletterDelivery", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Html")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Key")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("PostIdsJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("SentAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Subject")
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid>("SubscriberId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Text")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Status", "NextAttemptAtUtc");
+
+                    b.HasIndex("SubscriberId", "Key")
+                        .IsUnique();
+
+                    b.ToTable("NewsletterDeliveries", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsletterDelivery_Status", "Status BETWEEN 0 AND 2");
+                        });
+                });
+
+            modelBuilder.Entity("Homestead.Data.Entities.NewsletterPost", b =>
+                {
+                    b.Property<Guid>("PostId")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("ActivatedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PostId");
+
+                    b.ToTable("NewsletterPosts");
+                });
+
+            modelBuilder.Entity("Homestead.Data.Entities.NewsletterSettings", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Enabled")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("EnabledAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastSuccessAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("ProtectedApiKey")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SenderEmail")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SenderName")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("NewsletterSettings", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsletterSettings_Id", "Id = 1");
+                        });
+                });
+
+            modelBuilder.Entity("Homestead.Data.Entities.NewsletterSubscriber", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ConfirmationExpiresAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("ConfirmedAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(254)
+                        .HasColumnType("TEXT")
+                        .UseCollation("NOCASE");
+
+                    b.Property<int>("Frequency")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<DateTime?>("LastConfirmationAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("NextDigestAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PendingFrequency")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<int>("PendingPostTypes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("PendingToken")
+                        .HasColumnType("TEXT");
+
+                    b.Property<int>("PostTypes")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<bool>("Subscribed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<Guid>("TokenVersion")
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.ToTable("NewsletterSubscribers", null, t =>
+                        {
+                            t.HasCheckConstraint("CK_NewsletterSubscriber_Frequency", "Frequency BETWEEN 0 AND 1 AND PendingFrequency BETWEEN 0 AND 1");
+
+                            t.HasCheckConstraint("CK_NewsletterSubscriber_Types", "PostTypes BETWEEN 1 AND 63 AND PendingPostTypes BETWEEN 0 AND 63");
+                        });
+                });
+
             modelBuilder.Entity("Homestead.Data.Entities.Post", b =>
                 {
                     b.Property<Guid>("Id")
@@ -547,6 +712,9 @@ namespace Homestead.Data.Migrations
                     b.Property<bool>("EnableLocationMap")
                         .HasColumnType("INTEGER");
 
+                    b.Property<bool>("EnableNewsletter")
+                        .HasColumnType("INTEGER");
+
                     b.Property<bool>("EnableNotes")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -747,6 +915,15 @@ namespace Homestead.Data.Migrations
                         .IsRequired();
 
                     b.Navigation("Post");
+                });
+
+            modelBuilder.Entity("Homestead.Data.Entities.NewsletterDelivery", b =>
+                {
+                    b.HasOne("Homestead.Data.Entities.NewsletterSubscriber", null)
+                        .WithMany()
+                        .HasForeignKey("SubscriberId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("Homestead.Data.Entities.PostDraft", b =>

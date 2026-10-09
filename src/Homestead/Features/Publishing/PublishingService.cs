@@ -4,6 +4,7 @@ using Homestead.Data.Entities;
 using Homestead.Features.Articles;
 using Homestead.Features.Export;
 using Homestead.Features.Media;
+using Homestead.Features.Newsletter;
 using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
@@ -15,7 +16,7 @@ public sealed record PublicationResult(bool Succeeded, string Message, string? U
 public sealed class PublishingService(HomesteadDbContext db, ArticleService articles, PublicationLock writer,
     IStaticPageRenderer renderer, SafeMarkdown markdown, MediaService media, StoragePaths paths,
     ActiveSite active, IGenerationActivation activation, ThemeService themes, IWebHostEnvironment environment, ILogger<PublishingService> logger,
-    AutomatedBackupService automatedBackups)
+    AutomatedBackupService automatedBackups, NewsletterService newsletters)
 {
     public async Task<PublicationResult> TransitionAsync(Guid id, string action, long version)
     {
@@ -172,6 +173,8 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             }
             var manifest = new GenerationManifest(generation.Id, DateTime.UtcNow, settings, posts, files.ToArray(), branding, theme.Snapshot);
             await activation.ActivateAsync(manifest); activated = true;
+            try { await newsletters.CaptureLockedAsync(manifest); }
+            catch (Exception ex) { logger.LogWarning("Newsletter activation recording failed ({FailureType}); the worker will retry.", ex.GetType().Name); }
             generation.Status = GenerationStatus.Succeeded; generation.ActivatedAtUtc = manifest.ActivatedAtUtc;
             await db.SaveChangesAsync();
             await PruneAsync();

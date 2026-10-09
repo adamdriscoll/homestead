@@ -2,8 +2,52 @@
 
 Homestead runs as one application instance with SQLite and files in `/data`.
 The supplied Compose configuration adds Caddy for HTTPS. It serves administration,
-article authoring/uploads/preview, and a generated public site. Public requests
+article authoring/uploads/preview, and a generated public site. Ordinary public requests
 read the active generation's HTML, CSS, and selected media without querying SQLite.
+
+## Optional Brevo newsletter
+
+Open **Settings → Newsletter**, enter a Brevo API key, verified sender email, and
+sender name, then enable and save. This uses Brevo's
+[transactional email API](https://developers.brevo.com/reference/send-transac-email)
+with separate messages for each reader. The server needs outbound HTTPS access to
+`api.brevo.com`. Authenticate your sending domain and verify the sender in Brevo;
+account sending limits and charges apply. No new environment variables or runtime
+services are required. Blank API key fields retain the protected saved key.
+
+Readers choose instant notices or weekly summaries and any of the six post types
+at `/newsletter/`. Confirmation links expire after 24 hours and require an explicit
+form submission. Repeated confirmation requests for an address are throttled; POST
+requests are also limited by peer IP. Link-scanning GET requests never subscribe,
+change preferences, or unsubscribe. Each newsletter has a preferences/unsubscribe
+link; keep those bearer links private. Management remains available when sending
+is disabled. The subscription endpoints are the explicit dynamic exception to
+static public serving and require Homestead, SQLite, and its saved key ring.
+
+An in-process worker checks once a minute. Instant notices normally send on the
+next check. Weekly summaries begin seven days after confirmation or a preferences
+change, then run seven days after the previous check. Downtime is included in the
+next summary. Empty windows send nothing. Only a post's first successful public
+activation is announced; edits and republishing do not repeat it. Enabling or
+re-enabling starts with future posts. Removed or disabled-type posts are omitted
+before sending; an attempted delivery is cancelled if its post set is removed.
+Private drafts and failed activations never enter mail content.
+
+Delivery records, schedules, and first-activation snapshots persist in private
+SQLite. Failed sends retry after two minutes with backoff up to one hour, without
+blocking site activation. Settings shows safe errors and the last accepted email;
+Brevo's email logs distinguish acceptance from delivery to the recipient. The
+worker serializes private changes and briefly holds the publication lock during
+each provider request (15-second timeout), releasing between recipients.
+
+Retries reuse a durable UUID and frozen message content with Brevo's
+[idempotency header](https://developers.brevo.com/docs/heterogenous-versions-batch-emails).
+Provider deduplication has a limited lifetime: a crash or uncertain network result
+followed by a retry after that lifetime can duplicate an email. The local sent
+history prevents ordinary rebuild/restart duplicates, but cannot guarantee
+exactly-once remote delivery. Restoring an older backup can also replay sends
+accepted after that backup; disable newsletters before resuming a restored copy
+if needed. Test with your own subscription before inviting readers.
 
 ## Production on Linux
 

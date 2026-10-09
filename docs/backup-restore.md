@@ -17,6 +17,14 @@ Caddy certificates, reverse-proxy configuration, and the application image are
 not included; preserve those separately. Saved canonical URL and branding are
 included in SQLite.
 
+Optional newsletter configuration, protected Brevo keys, subscriber addresses and
+preferences, confirmation state, mailing schedules, and delivery history are also
+included in SQLite. The key ring is required to decrypt the API key and preserve
+existing confirmation/management links. Subscriber data and credentials are
+excluded from static and Hugo exports. Treat full backups as private reader data.
+An older restore may replay emails sent after the backup; review or disable
+Newsletter settings before resuming delivery on a recovered installation.
+
 Keep backup archives private, encrypted at rest, and off the publishing server.
 They contain private work, originals that may contain GPS/EXIF metadata, password
 hashes, and keys capable of decrypting login cookies. The checksums detect damage;

@@ -2,6 +2,7 @@ using Homestead.Data;
 using Homestead.Data.Entities;
 using Homestead.Features.Export;
 using Homestead.Features.Media;
+using Homestead.Features.Newsletter;
 using Homestead.Features.Publishing;
 using Homestead.Features.Settings;
 using Homestead.Features.Themes;
@@ -12,7 +13,7 @@ using Microsoft.EntityFrameworkCore;
 namespace Homestead.Pages.Admin;
 
 [RequestSizeLimit(MediaService.MaximumBytes + 1024 * 1024)]
-public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment environment, PublicationLock writer, PublishingService publishing, MediaService media, ThemeService themes, ActiveSite active, AutomatedBackupService automatedBackups) : PageModel
+public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment environment, PublicationLock writer, PublishingService publishing, MediaService media, ThemeService themes, ActiveSite active, AutomatedBackupService automatedBackups, NewsletterService newsletters) : PageModel
 {
     [BindProperty] public SettingsInput Input { get; set; } = new();
     [BindProperty] public string? Section { get; set; } = "general";
@@ -22,6 +23,9 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
     public SiteSettings Settings { get; private set; } = null!;
     [BindProperty] public BackupInput Backup { get; set; } = new();
     public BackupSettings BackupStatus { get; private set; } = new();
+    [BindProperty] public NewsletterInput Newsletter { get; set; } = new();
+    public NewsletterSettings NewsletterStatus { get; private set; } = new();
+    public int SubscriberCount { get; private set; }
     public IReadOnlyList<ThemeSnapshot> Themes { get; private set; } = [];
     public ThemeSnapshot? ActiveTheme => active.Current?.Theme;
     private void LoadThemes() => Themes = themes.Installed();
@@ -30,8 +34,33 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
         Settings = await db.SiteSettings.SingleAsync(); Input = SettingsInput.From(Settings); PadProfiles(); LoadThemes();
         BackupStatus = await db.BackupSettings.AsNoTracking().SingleOrDefaultAsync() ?? new();
         Backup = BackupInput.From(BackupStatus);
+        NewsletterStatus = await db.NewsletterSettings.AsNoTracking().SingleOrDefaultAsync() ?? new();
+        Newsletter = NewsletterInput.From(NewsletterStatus);
+        SubscriberCount = await db.NewsletterSubscribers.CountAsync(x => x.Subscribed);
     }
     private void PadProfiles() { while (Input.ProfileLinks.Count < 5) Input.ProfileLinks.Add(new()); }
+
+    public async Task<IActionResult> OnPostNewsletterAsync()
+    {
+        foreach (var key in ModelState.Keys.Where(key => !key.StartsWith("Newsletter.", StringComparison.Ordinal)).ToArray())
+            ModelState.Remove(key);
+        if (ModelState.IsValid)
+        {
+            try
+            {
+                await newsletters.SaveAsync(Newsletter, HttpContext.RequestAborted);
+                StatusMessage = "Newsletter settings saved. " + (await publishing.RebuildAsync()).Message;
+                return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "newsletter");
+            }
+            catch (InvalidOperationException ex) { ModelState.AddModelError("Newsletter.Enabled", ex.Message); }
+        }
+        var submitted = Newsletter;
+        if (ModelState.TryGetValue("Newsletter.ApiKey", out var keyState) && keyState.Errors.Count > 0)
+            ModelState.AddModelError("Newsletter", "The API key must be at most 1024 characters. Enter it again after correcting the form.");
+        submitted.ApiKey = null; ModelState.Remove("Newsletter.ApiKey");
+        await OnGetAsync(); Newsletter = submitted; Section = "newsletter";
+        return Page();
+    }
 
     public async Task<IActionResult> OnPostBackupAsync()
     {

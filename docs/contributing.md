@@ -111,6 +111,18 @@ Screenshots, videos, traces, and container logs are retained on failure under
 
 ### Application checks
 
+`NewsletterTests` uses real migrated SQLite and a fake Brevo sender/clock. It covers
+confirmation and authenticated settings forms, antiforgery, protected API keys,
+cadence/type preferences, snapshot privacy, failed activation, delivery retry and
+restart, removal before a digest, every built-in theme, export privacy, and backup
+restore with working management links. The newsletter migration adds private
+settings/subscriber/activation/delivery tables and a disabled-by-default public
+navigation flag; it does not rebuild `Posts` or change published snapshots.
+Browser newsletter tests use fake credentials and never submit signup emails to
+Brevo; they cover settings, all theme forms, mobile/light/dark layouts, and ordinary
+forms without JavaScript. Real-provider acceptance remains a manual check with
+the administrator's own Brevo account and verified sender.
+
 ```sh
 dotnet restore
 dotnet build

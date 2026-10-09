@@ -10,7 +10,7 @@
         <nav aria-label="Main navigation">
             @foreach (var link in Model.Navigation)
             {
-                <a class="link" href="@link.Url" aria-current="@(Model.Path == link.Url ? "page" : null)">@link.Label</a>
+                <a class="link" href="@link.Url" aria-current="@(Model.Path == link.Url || Model.CanonicalUrl == link.Url ? "page" : null)">@link.Label</a>
             }
         </nav>
     </div>

@@ -1,0 +1,55 @@
+@using Homestead.Features.Newsletter
+@using Homestead.Data.Entities
+<h1 class="text-3xl font-semibold">@(Form.Mode == "manage" ? "Newsletter preferences" : "Newsletter")</h1>
+@if (Form.Message is { } message) { <p class="alert" role="status">@message</p> }
+@if (Form.Mode == "confirm")
+{
+    <p>Confirm that you want to receive this newsletter with the preferences you requested.</p>
+    <form method="post" action="/newsletter/?handler=Confirm" class="space-y-4">
+        <input type="hidden" name="__RequestVerificationToken" value="@Form.AntiforgeryToken" />
+        <input type="hidden" name="Token" value="@Form.Token" />
+        <button class="btn btn-primary" type="submit">Confirm subscription</button>
+    </form>
+}
+else if (Form.Mode is "subscribe" or "manage")
+{
+    <p>Receive new posts instantly or in a weekly summary. Choose the post types you want to read.</p>
+    @if (Form.Error is { } error) { <p class="text-error" role="alert">@error</p> }
+    <form method="post" action="@(Form.Mode == "manage" ? "/newsletter/?handler=Preferences" : "/newsletter/")" class="space-y-4">
+        <input type="hidden" name="__RequestVerificationToken" value="@Form.AntiforgeryToken" />
+        @if (Form.Mode == "manage") { <input type="hidden" name="Manage" value="@Form.Token" /> }
+        <fieldset class="fieldset gap-3">
+            <legend class="fieldset-legend">Subscription</legend>
+            <label for="newsletter-email">Email address</label>
+            <input id="newsletter-email" name="Input.Email" type="email" class="input w-full" value="@Form.Input.Email" required maxlength="254" readonly="@(Form.Mode == "manage")" />
+            <label for="newsletter-frequency">Delivery</label>
+            <select id="newsletter-frequency" name="Input.Frequency" class="select w-full">
+                <option value="Instant" selected="@(Form.Input.Frequency == NewsletterFrequency.Instant)">Instant updates</option>
+                <option value="Weekly" selected="@(Form.Input.Frequency == NewsletterFrequency.Weekly)">Weekly summary</option>
+            </select>
+        </fieldset>
+        <fieldset class="fieldset gap-3">
+            <legend class="fieldset-legend">Post types</legend>
+            @foreach (var type in Enum.GetValues<PostType>())
+            {
+                <label class="flex items-center gap-3 min-h-11"><input type="checkbox" name="Input.PostTypes" class="checkbox" value="@type" checked="@Form.Input.PostTypes.Contains(type)" />@Label(type)</label>
+            }
+        </fieldset>
+        <p>@(Form.Mode == "subscribe" ? "We will email a confirmation link. You can change preferences or unsubscribe from any newsletter." : "Changing preferences starts a new schedule from today.")</p>
+        <button class="btn btn-primary" type="submit">@(Form.Mode == "manage" ? "Save preferences" : "Subscribe")</button>
+    </form>
+    @if (Form.Mode == "manage")
+    {
+        <form method="post" action="/newsletter/?handler=Unsubscribe" class="space-y-4">
+            <input type="hidden" name="__RequestVerificationToken" value="@Form.AntiforgeryToken" />
+            <input type="hidden" name="Manage" value="@Form.Token" />
+            <button class="btn" type="submit">Unsubscribe</button>
+        </form>
+    }
+}
+<a class="link inline-flex items-center min-h-11" href="/">Back to home</a>
+@code {
+    [Parameter, EditorRequired] public NewsletterFormModel Form { get; set; } = null!;
+    private static string Label(PostType type) => type switch
+    { PostType.Microblog => "Notes", PostType.Checkin => "Check-ins", PostType.Gallery => "Galleries", _ => type + "s" };
+}

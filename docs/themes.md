@@ -66,6 +66,35 @@ attribute and `Label` as text. The array is empty when sharing is disabled or th
 page is a private preview. Use accessible link labels, wrap buttons on narrow
 screens, and preserve keyboard focus, touch targets, and light/dark colors.
 
+## Newsletter navigation and forms
+
+**Settings → Newsletter** optionally enables Brevo email delivery. Every built-in
+theme includes a Newsletter link in its shared or custom header. Porch, Journal,
+and Ledger use the shared header; Folio and Town Square iterate `Model.Navigation`.
+The link is an absolute URL to the saved canonical site's `/newsletter/` endpoint,
+so static and Hugo exports can still direct readers to the original subscription
+service. Exports contain no subscriber addresses, API keys, or subscription forms.
+Keep the original Homestead service available for subscription links, or remove
+the link when migrating away from it.
+
+The public form uses the active theme's shared regions, CSS, and ordinary POST
+forms, including confirmation, preferences, and unsubscribe. It works without
+JavaScript and supports system light/dark appearance. These request-only pages
+are never generated or added to the public file allowlist. They have no-store,
+no-referrer, and noindex responses; their explicit opt-in routes use private SQLite
+for subscription handling. Regular public pages remain static. Private post
+previews show the navigation but never embed subscriber forms or reader data.
+
+`ThemeSiteModel.EnableNewsletter` exposes only the active public navigation
+preference. `Model.Navigation` includes the canonical Newsletter URL when enabled.
+Header and Main overrides should preserve this navigation; compare link URLs to
+`Model.CanonicalUrl` as well as `Model.Path` for the current-page indication.
+Content overrides must preserve `Model.DefaultContent` on `/newsletter/` to render
+the forms. `Model.IsListing` is false there. No credentials or reader records are
+exposed as theme model members. `DefaultContent` contains request-specific form
+markup and its antiforgery token on these dynamic pages. Disabling stops subscriptions and sending
+immediately; a failed rebuild can temporarily retain the old navigation link.
+
 ## Install a custom theme
 
 Upload a ZIP in **Settings → Install a custom public theme**, then select the

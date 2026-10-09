@@ -19,7 +19,7 @@
     <meta name="twitter:title" content="@Title" />
     <meta name="twitter:description" content="@Description" />
     <meta name="twitter:image" content="@SocialImage" />
-    @if (Page.Preview) { <meta name="robots" content="noindex, nofollow" /> }
+    @if (Page.Preview || Page.NewsletterForm is not null) { <meta name="robots" content="noindex, nofollow" /> }
     <link rel="stylesheet" href="@(Page.Preview ? "/css/site.css" : "/assets/site.css")" />
     @foreach (var style in Page.Theme!.Manifest.Styles)
     { <link rel="stylesheet" href="@Page.Theme.AssetUrl(style, Page.Preview)" /> }
@@ -54,6 +54,8 @@
             { <a class="btn min-h-11" href="@path" aria-current="@(Page.Path == path ? "page" : null)">@label</a> }
             @if (Page.Settings.EnableLocationMap)
             { <a class="btn min-h-11" href="/map/" aria-current="@(Page.Path == "/map/" ? "page" : null)">Map</a> }
+            @if (Page.Settings.EnableNewsletter)
+            { <a class="btn min-h-11" href="@Absolute("/newsletter/")" aria-current="@(Page.Path == "/newsletter/" ? "page" : null)">Newsletter</a> }
         </nav>
     </header>
 }
@@ -61,7 +63,11 @@
 {
     <main id="main" class="max-w-3xl mx-auto px-4 py-8 space-y-6">
         @if (Page.Preview) { <p class="alert" role="status">Private draft preview · unpublished edits</p> }
-        @if (Page.Article is { } article)
+        @if (Page.NewsletterForm is { } newsletter)
+        {
+            <NewsletterForm Form="newsletter" />
+        }
+        else if (Page.Article is { } article)
         {
             @PostMarkup(article, false)
         }

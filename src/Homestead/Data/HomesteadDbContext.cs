@@ -20,6 +20,10 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     public DbSet<PostTag> PostTags => Set<PostTag>();
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
     public DbSet<BackupSettings> BackupSettings => Set<BackupSettings>();
+    public DbSet<NewsletterSettings> NewsletterSettings => Set<NewsletterSettings>();
+    public DbSet<NewsletterSubscriber> NewsletterSubscribers => Set<NewsletterSubscriber>();
+    public DbSet<NewsletterPost> NewsletterPosts => Set<NewsletterPost>();
+    public DbSet<NewsletterDelivery> NewsletterDeliveries => Set<NewsletterDelivery>();
     public DbSet<SiteGeneration> SiteGenerations => Set<SiteGeneration>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
@@ -28,6 +32,25 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<NewsletterSettings>().ToTable("NewsletterSettings", t => t.HasCheckConstraint("CK_NewsletterSettings_Id", "Id = 1"));
+        builder.Entity<NewsletterSubscriber>(e =>
+        {
+            e.Property(x => x.Email).UseCollation("NOCASE").HasMaxLength(254);
+            e.HasIndex(x => x.Email).IsUnique();
+            e.ToTable("NewsletterSubscribers", t =>
+            {
+                t.HasCheckConstraint("CK_NewsletterSubscriber_Frequency", "Frequency BETWEEN 0 AND 1 AND PendingFrequency BETWEEN 0 AND 1");
+                t.HasCheckConstraint("CK_NewsletterSubscriber_Types", "PostTypes BETWEEN 1 AND 63 AND PendingPostTypes BETWEEN 0 AND 63");
+            });
+        });
+        builder.Entity<NewsletterPost>().HasKey(x => x.PostId);
+        builder.Entity<NewsletterDelivery>(e =>
+        {
+            e.HasIndex(x => new { x.SubscriberId, x.Key }).IsUnique();
+            e.HasIndex(x => new { x.Status, x.NextAttemptAtUtc });
+            e.HasOne<NewsletterSubscriber>().WithMany().HasForeignKey(x => x.SubscriberId).OnDelete(DeleteBehavior.Cascade);
+            e.ToTable("NewsletterDeliveries", t => t.HasCheckConstraint("CK_NewsletterDelivery_Status", "Status BETWEEN 0 AND 2"));
+        });
         builder.Entity<BackupSettings>(e => e.ToTable("BackupSettings", t =>
         {
             t.HasCheckConstraint("CK_BackupSettings_Id", "Id = 1");

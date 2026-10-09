@@ -10,7 +10,7 @@
     <div class="grid gap-6 md:grid-cols-[12rem_minmax(0,1fr)] md:gap-8">
         <nav aria-label="Settings sections" data-settings-navigation>
             <ul class="menu menu-horizontal md:menu-vertical bg-base-200 rounded-box w-full p-2">
-                @foreach (var (label, icon) in new[] { ("General", "gear"), ("Posts", "pen"), ("Social", "share-nodes"), ("Theme", "palette"), ("About", "user"), ("Images", "images"), ("Backup", "gear") })
+                @foreach (var (label, icon) in new[] { ("General", "gear"), ("Posts", "pen"), ("Social", "share-nodes"), ("Theme", "palette"), ("About", "user"), ("Images", "images"), ("Newsletter", "gear"), ("Backup", "gear") })
                 {
                     <li>
                         <a id="tab-@label.ToLowerInvariant()" href="#@label.ToLowerInvariant()" class="min-h-11 content-center px-2 md:px-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-base-content" data-settings-tab>
@@ -129,6 +129,29 @@
                 </div>
             </form>
             <form method="post" id="theme-upload-form" asp-page-handler="Theme" enctype="multipart/form-data" hidden></form>
+            <section id="newsletter" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="newsletter-title" data-settings-panel>
+                <h2 id="newsletter-title" class="text-xl font-semibold">Newsletter</h2>
+                <p>Let readers subscribe to new posts through Brevo. Choose a verified sender in your Brevo account and enter an API key with permission to send transactional emails.</p>
+                <form method="post" asp-page-handler="Newsletter" class="space-y-4">
+                    <div asp-validation-summary="All" role="alert" class="text-error"></div>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Brevo email delivery</legend>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Newsletter.Enabled" class="checkbox" /> Enable newsletter subscriptions and delivery</label>
+                        <label asp-for="Newsletter.SenderEmail"></label><input asp-for="Newsletter.SenderEmail" type="email" class="input w-full" maxlength="254" />
+                        <label asp-for="Newsletter.SenderName"></label><input asp-for="Newsletter.SenderName" class="input w-full" maxlength="120" />
+                        <label asp-for="Newsletter.ApiKey">Brevo API key</label><input asp-for="Newsletter.ApiKey" type="password" class="input w-full" autocomplete="new-password" maxlength="1024" />
+                        <p>API key saved: @(Model.NewsletterStatus.ProtectedApiKey.Length > 0 ? "Yes" : "No"). Leave blank to retain it. Saved keys are protected and never displayed.</p>
+                        <label class="flex items-center gap-3 min-h-11"><input asp-for="Newsletter.ClearApiKey" class="checkbox" /> Clear saved API key</label>
+                    </fieldset>
+                    <button class="btn" type="submit">Save newsletter settings</button>
+                </form>
+                <p>Readers confirm their email address, choose instant notices or a weekly summary, and select post types. Emails announce newly public posts; edits do not resend them. Weekly summaries start seven days after confirmation.</p>
+                <p>Disabling stops subscriptions and delivery immediately. Existing readers can still unsubscribe. Re-enabling starts with future posts.</p>
+                <p>Confirmed subscribers: @Model.SubscriberCount</p>
+                <p>Last email accepted (UTC): @(Model.NewsletterStatus.LastSuccessAtUtc?.ToString("u") ?? "Never")</p>
+                @if (Model.NewsletterStatus.LastError is { } newsletterError) { <p class="text-error" role="status">@newsletterError</p> }
+                @if (Model.Settings.EnableNewsletter) { <a class="link" href="/newsletter/">View subscription page</a> }
+            </section>
             <section id="backup" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="backup-title" data-settings-panel>
                 <h2 id="backup-title" class="text-xl font-semibold">Backup</h2>
                 <p>Upload complete backups to a private S3-compatible bucket. Archives include drafts, originals, administrator credentials, and encryption keys. Configure bucket encryption and retention with your storage provider.</p>

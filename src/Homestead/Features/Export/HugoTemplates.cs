@@ -48,7 +48,8 @@ internal static class HugoTemplates
         var regions = new Dictionary<string, string>
         {
             ["header"] = "<header class=\"max-w-3xl mx-auto px-4 py-8 border-b border-base-300 space-y-4\"><div><a class=\"text-2xl font-semibold\" href=\"{{ .Site.Home.RelPermalink }}\">{{ .Site.Title }}</a></div><nav aria-label=\"Main navigation\"><a class=\"btn\" href=\"{{ .Site.Home.RelPermalink }}\">Home</a> <a class=\"btn\" href=\"{{ \"about/\" | relURL }}\">About</a>" +
-                (settings.EnableLocationMap ? " <a class=\"btn\" href=\"{{ \"map/\" | relURL }}\">Map</a>" : "") + "</nav></header>",
+                (settings.EnableLocationMap ? " <a class=\"btn\" href=\"{{ \"map/\" | relURL }}\">Map</a>" : "") +
+                (settings.EnableNewsletter ? $" <a class=\"btn\" href=\"{HtmlEncoder.Default.Encode(DiscoveryFiles.Absolute(settings, "/newsletter/"))}\">Newsletter</a>" : "") + "</nav></header>",
             ["main"] = "<main id=\"main\" class=\"max-w-3xl mx-auto px-4 py-8 space-y-6\">{{ block \"main\" . }}{{ end }}</main>",
             ["footer"] = "<footer class=\"max-w-3xl mx-auto p-4 border-t border-base-300 space-y-4\"><a class=\"underline\" href=\"{{ \"index.xml\" | relURL }}\">RSS feed</a>" +
                 (settings.HideHomesteadCredit ? "" : "<p class=\"text-sm\">Made at home with <a class=\"link\" href=\"https://github.com/PoshTools/homestead\">Homestead</a></p>") + "</footer>"
