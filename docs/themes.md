@@ -41,6 +41,24 @@ applies to private previews and Hugo exports; static exports keep the currently
 active footer. Razor themes replacing the footer or entire document must honor
 `Model.Site.HideHomesteadCredit` themselves, or include the shared footer.
 
+Enable optional sharing buttons in **Settings → Social**. Bluesky, Facebook, X,
+LinkedIn, Reddit, and email can each be selected independently; all start disabled.
+Every built-in theme shows enabled buttons on post details and home/type/tag feed
+cards for all six post types. Buttons are ordinary links using the published
+display title and the saved canonical URL, with no third-party scripts or requests
+until a reader follows a link. Private previews omit sharing, including previews
+of posts that are already published. Saving rebuilds the site; a failed build
+leaves the active buttons unchanged until a successful rebuild. Static ZIPs retain
+the active buttons. Hugo exports use the saved selections and Hugo permalinks,
+so changing Hugo's base URL also changes the shared URLs.
+
+Post templates replacing shared rendering should iterate `Model.Post.ShareLinks`
+to honor these choices, including in listings. Each entry has an encoded sharing
+destination in `Url` and a service name in `Label`; render `Url` as a normal Razor
+attribute and `Label` as text. The array is empty when sharing is disabled or the
+page is a private preview. Use accessible link labels, wrap buttons on narrow
+screens, and preserve keyboard focus, touch targets, and light/dark colors.
+
 ## Install a custom theme
 
 Upload a ZIP in **Settings → Install a custom public theme**, then select the
@@ -206,6 +224,7 @@ structured fields:
 | `Media`, `Cover` | Ordered media and optional selected cover. Each has `Id`, `Url`, `MimeType`, `AltText`, `Caption`, `GuideStepId`. |
 | `Review` | Optional subject, nullable integer rating, and external URL. Preview ratings can be null. |
 | `Tools`, `Materials` | Ordered guide supplies with a plain-text `Name` and optional HTTP(S) `Url`. Materials also have optional text `Quantity`. Empty on older snapshots; older materials have no quantity. |
+| `ShareLinks` | Ordered `ThemeLinkModel` entries (`Label`, `Url`) for enabled sharing services, built from the published display title and canonical post URL. Empty in private previews. |
 | `Steps` | Ordered `ThemeStepModel` entries with stable `Id`, optional `Title`, sanitized `BodyHtml`, step `Media`, optional `DurationSeconds`, and Humanizer-formatted `DurationText`. |
 | `Location` | Optional name/address and paired nullable latitude/longitude; `Coordinates` provides display text. |
 

@@ -192,6 +192,13 @@ Browser guide tests cover separate Tools and Materials tabs, keyboard navigation
 autosave, formatting, photos, reordering, and ordinary forms/public pages without
 JavaScript.
 
+`SocialSharingTests` covers opt-in sharing, independent selections, URL/title
+encoding, published snapshot privacy, all built-in themes and post types, failed
+activation/retry, static exports, and settings restart compatibility. Browser
+sharing tests exercise Social settings, light/dark layouts, ordinary links without
+JavaScript, and private previews across all built-in themes. The social-sharing
+migration adds six disabled-by-default settings; it does not change post data.
+
 `ThemeTests` covers Razor theme packages, rejection of unsupported layouts, typed
 models for all six types, template precedence, preview media URLs, source privacy,
 compilation/render failures, and backup/Hugo portability. Razor's public language

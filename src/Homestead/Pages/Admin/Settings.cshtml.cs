@@ -91,6 +91,6 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
         }
         finally { writer.Semaphore.Release(); }
         return RedirectToPage(pageName: null, pageHandler: null, routeValues: null,
-            fragment: Section is "posts" or "theme" or "about" or "images" ? Section : "general");
+            fragment: Section is "posts" or "social" or "theme" or "about" or "images" ? Section : "general");
     }
 }

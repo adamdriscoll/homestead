@@ -25,6 +25,7 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             "[markup.goldmark.renderer]\nunsafe = false\n", ct);
         foreach (var (path, text) in HugoTemplates.Files)
             await ArchiveFiles.TextAsync(zip, path, path == "layouts/baseof.html" ? HugoTemplates.ThemedLayout(settings, theme) : text, ct);
+        await ArchiveFiles.TextAsync(zip, "layouts/partials/social-sharing.html", HugoTemplates.SharingPartial(settings), ct);
         if (settings.EnableLocationMap)
         {
             await ArchiveFiles.TextAsync(zip, "content/map/index.md", "---\ntitle: \"Location map\"\nlayout: \"location-map\"\nurl: \"/map/\"\n---\n", ct);

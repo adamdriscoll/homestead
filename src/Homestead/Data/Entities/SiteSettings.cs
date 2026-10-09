@@ -17,6 +17,12 @@ public sealed class SiteSettings
     public string FooterText { get; set; } = "";
     public bool HideHomesteadCredit { get; set; }
     public bool EnableLocationMap { get; set; }
+    public bool ShareBluesky { get; set; }
+    public bool ShareFacebook { get; set; }
+    public bool ShareX { get; set; }
+    public bool ShareLinkedIn { get; set; }
+    public bool ShareReddit { get; set; }
+    public bool ShareEmail { get; set; }
     public bool EnableNotes { get; set; } = true;
     public bool EnableArticles { get; set; } = true;
     public bool EnableReviews { get; set; } = true;

@@ -24,6 +24,12 @@ public sealed class SettingsInput : IValidatableObject
     [StringLength(300), Display(Name = "Footer text")] public string? FooterText { get; set; }
     [Display(Name = "Hide Homestead credit")] public bool HideHomesteadCredit { get; set; }
     [Display(Name = "Enable location map")] public bool EnableLocationMap { get; set; }
+    [Display(Name = "Bluesky")] public bool ShareBluesky { get; set; }
+    [Display(Name = "Facebook")] public bool ShareFacebook { get; set; }
+    [Display(Name = "X")] public bool ShareX { get; set; }
+    [Display(Name = "LinkedIn")] public bool ShareLinkedIn { get; set; }
+    [Display(Name = "Reddit")] public bool ShareReddit { get; set; }
+    [Display(Name = "Email")] public bool ShareEmail { get; set; }
     [Display(Name = "Notes")] public bool EnableNotes { get; set; } = true;
     [Display(Name = "Articles")] public bool EnableArticles { get; set; } = true;
     [Display(Name = "Reviews")] public bool EnableReviews { get; set; } = true;
@@ -83,6 +89,12 @@ public sealed class SettingsInput : IValidatableObject
         FooterText = s.FooterText,
         HideHomesteadCredit = s.HideHomesteadCredit,
         EnableLocationMap = s.EnableLocationMap,
+        ShareBluesky = s.ShareBluesky,
+        ShareFacebook = s.ShareFacebook,
+        ShareX = s.ShareX,
+        ShareLinkedIn = s.ShareLinkedIn,
+        ShareReddit = s.ShareReddit,
+        ShareEmail = s.ShareEmail,
         EnableNotes = s.EnableNotes,
         EnableArticles = s.EnableArticles,
         EnableReviews = s.EnableReviews,
@@ -109,6 +121,12 @@ public sealed class SettingsInput : IValidatableObject
         s.FooterText = FooterText ?? "";
         s.HideHomesteadCredit = HideHomesteadCredit;
         s.EnableLocationMap = EnableLocationMap;
+        s.ShareBluesky = ShareBluesky;
+        s.ShareFacebook = ShareFacebook;
+        s.ShareX = ShareX;
+        s.ShareLinkedIn = ShareLinkedIn;
+        s.ShareReddit = ShareReddit;
+        s.ShareEmail = ShareEmail;
         s.EnableNotes = EnableNotes;
         s.EnableArticles = EnableArticles;
         s.EnableReviews = EnableReviews;

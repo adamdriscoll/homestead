@@ -49,6 +49,7 @@ public sealed class UpgradeTests
         Assert.Equal("Existing home", settings.Title); Assert.Equal("# Original About", settings.AboutMarkdown);
         Assert.Equal("[]", settings.ProfileLinksJson); Assert.Empty(settings.ProfileLinks);
         Assert.False(settings.HideHomesteadCredit);
+        Assert.Empty(Homestead.Features.Publishing.SocialSharing.Templates(settings));
         Assert.Equal(Enum.GetValues<PostType>(), settings.EnabledPostTypes);
         Assert.False(db.Database.HasPendingModelChanges());
     }

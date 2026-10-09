@@ -1,12 +1,32 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using Homestead.Data.Entities;
+using Homestead.Features.Publishing;
 using Homestead.Features.Themes;
 
 namespace Homestead.Features.Export;
 
 internal static class HugoTemplates
 {
+    public static string SharingPartial(SiteSettings settings)
+    {
+        var templates = SocialSharing.Templates(settings).ToArray();
+        if (templates.Length == 0) return "";
+        var html = new StringBuilder("{{ if and (eq .Section \"posts\") (not .Draft) }}" +
+            "{{ $title := replaceRE \"[[:cntrl:]]\" \"\" .Title }}" +
+            "{{ $url := .Permalink | urlquery }}{{ $subject := $title | urlquery }}" +
+            "{{ $text := printf \"%s %s\" $title .Permalink | urlquery }}" +
+            "<nav aria-label=\"Share post\" class=\"flex flex-wrap items-center gap-2\" data-social-sharing><span class=\"text-sm\">Share:</span>");
+        foreach (var (label, format) in templates)
+        {
+            var urlFormat = format.Replace("{0}", "%[1]s", StringComparison.Ordinal)
+                .Replace("{1}", "%[2]s", StringComparison.Ordinal).Replace("{2}", "%[3]s", StringComparison.Ordinal);
+            // safeURL permits only these server-owned HTTPS/mailto templates after escaping their parameters.
+            html.Append($"<a class=\"btn btn-outline min-h-11\" href=\"{{{{ printf {System.Text.Json.JsonSerializer.Serialize(urlFormat)} $url $subject $text | safeURL }}}}\" rel=\"noreferrer\" aria-label=\"Share via {label}\">{label}</a>");
+        }
+        return html.Append("</nav>{{ end }}").ToString();
+    }
+
     public static string ThemedLayout(SiteSettings settings, ThemePackage theme)
     {
         var head = new StringBuilder($"<!doctype html>\n<html lang=\"en\" data-public-theme=\"{HtmlEncoder.Default.Encode(theme.Id)}\" data-accent=\"{HtmlEncoder.Default.Encode(settings.AccentColor.ToLowerInvariant())}\"><head>" +
@@ -86,15 +106,15 @@ internal static class HugoTemplates
         """),
         ("layouts/page.html", """
         {{ define "main" }}<article class="prose-content"><h1>{{ .Title }}</h1><p>{{ .Date.Format "2006-01-02" }} · {{ .Type }}</p>{{ .Content }}
-        <p>{{ range .GetTerms "tags" }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a> {{ end }}</p></article>{{ end }}
+        <p>{{ range .GetTerms "tags" }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a> {{ end }}</p>{{ partial "social-sharing.html" . }}</article>{{ end }}
         """),
         ("layouts/list.html", """
         {{ define "main" }}<h1 class="text-3xl font-bold">{{ .Title }}</h1>{{ .Content }}
-        {{ range .Pages.ByDate.Reverse }}<article class="card card-border my-4"><div class="card-body"><h2 class="card-title"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2><p>{{ .Summary }}</p></div></article>{{ end }}{{ end }}
+        {{ range .Pages.ByDate.Reverse }}<article class="card card-border my-4"><div class="card-body"><h2 class="card-title"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2><p>{{ .Summary }}</p>{{ partial "social-sharing.html" . }}</div></article>{{ end }}{{ end }}
         """),
         ("layouts/home.html", """
         {{ define "main" }}<h1 class="text-3xl font-bold">{{ .Site.Title }}</h1>
-        {{ range (where .Site.RegularPages "Section" "posts").ByDate.Reverse }}<article class="card card-border my-4"><div class="card-body"><h2 class="card-title"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2><p>{{ .Type }} · {{ .Date.Format "2006-01-02" }}</p><div class="prose-content">{{ .Content }}</div></div></article>{{ end }}{{ end }}
+        {{ range (where .Site.RegularPages "Section" "posts").ByDate.Reverse }}<article class="card card-border my-4"><div class="card-body"><h2 class="card-title"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2><p>{{ .Type }} · {{ .Date.Format "2006-01-02" }}</p><div class="prose-content">{{ .Content }}</div>{{ partial "social-sharing.html" . }}</div></article>{{ end }}{{ end }}
         """)
     ];
 }

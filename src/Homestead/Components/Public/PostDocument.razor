@@ -18,6 +18,7 @@
                 <p>@DiscoveryFiles.Description(Post)</p>
             }
             @Tags
+            <ShareButtons Links="SharingLinks" />
         </div>
     </article>
 }
@@ -28,12 +29,14 @@ else
         <p>@Page.Settings.DisplayAuthor · @Post.TypeLabel · <time datetime="@Post.PublishedAtUtc.ToString("O")">@Date</time></p>
         <PostContent Post="Post" Preview="Page.Preview" />
         @Tags
+        <ShareButtons Links="SharingLinks" />
     </article>
 }
 @code {
     [Parameter, EditorRequired] public PublicPage Page { get; set; } = null!;
     [Parameter, EditorRequired] public ArticleSnapshot Post { get; set; } = null!;
     [Parameter] public bool Listing { get; set; }
+    private Homestead.Features.Themes.ThemeLinkModel[] SharingLinks => SocialSharing.Links(Page.Settings, Post.Slug, Post.DisplayTitle, Page.Preview);
     private string Date => TimeZoneInfo.ConvertTimeFromUtc(Post.PublishedAtUtc,
         TimeZoneInfo.FindSystemTimeZoneById(Page.Settings.TimeZone)).ToString("MMMM d, yyyy");
     private RenderFragment Tags => @<nav aria-label="Post tags" class="flex flex-wrap gap-3">

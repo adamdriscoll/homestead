@@ -45,6 +45,7 @@ public sealed class SettingsTests
     [Theory]
     [InlineData("general", "general")]
     [InlineData("posts", "posts")]
+    [InlineData("social", "social")]
     [InlineData("theme", "theme")]
     [InlineData("about", "about")]
     [InlineData("unknown", "general")]

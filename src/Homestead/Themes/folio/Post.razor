@@ -30,6 +30,16 @@
             <nav aria-label="Post tags">
                 @foreach (var tag in post.Tags) { <a class="link" href="@tag.Url">@tag.Name</a> }
             </nav>
+            @if (post.ShareLinks.Length > 0)
+            {
+                <nav aria-label="Share post" class="flex flex-wrap items-center gap-2" data-social-sharing>
+                    <span class="text-sm">Share:</span>
+                    @foreach (var link in post.ShareLinks)
+                    {
+                        <a class="btn btn-outline min-h-11" href="@link.Url" rel="noreferrer" aria-label="@($"Share via {link.Label}")">@link.Label</a>
+                    }
+                </nav>
+            }
         </div>
     </article>
 }

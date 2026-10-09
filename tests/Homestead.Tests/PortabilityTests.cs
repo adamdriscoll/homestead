@@ -97,7 +97,12 @@ public sealed class PortabilityTests
         using var data = new TemporaryData(); using var output = new TemporaryData();
         using var app = new TestApplication(data.Path); using var author = app.Client();
         _ = await TestApplication.Setup(author); await Fixture(app);
-        await app.WithDatabase(async db => { var settings = await db.SiteSettings.SingleAsync(); settings.Title = "Café 🏡 \"Home\""; settings.HideHomesteadCredit = hideCredit; await db.SaveChangesAsync(); });
+        await app.WithDatabase(async db =>
+        {
+            var settings = await db.SiteSettings.SingleAsync(); settings.Title = "Café 🏡 \"Home\""; settings.HideHomesteadCredit = hideCredit;
+            settings.ShareBluesky = settings.ShareFacebook = settings.ShareX = settings.ShareLinkedIn = settings.ShareReddit = settings.ShareEmail = hideCredit;
+            await db.SaveChangesAsync();
+        });
         var active = app.Services.GetRequiredService<ActiveSite>().Current!;
         await using var scope = app.Services.CreateAsyncScope();
         var articles = scope.ServiceProvider.GetRequiredService<ArticleService>();
@@ -142,6 +147,13 @@ public sealed class PortabilityTests
             var html = File.ReadAllText(page);
             Assert.DoesNotContain("PRIVATE", html); Assert.DoesNotContain("/admin/", html);
             Assert.Contains("Location: Fixture place", html);
+            Assert.Equal(hideCredit, html.Contains("data-social-sharing", StringComparison.Ordinal));
+            if (hideCredit)
+            {
+                foreach (var service in new[] { "Bluesky", "Facebook", "X", "LinkedIn", "Reddit", "Email" }) Assert.Contains($"Share via {service}", html);
+                Assert.Contains($"https%3A%2F%2Fexample.test%2Fposts%2F{post.Slug}%2F", html);
+                Assert.DoesNotContain("ZgotmplZ", html);
+            }
             Assert.DoesNotContain("<script>location", html);
             Assert.DoesNotContain("href=\"https://location.example.test\"", html);
             Assert.Equal(!hideCredit, html.Contains("Made at home with", StringComparison.Ordinal));

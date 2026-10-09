@@ -27,6 +27,7 @@ public sealed record ThemePostModel(Guid Id, PostType Type, string TypeLabel, st
 {
     public ImmutableArray<GuideSupplySnapshot> Tools { get; init; } = [];
     public ImmutableArray<GuideSupplySnapshot> Materials { get; init; } = [];
+    public ImmutableArray<ThemeLinkModel> ShareLinks { get; init; } = [];
 }
 
 public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Heading, bool Preview, bool IsListing,
@@ -50,7 +51,11 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
                 new(markdown.Render(post with { BodyMarkdown = step.BodyMarkdown }, page.Preview)),
                 post.Media.Where(x => x.GuideStepId == step.Id).Select(Image).ToImmutableArray())
             { Title = step.Title, DurationSeconds = step.DurationSeconds, DurationText = step.DurationText }).ToImmutableArray(), post.Location)
-        { Tools = post.Tools.ToImmutableArray(), Materials = post.Materials.ToImmutableArray() };
+        {
+            Tools = post.Tools.ToImmutableArray(),
+            Materials = post.Materials.ToImmutableArray(),
+            ShareLinks = SocialSharing.Links(page.Settings, post.Slug, post.DisplayTitle, page.Preview).ToImmutableArray()
+        };
         var settings = page.Settings;
         var about = new ArticleSnapshot(1, Guid.Empty, "about", "About", settings.AboutMarkdown, null,
             DateTime.UtcNow, DateTime.UtcNow, 0, [], null, page.Branding ?? []);
