@@ -13,12 +13,21 @@ public sealed record ThemeSiteModel(string Title, string Description, string Can
 public sealed record ThemeLinkModel(string Label, string Url);
 public sealed record ThemeMediaModel(Guid Id, string Url, string MimeType, string AltText, string? Caption, Guid? GuideStepId);
 public sealed record ThemeTagModel(string Name, string Url);
-public sealed record ThemeStepModel(Guid Id, MarkupString BodyHtml, ImmutableArray<ThemeMediaModel> Media);
+public sealed record ThemeStepModel(Guid Id, MarkupString BodyHtml, ImmutableArray<ThemeMediaModel> Media)
+{
+    public string? Title { get; init; }
+    public int? DurationSeconds { get; init; }
+    public string? DurationText { get; init; }
+}
 public sealed record ThemePostModel(Guid Id, PostType Type, string TypeLabel, string Title, string DisplayTitle,
     string Url, string? Summary, string Description, DateTime PublishedAtUtc, DateTime ModifiedAtUtc, string DisplayDate,
     MarkupString BodyHtml, MarkupString ContentHtml, ImmutableArray<ThemeTagModel> Tags,
     ImmutableArray<ThemeMediaModel> Media, ThemeMediaModel? Cover, ReviewSnapshot? Review,
-    ImmutableArray<ThemeStepModel> Steps, LocationSnapshot? Location);
+    ImmutableArray<ThemeStepModel> Steps, LocationSnapshot? Location)
+{
+    public ImmutableArray<GuideSupplySnapshot> Tools { get; init; } = [];
+    public ImmutableArray<GuideSupplySnapshot> Materials { get; init; } = [];
+}
 
 public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Heading, bool Preview, bool IsListing,
     string ThemeId, string CanonicalUrl, ThemePostModel? Post, ImmutableArray<ThemePostModel> Posts,
@@ -39,7 +48,9 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             post.Media.Select(Image).ToImmutableArray(), post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover ? Image(cover) : null,
             post.Review, post.Steps.Select(step => new ThemeStepModel(step.Id,
                 new(markdown.Render(post with { BodyMarkdown = step.BodyMarkdown }, page.Preview)),
-                post.Media.Where(x => x.GuideStepId == step.Id).Select(Image).ToImmutableArray())).ToImmutableArray(), post.Location);
+                post.Media.Where(x => x.GuideStepId == step.Id).Select(Image).ToImmutableArray())
+            { Title = step.Title, DurationSeconds = step.DurationSeconds, DurationText = step.DurationText }).ToImmutableArray(), post.Location)
+        { Tools = post.Tools.ToImmutableArray(), Materials = post.Materials.ToImmutableArray() };
         var settings = page.Settings;
         var about = new ArticleSnapshot(1, Guid.Empty, "about", "About", settings.AboutMarkdown, null,
             DateTime.UtcNow, DateTime.UtcNow, 0, [], null, page.Branding ?? []);

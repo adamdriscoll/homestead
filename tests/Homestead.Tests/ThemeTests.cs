@@ -101,7 +101,9 @@ public sealed class ThemeTests
             {
                 Type = type,
                 Review = new("Subject", 4, "https://example.test"),
-                Steps = [new(Guid.NewGuid(), "**Step**")],
+                Steps = [new(Guid.NewGuid(), "**Step**") { Title = "Mix ingredients", DurationSeconds = 5400 }],
+                Tools = [new("Bowl", "https://example.test/bowl")],
+                Materials = [new("Flour", null) { Quantity = "10 boxes" }],
                 Location = new("Place", "Address", 12, 34),
                 TagSlugs = new() { ["C++"] = "c-plus", ["C#"] = "c-sharp" }
             };
@@ -114,6 +116,10 @@ public sealed class ThemeTests
             Assert.Contains("<strong>Step</strong>", html); Assert.Contains("Place", html);
             var model = ThemePageModel.From(page, scope.ServiceProvider.GetRequiredService<SafeMarkdown>());
             Assert.Equal("/tags/c-plus/", model.Post!.Tags[0].Url); Assert.Equal("/tags/c-sharp/", model.Post.Tags[1].Url);
+            Assert.Equal(post.Tools, model.Post.Tools); Assert.Equal(post.Materials, model.Post.Materials);
+            Assert.Equal(5400, model.Post.Steps.Single().DurationSeconds);
+            Assert.Equal("Mix ingredients", model.Post.Steps.Single().Title);
+            Assert.Equal("1 hour, 30 minutes", model.Post.Steps.Single().DurationText);
         }
     }
 

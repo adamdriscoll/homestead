@@ -166,6 +166,32 @@ Leaflet markers, shared-place popups, safe text, tile failures, and navigation
 without JavaScript on desktop and mobile viewports. Automated tests mock tile
 requests rather than repeatedly downloading OpenStreetMap tiles.
 
+`GuideTests` covers tools and materials with optional HTTP(S) links, nullable step
+durations, Humanizer display, legacy snapshot defaults, and draft isolation.
+Guide steps use the shared Markdown toolbar with inline photo upload, paste, and
+drop. Each step has a title and an independent collapsible header. Collapse state
+is retained by step ID in browser session storage across reloads and reordering;
+native collapse also works without JavaScript. Titles are plain text, at most 300
+characters, and may be empty for existing or unfinished steps. The step-title
+migration adds nullable text without altering step IDs or photo assignments.
+Durations use a single time picker for elapsed hours, minutes, and seconds. Leave
+it blank to omit the time. The input model uses a nullable `TimeSpan`; stored
+duration seconds and published snapshots stay compatible without a migration.
+Humanizer uses hours as the largest display unit. Older durations exceeding the
+picker's range are retained on ordinary saves, with a picker to replace them
+explicitly (00:00:00 clears an older duration).
+Materials have a separate optional text
+quantity field, such as “10 boxes” or “5 switches”. Every included supply needs
+a name before publication.
+The guide-supplies migration retains existing steps and adds a private supply
+table and nullable duration column. Hugo exports retain ordered supplies and
+duration seconds in front matter and readable lists and times in Markdown.
+The material-quantities migration adds nullable text; existing material names
+and links remain intact, and existing quantities stay empty until edited.
+Browser guide tests cover separate Tools and Materials tabs, keyboard navigation,
+autosave, formatting, photos, reordering, and ordinary forms/public pages without
+JavaScript.
+
 `ThemeTests` covers both legacy HTML and engine 2 Razor packages, typed models
 for all six types, template precedence, preview media URLs, source privacy,
 compilation/render failures, and backup/Hugo portability. Razor's public language

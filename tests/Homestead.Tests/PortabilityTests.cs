@@ -114,11 +114,14 @@ public sealed class PortabilityTests
         }
         var markdown = Directory.GetFiles(Path.Combine(output.Path, "content", "posts"), "index.md", SearchOption.AllDirectories).Select(File.ReadAllText).ToArray();
         Assert.Equal(9, markdown.Length); // six public, one draft, one working copy, one unpublished
+        Assert.Contains(markdown, x => x.Contains("## Step 1: Mix ingredients") && x.Contains("\"title\": \"Mix ingredients\""));
         Assert.Contains(markdown, x => x.Contains("PRIVATE PENDING EDITS") && x.Contains("\"draft\": true"));
         Assert.Contains(markdown, x => x.Contains("PRIVATE UNPUBLISHED") && x.Contains("\"homestead_unpublished\": true"));
         Assert.DoesNotContain(markdown, x => x.Contains("DELETED CONTENT"));
         Assert.Contains(markdown, x => x.Contains("\"rating\": 5"));
         Assert.Contains(markdown, x => x.Contains("Step 2") && x.Contains("Second instruction"));
+        Assert.Contains(markdown, x => x.Contains("\"duration_seconds\": 5400") && x.Contains("Time: 1 hour, 30 minutes") && x.Contains("Mixing bowl"));
+        Assert.Contains(markdown, x => x.Contains("\"quantity\": \"10 boxes\"") && x.Contains("2 cups flour — 10 boxes"));
         Assert.Contains(markdown, x => x.Contains("Gallery caption 日本語"));
         Assert.Contains(markdown, x => x.Contains("\"type\": \"checkin\"") && x.Contains("\"latitude\": 41.88") && x.Contains("\"name\": \"Fixture place\""));
         var command = Environment.GetEnvironmentVariable("HOMESTEAD_HUGO") ?? "hugo";
@@ -143,6 +146,12 @@ public sealed class PortabilityTests
             Assert.DoesNotContain("href=\"https://location.example.test\"", html);
             Assert.Equal(!hideCredit, html.Contains("Made at home with", StringComparison.Ordinal));
             Assert.Equal(!hideCredit, html.Contains("href=\"https://github.com/PoshTools/homestead\"", StringComparison.Ordinal));
+            if (post.Type == PostType.Guide)
+            {
+                Assert.Contains("Mixing bowl", html); Assert.Contains("2 cups flour", html);
+                Assert.Contains("10 boxes", html);
+                Assert.Contains("href=\"https://example.test/bowl\"", html); Assert.Contains("Time: 1 hour, 30 minutes", html);
+            }
             foreach (var image in post.Media) Assert.True(File.Exists(Path.Combine(output.Path, "public", "posts", post.Slug, image.Filename)));
         }
         var allPublic = string.Join("\n", Directory.GetFiles(Path.Combine(output.Path, "public"), "*.html", SearchOption.AllDirectories).Select(File.ReadAllText));
@@ -205,6 +214,10 @@ public sealed class PortabilityTests
             Assert.True((await db.SiteSettings.SingleAsync()).HideHomesteadCredit);
             Assert.True((await db.SiteSettings.SingleAsync()).EnableLocationMap);
             Assert.Contains("PRIVATE DRAFT", (await db.PostDrafts.ToArrayAsync()).Select(x => x.BodyMarkdown));
+            Assert.Equal(new[] { "Mixing bowl", "2 cups flour" }, (await db.GuideSupplies.OrderBy(x => x.Kind).ToArrayAsync()).Select(x => x.Name));
+            Assert.Equal("10 boxes", (await db.GuideSupplies.SingleAsync(x => x.Kind == GuideSupplyKind.Material)).Quantity);
+            Assert.Equal(5400, (await db.GuideSteps.OrderBy(x => x.Order).FirstAsync()).DurationSeconds);
+            Assert.Equal("Mix ingredients", (await db.GuideSteps.OrderBy(x => x.Order).FirstAsync()).Title);
         });
         foreach (var (relative, hash) in mediaHashes)
             Assert.Equal(hash, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(restored.Path, relative)))));
@@ -285,7 +298,9 @@ public sealed class PortabilityTests
                 LocationAddress = "123 Café Street <script>location</script> [link](https://location.example.test)\n# heading",
                 Latitude = 41.88,
                 Longitude = -87.63,
-                Steps = [new() { Id = step, BodyMarkdown = "First instruction" }, new() { BodyMarkdown = "Second instruction" }],
+                Tools = [new() { Name = "Mixing bowl", Url = "https://example.test/bowl" }],
+                Materials = [new() { Name = "2 cups flour", Quantity = "10 boxes" }],
+                Steps = [new() { Id = step, Title = "Mix ingredients", BodyMarkdown = "First instruction", Duration = TimeSpan.FromMinutes(90) }, new() { Title = "Cook", BodyMarkdown = "Second instruction" }],
                 Captions = new() { [asset.Id] = "Gallery caption 日本語" },
                 StepImages = type == PostType.Guide ? new() { [asset.Id] = step } : [],
                 CoverMediaId = type == PostType.Article ? asset.Id : null

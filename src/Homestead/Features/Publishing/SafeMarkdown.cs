@@ -26,11 +26,19 @@ public sealed class SafeMarkdown
         html += Render(post, preview, canonicalBaseUrl);
         if (post.Type == Data.Entities.PostType.Guide)
         {
+            string Supplies(string heading, GuideSupplySnapshot[] supplies) => supplies.Length == 0 ? "" :
+                $"<section><h2>{heading}</h2><ul>" + string.Concat(supplies.Select(supply => "<li>" +
+                    (!string.IsNullOrWhiteSpace(supply.Url) && PostValidation.IsExternalUrl(supply.Url)
+                        ? $"<a href=\"{Encode(supply.Url)}\" rel=\"noopener noreferrer\">{Encode(supply.Name)}</a>" : Encode(supply.Name)) +
+                    (string.IsNullOrWhiteSpace(supply.Quantity) ? "" : " — " + Encode(supply.Quantity)) + "</li>")) + "</ul></section>";
+            html += Supplies("Tools", post.Tools) + Supplies("Materials", post.Materials);
             html += string.Concat(PhotosOutsideBody(post).Where(x => x.GuideStepId is null).Select(Photo));
             html += "<ol class=\"list-decimal pl-6 space-y-6\">";
             foreach (var step in post.Steps)
             {
-                html += "<li>" + Render(post with { BodyMarkdown = step.BodyMarkdown }, preview, canonicalBaseUrl);
+                html += "<li>" + (string.IsNullOrWhiteSpace(step.Title) ? "" : $"<h2>{Encode(step.Title)}</h2>") +
+                    (step.DurationText is { } duration ? $"<p>Time: <time datetime=\"PT{step.DurationSeconds}S\">{Encode(duration)}</time></p>" : "") +
+                    Render(post with { BodyMarkdown = step.BodyMarkdown }, preview, canonicalBaseUrl);
                 html += string.Concat(PhotosOutsideBody(post).Where(x => x.GuideStepId == step.Id).Select(Photo)) + "</li>";
             }
             html += "</ol>";

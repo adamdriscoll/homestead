@@ -28,7 +28,7 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Publish
         var liveIds = active.Current?.Articles.Select(x => x.PostId).ToArray() ?? [];
         var query = db.Posts.AsSplitQuery().Include(x => x.Draft).Include(x => x.PublishedSnapshot)
             .Include(x => x.Tags).ThenInclude(x => x.Tag).Include(x => x.Media)
-            .Include(x => x.Review).Include(x => x.Steps)
+            .Include(x => x.Review).Include(x => x.Steps).Include(x => x.Supplies)
             .Where(x => x.Status != PostStatus.Deleted || liveIds.Contains(x.Id));
         query = query.Where(x => EnabledPostTypes.Contains(x.Type));
         if (status is not null) query = query.Where(x => x.Status == status);

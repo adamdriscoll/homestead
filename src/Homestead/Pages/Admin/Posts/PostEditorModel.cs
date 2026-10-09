@@ -14,6 +14,7 @@ namespace Homestead.Pages.Admin.Posts;
 public abstract class PostEditorModel(ArticleService articles, MediaService media, PublishingService publishing, ActiveSite active, HomesteadDbContext db) : PageModel
 {
     [BindProperty] public ArticleInput Input { get; set; } = new();
+    [BindProperty(SupportsGet = true)] public string? EditorTab { get; set; } = "write";
     [BindProperty(SupportsGet = true)] public PostType? NewPostType { get; set; }
     [BindProperty] public IFormFile? Upload { get; set; }
     [BindProperty] public List<IFormFile> Uploads { get; set; } = [];
@@ -81,7 +82,21 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
         {
             var post = await articles.FindOrNewAsync(id, NewPostType) ?? throw new KeyNotFoundException();
             var parts = command.Split(':');
-            if (parts[0] == "add-step" && post.Type == PostType.Guide) Input.Steps.Add(new());
+            if (post.Type == PostType.Guide && parts[0] is "add-tool" or "add-material")
+                (parts[0] == "add-tool" ? Input.Tools : Input.Materials).Add(new());
+            else if (post.Type == PostType.Guide && parts.Length == 2 && int.TryParse(parts[1], out var supplyIndex) &&
+                parts[0] is "tool-up" or "tool-down" or "remove-tool" or "material-up" or "material-down" or "remove-material")
+            {
+                var supplies = parts[0].Contains("material", StringComparison.Ordinal) ? Input.Materials : Input.Tools;
+                if (supplyIndex < 0 || supplyIndex >= supplies.Count) throw new InvalidOperationException("Choose a valid tool or material.");
+                if (parts[0].StartsWith("remove-", StringComparison.Ordinal)) supplies.RemoveAt(supplyIndex);
+                else
+                {
+                    var target = parts[0].EndsWith("-up", StringComparison.Ordinal) ? supplyIndex - 1 : supplyIndex + 1;
+                    if (target >= 0 && target < supplies.Count) (supplies[supplyIndex], supplies[target]) = (supplies[target], supplies[supplyIndex]);
+                }
+            }
+            else if (parts[0] == "add-step" && post.Type == PostType.Guide) Input.Steps.Add(new());
             else if (parts.Length == 2 && int.TryParse(parts[1], out var index) && parts[0] is "step-up" or "step-down" or "remove-step" && post.Type == PostType.Guide && index >= 0 && index < Input.Steps.Count)
             {
                 if (parts[0] == "remove-step")
@@ -114,7 +129,8 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
             Input.Version = await articles.SaveAsync(id, Input, NewPostType);
             if (!await LoadEditorAsync(id)) return NotFound();
             if (IsNew) { ModelState.Clear(); return Page(); }
-            StatusMessage = "Draft order saved."; return RedirectToPage(new { id });
+            StatusMessage = "Draft order saved.";
+            return RedirectToPage(new { id, editorTab = EditorTab is "tools" or "materials" or "images" ? EditorTab : "write" });
         }
         catch (DraftConflictException) { return await InvalidAsync(id, "Another tab saved this draft. Copy your changes before reloading.", 409); }
         catch (InvalidOperationException ex) { return await InvalidAsync(id, ex.Message, 400); }

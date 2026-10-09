@@ -4,6 +4,7 @@ public enum PostType { Microblog, Article, Review, Guide, Gallery, Checkin }
 public enum PostStatus { Draft, Published, Unpublished, Deleted }
 public enum MediaRole { Inline, Cover, Gallery, GuideStep }
 public enum GenerationStatus { Building, Succeeded, Failed }
+public enum GuideSupplyKind { Tool, Material }
 
 public sealed class Post
 {
@@ -19,6 +20,7 @@ public sealed class Post
     public PostPublishedSnapshot? PublishedSnapshot { get; set; }
     public ReviewDetails? Review { get; set; }
     public List<GuideStep> Steps { get; set; } = [];
+    public List<GuideSupply> Supplies { get; set; } = [];
     public List<PostMedia> Media { get; set; } = [];
     public List<PostTag> Tags { get; set; } = [];
 }
@@ -63,7 +65,21 @@ public sealed class GuideStep
     public Guid PostId { get; set; }
     public Post Post { get; set; } = null!;
     public int Order { get; set; }
+    public string? Title { get; set; }
     public string BodyMarkdown { get; set; } = "";
+    public int? DurationSeconds { get; set; }
+}
+
+public sealed class GuideSupply
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+    public Guid PostId { get; set; }
+    public Post Post { get; set; } = null!;
+    public GuideSupplyKind Kind { get; set; }
+    public int Order { get; set; }
+    public string Name { get; set; } = "";
+    public string? Url { get; set; }
+    public string? Quantity { get; set; }
 }
 
 public sealed class MediaAsset

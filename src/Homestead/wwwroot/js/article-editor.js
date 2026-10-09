@@ -16,13 +16,27 @@
   const writeTab = form.querySelector('#write-tab');
   const previewTab = form.querySelector('#preview-tab');
   const imagesTab = form.querySelector('#images-tab');
-  const detailsTab = form.querySelector('#details-tab');
-  const writePanel = form.querySelector('#editor-write');
-  const previewPanel = form.querySelector('#editor-preview');
-  const imagesPanel = form.querySelector('#editor-images');
-  const detailsPanel = form.querySelector('#editor-details');
-  const editorTabs = [writeTab, previewTab, imagesTab, detailsTab];
-  const editorPanels = [writePanel, previewPanel, imagesPanel, detailsPanel];
+  const editorTabs = [...tabs.querySelectorAll('[role="tab"]')];
+  const editorPanels = editorTabs.map(tab => form.querySelector('#' + tab.getAttribute('aria-controls')));
+  const selectedEditorTab = form.querySelector('[name="EditorTab"]');
+  form.querySelectorAll('[data-guide-step]').forEach(step => {
+    const key = 'homestead:guide-step:' + step.dataset.guideStep;
+    try { step.open = sessionStorage.getItem(key) !== 'closed'; } catch { /* Storage may be disabled. */ }
+    step.addEventListener('toggle', () => {
+      try { sessionStorage.setItem(key, step.open ? 'open' : 'closed'); } catch { /* Native collapse still works. */ }
+    });
+    step.querySelector('[data-step-title]').addEventListener('input', event => {
+      const title = event.target.value.trim();
+      step.querySelector('[data-step-heading]').textContent = title ? ' — ' + title : '';
+    });
+    const duration = step.querySelector('[data-step-duration]');
+    function validateDuration() {
+      const parts = duration.value.split(':').map(Number);
+      const seconds = (parts[0] || 0) * 3600 + (parts[1] || 0) * 60 + (parts[2] || 0);
+      duration.setCustomValidity(duration.value && seconds === 0 ? 'Enter a duration greater than zero, or leave the time blank.' : '');
+    }
+    if (duration) { duration.addEventListener('input', validateDuration); validateDuration(); }
+  });
   const locationButton = form.querySelector('#add-location');
   const locationStatus = form.querySelector('#location-status');
   const deleteDialog = document.querySelector('#delete-post-dialog');
@@ -149,7 +163,10 @@
   }
   form.addEventListener('click', e => {
     const tool = e.target.closest('[data-format]');
-    if (tool) format(tool.dataset.format);
+    if (tool) {
+      body = tool.closest('[data-markdown-editor]').querySelector('textarea');
+      format(tool.dataset.format);
+    }
     const image = e.target.closest('[data-insert-image]');
     if (image) {
       previewRequest++; selectTab(writeTab);
@@ -159,6 +176,7 @@
   });
   form.addEventListener('keydown', e => {
     if (isMarkdown(e.target) && (e.ctrlKey || e.metaKey) && ['b', 'i'].includes(e.key.toLowerCase())) {
+      body = e.target;
       e.preventDefault(); format(e.key.toLowerCase() === 'b' ? 'bold' : 'italic');
     }
   });
@@ -177,6 +195,7 @@
   });
   let previewRequest = 0;
   function selectTab(selectedTab) {
+    selectedEditorTab.value = selectedTab.id.replace('-tab', '');
     if (selectedTab === imagesTab) inlineUploadStatus.hidden = true;
     editorTabs.forEach((tab, index) => {
       const selected = tab === selectedTab;
@@ -200,13 +219,13 @@
   editorTabs.forEach((tab, index) => {
     editorPanels[index].setAttribute('role', 'tabpanel'); editorPanels[index].setAttribute('aria-labelledby', tab.id);
   });
-  selectTab(writeTab);
-  writeTab.addEventListener('click', () => { previewRequest++; selectTab(writeTab); });
-  imagesTab.addEventListener('click', () => { previewRequest++; selectTab(imagesTab); });
-  detailsTab.addEventListener('click', () => { previewRequest++; selectTab(detailsTab); });
+  selectTab(editorTabs.find(tab => tab.id === selectedEditorTab.value + '-tab') || writeTab);
+  editorTabs.filter(tab => tab !== previewTab).forEach(tab => tab.addEventListener('click', () => { previewRequest++; selectTab(tab); }));
   previewTab.addEventListener('click', showPreview);
   form.addEventListener('invalid', () => {
     const invalidField = form.querySelector('input:invalid, select:invalid, textarea:invalid');
+    const step = invalidField?.closest('[data-guide-step]');
+    if (step) step.open = true;
     const index = editorPanels.findIndex(panel => panel.contains(invalidField));
     if (index >= 0) { previewRequest++; selectTab(editorTabs[index]); }
   }, true);
@@ -214,7 +233,7 @@
     if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(e.key)) return;
     e.preventDefault();
     const index = editorTabs.indexOf(e.target);
-    const target = e.key === 'Home' ? writeTab : e.key === 'End' ? detailsTab : editorTabs[(index + (e.key === 'ArrowRight' ? 1 : -1) + editorTabs.length) % editorTabs.length];
+    const target = e.key === 'Home' ? editorTabs[0] : e.key === 'End' ? editorTabs.at(-1) : editorTabs[(index + (e.key === 'ArrowRight' ? 1 : -1) + editorTabs.length) % editorTabs.length];
     target.focus(); target.click();
   });
   deleteDialog.querySelector('[data-cancel-delete]').addEventListener('click', () => deleteDialog.close('cancel'));
@@ -246,7 +265,7 @@
       const input = document.createElement('input'); input.name = `Input.${name}[${image.id}]`; input.value = value; input.maxLength = 1000; input.className = 'input w-full'; label.append(input); container.append(label);
     }
     textField('AltText', 'Image description (alt text)', image.altText);
-    if (structured) textField('Captions', 'Caption (optional)', '');
+    if (structured) textField('Captions', 'Caption', '');
     if (form.dataset.postType === 'Guide') {
       const label = document.createElement('label'); label.className = 'block'; label.textContent = 'Photo placement';
       const select = document.createElement('select'); select.name = `Input.StepImages[${image.id}]`; select.className = 'select w-full';

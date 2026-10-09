@@ -7,13 +7,23 @@
     @if (!Model.IsTypeEnabled) { <p role="status">This post type is disabled. Your content is kept and draft edits can still be saved. Enable it in <a class="link" href="/admin/settings#posts">Settings</a> to publish. @(Model.Live is not null ? "The previous post is still public. Rebuild from Posts to apply saved settings." : "")</p> }
     <form method="post" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Save" asp-route-newPostType="@newPostType" id="article-editor" data-post-type="@Model.Post.Type" data-new-post="@Model.IsNew.ToString().ToLowerInvariant()" data-preview-url="/admin/posts/@Model.Post.Id/preview" class="space-y-6">
         <input type="hidden" asp-for="Input.Version" />
+        <input type="hidden" asp-for="EditorTab" />
         @if (Model.IsNew) { <input type="hidden" asp-for="NewPostType" /> }
         <section class="min-w-0 border border-base-300 rounded-lg" aria-label="Post editor">
         <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-3">
-        <div id="editor-tabs" role="tablist" aria-label="Editor mode" class="tabs tabs-border" hidden>
+        <div id="editor-tabs" role="tablist" aria-label="Editor mode" class="tabs tabs-border flex-wrap" hidden>
             <button type="button" id="write-tab" role="tab" class="tab tab-active min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="true" aria-controls="editor-write">
                 <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#pen"></use></svg>Write
             </button>
+            @if (guide)
+            {
+                <button type="button" id="tools-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-tools" tabindex="-1">
+                    <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#screwdriver-wrench"></use></svg>Tools
+                </button>
+                <button type="button" id="materials-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-materials" tabindex="-1">
+                    <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#box-open"></use></svg>Materials
+                </button>
+            }
             <button type="button" id="preview-tab" role="tab" class="tab min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="false" aria-controls="editor-preview" tabindex="-1">
                 <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#eye"></use></svg>Preview
             </button>
@@ -63,15 +73,8 @@
                 <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
             }
         </label>
-        <div class="border border-base-300 rounded-lg overflow-hidden">
-        <div class="flex flex-wrap gap-1 border-b border-base-300 bg-base-200 p-2 rounded-t-lg" role="group" aria-label="Markdown formatting">
-            @foreach (var (action, icon, label) in new[] { ("bold", "bold", "Bold (Ctrl/⌘+B)"), ("italic", "italic", "Italic (Ctrl/⌘+I)"), ("heading", "heading", "Heading"), ("link", "link", "Link"), ("list", "list-ul", "Bulleted list"), ("ordered-list", "list-ol", "Numbered list"), ("quote", "quote-left", "Quote"), ("code", "code", "Code"), ("image", "image", "Upload and insert image") })
-            {
-                <button type="button" class="btn btn-ghost btn-square min-h-11" data-format="@action" aria-label="@label" title="@label">
-                    <svg class="size-5 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#@icon"></use></svg>
-                </button>
-            }
-        </div>
+        <div class="border border-base-300 rounded-lg overflow-hidden" data-markdown-editor>
+        <partial name="/Pages/Admin/Posts/_MarkdownToolbar.cshtml" model='@("Markdown formatting")' />
         <textarea asp-for="Input.BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px]" maxlength="200000" rows="@(note || gallery || guide || checkin ? 6 : 16)"></textarea>
         </div>
         </div>
@@ -81,22 +84,70 @@
                 <h2 id="steps-title" class="text-xl font-semibold">Steps</h2>
                 @for (var i = 0; i < Model.Input.Steps.Count; i++)
                 {
-                    <div class="border border-base-300 rounded-lg p-4 space-y-3">
+                    <details class="collapse collapse-arrow border border-base-300" data-guide-step="@Model.Input.Steps[i].Id" open>
+                        <summary class="collapse-title font-semibold break-words">Step @(i + 1)<span data-step-heading>@(string.IsNullOrWhiteSpace(Model.Input.Steps[i].Title) ? "" : " — " + Model.Input.Steps[i].Title)</span></summary>
+                        <div class="collapse-content space-y-3">
                         <input asp-for="Input.Steps[i].Id" type="hidden" />
-                        <label class="block space-y-2"><span class="inline-flex items-center gap-1">Step @(i + 1) instructions
+                        <label class="block space-y-2"><span>Step @(i + 1) title</span><input asp-for="Input.Steps[i].Title" data-step-title class="input w-full" maxlength="300" /></label>
+                        <label for="@($"Input_Steps_{i}__BodyMarkdown")" class="inline-flex items-center gap-1">Step @(i + 1) instructions
                             <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
-                        </span><textarea asp-for="Input.Steps[i].BodyMarkdown" class="textarea w-full font-mono" rows="6" maxlength="200000"></textarea></label>
+                        </label>
+                        <div class="border border-base-300 rounded-lg overflow-hidden" data-markdown-editor>
+                            <partial name="/Pages/Admin/Posts/_MarkdownToolbar.cshtml" model='@($"Step {i + 1} Markdown formatting")' />
+                            <textarea asp-for="Input.Steps[i].BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px]" rows="8" maxlength="200000"></textarea>
+                        </div>
+                        @if (Model.Input.Steps[i].Duration >= TimeSpan.FromHours(24))
+                        {
+                            <input asp-for="Input.Steps[i].Duration" type="hidden" asp-format="{0:c}" />
+                            <label class="block space-y-2"><span>Step @(i + 1) duration</span><input asp-for="Input.Steps[i].ReplacementDuration" asp-format="{0:hh\:mm\:ss}" type="time" step="1" class="input w-full" aria-describedby="@($"step-{i}-duration-help")" /></label>
+                            <p id="@($"step-{i}-duration-help")" class="text-sm">Saved duration: @(Model.Post.Steps.SingleOrDefault(x => x.Id == Model.Input.Steps[i].Id) is { } savedStep ? Homestead.Features.Articles.GuideStepSnapshot.From(savedStep).DurationText : null). Choose a replacement time, or 00:00:00 to clear it.</p>
+                        }
+                        else
+                        {
+                            <label class="block space-y-2"><span>Step @(i + 1) duration</span><input asp-for="Input.Steps[i].Duration" asp-format="{0:hh\:mm\:ss}" type="time" step="1" data-step-duration class="input w-full" aria-describedby="@($"step-{i}-duration-help")" /></label>
+                            <p id="@($"step-{i}-duration-help")" class="text-sm">Elapsed hours, minutes, and seconds. Leave blank to omit the duration.</p>
+                        }
                         <div class="flex flex-wrap gap-2">
                             <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="step-up:@i" disabled="@(i == 0)">Move step up</button>
                             <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="step-down:@i" disabled="@(i == Model.Input.Steps.Count - 1)">Move step down</button>
                             <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="remove-step:@i">Remove step</button>
                         </div>
-                    </div>
+                        </div>
+                    </details>
                 }
                 <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="add-step">Add step</button>
             </section>
         }
         </div>
+        @if (guide)
+        {
+            @foreach (var (field, label, command, items) in new[] { ("Tools", "Tool", "tool", Model.Input.Tools), ("Materials", "Material", "material", Model.Input.Materials) })
+            {
+                <section id="@($"editor-{field.ToLowerInvariant()}")" class="p-4 space-y-3" aria-label="@field">
+                    <h2 class="text-xl font-semibold">@field</h2>
+                    <p class="text-sm">@(field == "Materials" ? "Add materials and quantities, such as “10 boxes” or “5 switches”." : "Add the tools readers need.")</p>
+                    @for (var i = 0; i < items.Count; i++)
+                    {
+                        <div class="border border-base-300 rounded-lg p-4 space-y-3">
+                            <label class="block space-y-2"><span class="inline-flex items-center gap-1">@label @(i + 1) name
+                                <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
+                            </span><input name="@($"Input.{field}[{i}].Name")" value="@items[i].Name" class="input w-full" maxlength="300" /></label>
+                            @if (field == "Materials")
+                            {
+                                <label class="block space-y-2"><span>Material @(i + 1) quantity</span><input name="@($"Input.Materials[{i}].Quantity")" value="@items[i].Quantity" type="text" class="input w-full" maxlength="300" placeholder="10 boxes or 5 switches" /></label>
+                            }
+                            <label class="block space-y-2"><span>@label @(i + 1) link</span><input name="@($"Input.{field}[{i}].Url")" value="@items[i].Url" type="url" class="input w-full" maxlength="2000" /></label>
+                            <div class="flex flex-wrap gap-2">
+                                <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="@($"{command}-up:{i}")" disabled="@(i == 0)">Move @command up</button>
+                                <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="@($"{command}-down:{i}")" disabled="@(i == items.Count - 1)">Move @command down</button>
+                                <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="@($"remove-{command}:{i}")">Remove @command</button>
+                            </div>
+                        </div>
+                    }
+                    <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="@($"add-{command}")">Add @command</button>
+                </section>
+            }
+        }
         <div id="editor-preview" class="p-4" hidden>
             <iframe id="draft-preview" title="Private post preview" class="w-full min-h-160 border border-base-300" sandbox="allow-same-origin"></iframe>
         </div>

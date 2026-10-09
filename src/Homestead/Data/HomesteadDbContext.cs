@@ -15,6 +15,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     public DbSet<PostMedia> PostMedia => Set<PostMedia>();
     public DbSet<ReviewDetails> Reviews => Set<ReviewDetails>();
     public DbSet<GuideStep> GuideSteps => Set<GuideStep>();
+    public DbSet<GuideSupply> GuideSupplies => Set<GuideSupply>();
     public DbSet<Tag> Tags => Set<Tag>();
     public DbSet<PostTag> PostTags => Set<PostTag>();
     public DbSet<SiteSettings> SiteSettings => Set<SiteSettings>();
@@ -66,10 +67,28 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
         });
         builder.Entity<GuideStep>(e =>
         {
+            e.Property(x => x.Title).HasMaxLength(300);
             e.HasAlternateKey(x => new { x.Id, x.PostId });
             e.HasOne(x => x.Post).WithMany(x => x.Steps).HasForeignKey(x => x.PostId);
             e.HasIndex(x => new { x.PostId, x.Order }).IsUnique();
-            e.ToTable("GuideSteps", t => t.HasCheckConstraint("CK_Step_Order", "\"Order\" >= 0"));
+            e.ToTable("GuideSteps", t =>
+            {
+                t.HasCheckConstraint("CK_Step_Order", "\"Order\" >= 0");
+                t.HasCheckConstraint("CK_Step_Duration", "DurationSeconds IS NULL OR DurationSeconds BETWEEN 1 AND 31536000");
+            });
+        });
+        builder.Entity<GuideSupply>(e =>
+        {
+            e.HasOne(x => x.Post).WithMany(x => x.Supplies).HasForeignKey(x => x.PostId);
+            e.Property(x => x.Name).HasMaxLength(300);
+            e.Property(x => x.Url).HasMaxLength(2000);
+            e.Property(x => x.Quantity).HasMaxLength(300);
+            e.HasIndex(x => new { x.PostId, x.Kind, x.Order }).IsUnique();
+            e.ToTable("GuideSupplies", t =>
+            {
+                t.HasCheckConstraint("CK_Supply_Kind", "Kind BETWEEN 0 AND 1");
+                t.HasCheckConstraint("CK_Supply_Order", "\"Order\" >= 0");
+            });
         });
         builder.Entity<MediaAsset>().HasIndex(x => x.StoredFilename).IsUnique();
         builder.Entity<PostMedia>(e =>

@@ -13,7 +13,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
     public Task<Post?> FindAsync(Guid id) => db.Posts.AsSplitQuery().Include(x => x.Draft)
         .Include(x => x.PublishedSnapshot).Include(x => x.Tags).ThenInclude(x => x.Tag)
         .Include(x => x.Media).ThenInclude(x => x.MediaAsset)
-        .Include(x => x.Review).Include(x => x.Steps)
+        .Include(x => x.Review).Include(x => x.Steps).Include(x => x.Supplies)
         .SingleOrDefaultAsync(x => x.Id == id && x.Status != PostStatus.Deleted);
 
     public async Task<Post> CreateAsync(PostType type = PostType.Article)
@@ -53,8 +53,19 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
             if (input.Captions.Values.Any(x => x?.Length > 1000)) throw new InvalidOperationException("Captions must be at most 1000 characters.");
             if (post.Type == PostType.Review && (input.Subject?.Length > 300 || input.ExternalUrl?.Length > 2000 || input.Rating is < 1 or > 5 || !PostValidation.IsExternalUrl(input.ExternalUrl)))
                 throw new InvalidOperationException("Use a subject of at most 300 characters, a rating from 1 to 5, and an absolute HTTP or HTTPS URL without credentials.");
-            if (input.Steps.Count > 100 || input.Steps.Any(x => x.Id == Guid.Empty || x.BodyMarkdown.Length > 200_000) || input.Steps.Select(x => x.Id).Distinct().Count() != input.Steps.Count)
-                throw new InvalidOperationException("Use up to 100 distinct steps, each at most 200000 characters.");
+            if (input.Steps.Count > 100 || input.Steps.Any(x => x.Id == Guid.Empty || x.Title?.Length > 300 || x.BodyMarkdown.Length > 200_000) || input.Steps.Select(x => x.Id).Distinct().Count() != input.Steps.Count)
+                throw new InvalidOperationException("Use up to 100 distinct steps, with titles of at most 300 characters and instructions of at most 200000 characters.");
+            if (post.Type == PostType.Guide)
+            {
+                if (input.Steps.Any(x => x.ReplacementDuration is { } replacement && (replacement < TimeSpan.Zero || replacement >= TimeSpan.FromHours(24)) ||
+                    x.EffectiveDuration is { } time && (time <= TimeSpan.Zero || time.Ticks % TimeSpan.TicksPerSecond != 0 ||
+                        time >= TimeSpan.FromHours(24) && !post.Steps.Any(existing => existing.Id == x.Id && existing.DurationSeconds == x.DurationSeconds)) ||
+                    x.DurationSeconds is < 1 or > 31536000))
+                    throw new InvalidOperationException("Choose a positive duration in hours, minutes, and seconds below 24 hours, or leave it blank.");
+                foreach (var supplies in new[] { input.Tools, input.Materials })
+                    if (supplies.Count > 100 || supplies.Any(x => x.Name?.Length > 300 || x.Quantity?.Length > 300 || x.Url?.Length > 2000 || !PostValidation.IsExternalUrl(x.Url)))
+                        throw new InvalidOperationException("Use up to 100 tools or materials, with names and quantities of at most 300 characters and optional absolute HTTP or HTTPS links without credentials.");
+            }
             var stepIds = input.Steps.Select(x => x.Id).ToArray();
             if (post.Type == PostType.Guide && await db.GuideSteps.AnyAsync(x => stepIds.Contains(x.Id) && x.PostId != id))
                 throw new InvalidOperationException("Steps must belong to this guide.");
@@ -87,6 +98,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
             }
             if (post.Type == PostType.Guide)
             {
+                db.GuideSupplies.RemoveRange(post.Supplies); post.Supplies.Clear();
                 foreach (var image in post.Media) image.GuideStepId = null;
                 // Clear foreign keys before removing steps; originals remain available for backup.
                 await db.SaveChangesAsync();
@@ -97,8 +109,21 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
                 {
                     var row = post.Steps.SingleOrDefault(x => x.Id == step.Id);
                     if (row is null) { row = new GuideStep { Id = step.Id, PostId = post.Id, Post = post }; db.GuideSteps.Add(row); }
-                    row.Order = order; row.BodyMarkdown = step.BodyMarkdown;
+                    row.Order = order; row.Title = string.IsNullOrWhiteSpace(step.Title) ? null : step.Title.Trim();
+                    row.BodyMarkdown = step.BodyMarkdown; row.DurationSeconds = (int?)step.DurationSeconds;
                 }
+                foreach (var (kind, supplies) in new[] { (GuideSupplyKind.Tool, input.Tools), (GuideSupplyKind.Material, input.Materials) })
+                    foreach (var (supply, order) in supplies.Select((supply, order) => (supply, order)))
+                        db.GuideSupplies.Add(new GuideSupply
+                        {
+                            PostId = post.Id,
+                            Post = post,
+                            Kind = kind,
+                            Order = order,
+                            Name = supply.Name?.Trim() ?? "",
+                            Url = string.IsNullOrWhiteSpace(supply.Url) ? null : supply.Url.Trim(),
+                            Quantity = kind == GuideSupplyKind.Material && !string.IsNullOrWhiteSpace(supply.Quantity) ? supply.Quantity.Trim() : null
+                        });
                 foreach (var image in post.Media) image.GuideStepId = input.StepImages.GetValueOrDefault(image.MediaAssetId);
             }
             post.Draft.Title = input.Title; post.Draft.BodyMarkdown = input.BodyMarkdown ?? "";
@@ -142,7 +167,9 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         (type != PostType.Review && !string.IsNullOrWhiteSpace(input.Title)) ||
         (type == PostType.Article && !string.IsNullOrWhiteSpace(input.Summary)) ||
         (type == PostType.Review && (!string.IsNullOrWhiteSpace(input.Subject) || input.Rating is not null || !string.IsNullOrWhiteSpace(input.ExternalUrl))) ||
-        (type == PostType.Guide && input.Steps.Any(x => !string.IsNullOrWhiteSpace(x.BodyMarkdown)));
+        (type == PostType.Guide && (input.Steps.Any(x => !string.IsNullOrWhiteSpace(x.Title) || !string.IsNullOrWhiteSpace(x.BodyMarkdown) || x.DurationSeconds is not null) ||
+            input.Tools.Concat(input.Materials).Any(x => !string.IsNullOrWhiteSpace(x.Name) || !string.IsNullOrWhiteSpace(x.Url)) ||
+            input.Materials.Any(x => !string.IsNullOrWhiteSpace(x.Quantity))));
 
     public static ArticleSnapshot Snapshot(Post post, string slug, DateTime now) => new(1, post.Id, slug,
         post.Draft!.Title ?? "", post.Draft.BodyMarkdown, post.Draft.Summary,
@@ -156,8 +183,13 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         Location = LocationSnapshot.From(post.Draft),
         TagSlugs = post.Tags.ToDictionary(x => x.Tag.Name, x => x.Tag.Slug),
         Review = post.Review is { } review ? new(review.Subject, review.Rating, review.ExternalUrl) : null,
-        Steps = post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).ToArray()
+        Steps = post.Steps.OrderBy(x => x.Order).Select(GuideStepSnapshot.From).ToArray(),
+        Tools = SupplySnapshots(post, GuideSupplyKind.Tool),
+        Materials = SupplySnapshots(post, GuideSupplyKind.Material)
     };
+
+    private static GuideSupplySnapshot[] SupplySnapshots(Post post, GuideSupplyKind kind) => ArticleInput.GuideSupplies(post, kind)
+        .Select(x => new GuideSupplySnapshot(x.Name, x.Url) { Quantity = x.Quantity }).ToArray();
 
     // Pasted images belong to Markdown, not the implicit photo grid. Keep the private
     // attachment for undo/reinsertion and backup, but omit unused uploads from all snapshots.
@@ -178,7 +210,8 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
          (post.Type is PostType.Microblog or PostType.Review or PostType.Gallery or PostType.Guide or PostType.Checkin &&
           !DraftMedia(post).OrderBy(x => x.SortOrder).Select(x => x.MediaAssetId).SequenceEqual(live.Media.Select(x => x.Id))) ||
          (post.Type == PostType.Review && new ReviewSnapshot(post.Review?.Subject ?? "", post.Review?.Rating, post.Review?.ExternalUrl) != live.Review) ||
-         (post.Type == PostType.Guide && !post.Steps.OrderBy(x => x.Order).Select(x => new GuideStepSnapshot(x.Id, x.BodyMarkdown)).SequenceEqual(live.Steps)));
+         (post.Type == PostType.Guide && (!post.Steps.OrderBy(x => x.Order).Select(GuideStepSnapshot.From).SequenceEqual(live.Steps) ||
+             !SupplySnapshots(post, GuideSupplyKind.Tool).SequenceEqual(live.Tools) || !SupplySnapshots(post, GuideSupplyKind.Material).SequenceEqual(live.Materials))));
 
     public static bool IsPublicationPending(Post post, ArticleSnapshot? live)
     {

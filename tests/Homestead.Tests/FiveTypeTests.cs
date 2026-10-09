@@ -57,6 +57,10 @@ public sealed class FiveTypeTests
         ["Input.Captions[" + image.Id + "]"] = marker + " caption",
         ["Input.Steps[0].Id"] = step.ToString(),
         ["Input.Steps[0].BodyMarkdown"] = marker + " **instructions**",
+        ["Input.Steps[0].Duration"] = "01:30:00",
+        ["Input.Tools[0].Name"] = marker + " tool",
+        ["Input.Tools[0].Url"] = "https://example.test/tool",
+        ["Input.Materials[0].Name"] = marker + " material",
         ["Input.StepImages[" + image.Id + "]"] = type == PostType.Guide ? step.ToString() : "",
         ["Input.MediaOrder[0]"] = image.Id.ToString()
     };
@@ -107,7 +111,11 @@ public sealed class FiveTypeTests
             Assert.Contains("https://example.test" + image.Url, rss.Descendants("item").Single().Element(content + "encoded")!.Value);
             Assert.Contains(path, await visitor.GetStringAsync("/sitemap.xml"));
             if (type == PostType.Review) { Assert.Contains("4/5", html); Assert.Contains("Original subject", html); }
-            if (type == PostType.Guide) { Assert.Contains("<ol", html); Assert.Contains("<strong>instructions</strong>", html); }
+            if (type == PostType.Guide)
+            {
+                Assert.Contains("<ol", html); Assert.Contains("<strong>instructions</strong>", html);
+                Assert.Contains("Original tool", html); Assert.Contains("Original material", html); Assert.Contains("1 hour, 30 minutes", html);
+            }
             if (type == PostType.Gallery) Assert.Contains("<figcaption>Original caption</figcaption>", html);
             var privatePhoto = await Photo(app, id);
             fields = Fixture(type, await Version(app, id), "PRIVATE", image, step);

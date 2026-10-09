@@ -259,7 +259,8 @@ structured fields:
 | `Tags` | Ordered `ThemeTagModel` entries (`Name`, `Url`), preserving collision-safe tag URLs. |
 | `Media`, `Cover` | Ordered media and optional selected cover. Each has `Id`, `Url`, `MimeType`, `AltText`, `Caption`, `GuideStepId`. |
 | `Review` | Optional subject, nullable integer rating, and external URL. Preview ratings can be null. |
-| `Steps` | Ordered `ThemeStepModel` entries with stable `Id`, sanitized `BodyHtml`, and step `Media`. |
+| `Tools`, `Materials` | Ordered guide supplies with a plain-text `Name` and optional HTTP(S) `Url`. Materials also have optional text `Quantity`. Empty on older snapshots; older materials have no quantity. |
+| `Steps` | Ordered `ThemeStepModel` entries with stable `Id`, optional `Title`, sanitized `BodyHtml`, step `Media`, optional `DurationSeconds`, and Humanizer-formatted `DurationText`. |
 | `Location` | Optional name/address and paired nullable latitude/longitude; `Coordinates` provides display text. |
 
 All model media URLs use authenticated `/admin/media/{id}` URLs in previews and

@@ -1,0 +1,9 @@
+@model string
+<div class="flex flex-wrap gap-1 border-b border-base-300 bg-base-200 p-2 rounded-t-lg" role="group" aria-label="@Model">
+    @foreach (var (action, icon, label) in new[] { ("bold", "bold", "Bold (Ctrl/⌘+B)"), ("italic", "italic", "Italic (Ctrl/⌘+I)"), ("heading", "heading", "Heading"), ("link", "link", "Link"), ("list", "list-ul", "Bulleted list"), ("ordered-list", "list-ol", "Numbered list"), ("quote", "quote-left", "Quote"), ("code", "code", "Code"), ("image", "image", "Upload and insert image") })
+    {
+        <button type="button" class="btn btn-ghost btn-square min-h-11" data-format="@action" aria-label="@label" title="@label">
+            <svg class="size-5 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#@icon"></use></svg>
+        </button>
+    }
+</div>
