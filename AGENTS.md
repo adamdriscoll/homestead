@@ -11,9 +11,18 @@ Track unfinished work and proposals in [GitHub issues](https://github.com/PoshTo
 The old implementation phases are delivered; keep planning and acceptance work
 in issues rather than recreating local phase documents. Deferred proposals need
 explicit scope before implementation. Public themes use shared Razor regions,
-versioned ZIP packages, and optional colors; for theme authoring or engine changes,
-read [themes](docs/themes.md). Administration keeps separate light/dark appearance. Historical
+versioned ZIP packages, and optional colors; for public-site features, theme authoring,
+or engine changes, read [themes](docs/themes.md). Administration keeps separate light/dark appearance. Historical
 MVP exclusions are not permanent bans on explicitly requested features.
+
+When a feature changes the public site, update `docs/themes.md` in the same change
+with the resulting theme behavior, model members, and authoring requirements.
+Review every built-in theme in `src/Homestead/Themes` and update affected Razor
+templates, CSS, and manifests so each supports the feature, including themes that
+override shared regions or post rendering. Verify the affected listings, post pages,
+and private previews across all built-in themes, preserving navigation without
+JavaScript, responsive layouts, and light/dark appearance. Public-site feature work
+is complete only when its theme documentation and built-in theme support are current.
 
 - For development checks, tools, or migrations, read [contributing](docs/contributing.md).
 - For configuration, Docker, proxies, upgrades, or troubleshooting, read [deployment](docs/deploy.md).
