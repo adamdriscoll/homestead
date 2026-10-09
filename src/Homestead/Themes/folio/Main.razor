@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en" data-public-theme="@Model.ThemeId" data-accent="@Model.Site.AccentColor.ToLowerInvariant()">
+    @Model.Head
+    <body>
+        <a class="btn" data-folio-skip href="#main">Skip to content</a>
+        @Model.Header
+        @if (Model.Path == "/" && Model.IsListing)
+        {
+            <section data-folio-cover aria-labelledby="folio-cover-title">
+                @if (Model.Site.HeaderImage is { } image)
+                {
+                    <img data-folio-cover-image src="@image.Url" alt="@image.AltText" />
+                }
+                <div data-folio-cover-content>
+                    <p data-folio-eyebrow>Notes, stories &amp; discoveries</p>
+                    <h1 id="folio-cover-title">@Model.Site.Title</h1>
+                    @if (!string.IsNullOrWhiteSpace(Model.Site.Description))
+                    {
+                        <p data-folio-introduction>@Model.Site.Description</p>
+                    }
+                    <a class="btn" href="#main">Explore the journal <span aria-hidden="true">↓</span></a>
+                </div>
+                <span data-folio-initial aria-hidden="true">@Initial(Model.Site.Title)</span>
+            </section>
+        }
+        <div data-folio-reading data-folio-page="@(Model.IsListing ? "listing" : "document")">
+            @Model.Content
+        </div>
+        @Model.Footer
+    </body>
+</html>
+@code {
+    private static string Initial(string text) => string.IsNullOrWhiteSpace(text) ? "F" : System.Globalization.StringInfo.GetNextTextElement(text.Trim()).ToUpperInvariant();
+}

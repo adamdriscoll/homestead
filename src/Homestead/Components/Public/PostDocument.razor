@@ -1,0 +1,42 @@
+@using Homestead.Data.Entities
+@if (Listing)
+{
+    <article class="card border border-base-300">
+        <div class="card-body">
+            <p class="text-sm">@Post.TypeLabel · <time datetime="@Post.PublishedAtUtc.ToString("O")">@Date</time></p>
+            <h2 class="card-title break-words"><a href="@($"/posts/{Post.Slug}/")">@Post.DisplayTitle</a></h2>
+            @if (Post.Type is PostType.Microblog or PostType.Checkin) { <PostContent Post="Post" Preview="Page.Preview" /> }
+            else
+            {
+                @((MarkupString)SafeMarkdown.RenderLocation(Post.Location))
+                @if (Post.Type == PostType.Review && Post.Review is { } review)
+                { <p><strong>@review.Subject</strong> · @review.Rating/5</p> }
+                @if (Post.Type == PostType.Guide) { <p>@Post.Steps.Length steps</p> }
+                @if (Post.Type == PostType.Gallery) { <p>@Post.Media.Length photos</p> }
+                @if ((Post.Media.SingleOrDefault(x => x.Id == Post.CoverMediaId) ?? (Post.Type == PostType.Article ? null : Post.Media.FirstOrDefault())) is { } cover)
+                { <img src="@(Page.Preview ? cover.PrivateUrl : cover.Url)" alt="@cover.AltText" class="w-full max-h-80 object-cover rounded-lg" loading="lazy" /> }
+                <p>@DiscoveryFiles.Description(Post)</p>
+            }
+            @Tags
+        </div>
+    </article>
+}
+else
+{
+    <article class="space-y-6">
+        <h1 class="text-4xl font-semibold break-words">@Post.DisplayTitle</h1>
+        <p>@Page.Settings.DisplayAuthor · @Post.TypeLabel · <time datetime="@Post.PublishedAtUtc.ToString("O")">@Date</time></p>
+        <PostContent Post="Post" Preview="Page.Preview" />
+        @Tags
+    </article>
+}
+@code {
+    [Parameter, EditorRequired] public PublicPage Page { get; set; } = null!;
+    [Parameter, EditorRequired] public ArticleSnapshot Post { get; set; } = null!;
+    [Parameter] public bool Listing { get; set; }
+    private string Date => TimeZoneInfo.ConvertTimeFromUtc(Post.PublishedAtUtc,
+        TimeZoneInfo.FindSystemTimeZoneById(Page.Settings.TimeZone)).ToString("MMMM d, yyyy");
+    private RenderFragment Tags => @<nav aria-label="Post tags" class="flex flex-wrap gap-3">
+        @foreach (var tag in Post.Tags) { <a class="underline py-2" href="@($"/tags/{Post.TagSlug(tag)}/")">@tag</a> }
+    </nav>;
+}

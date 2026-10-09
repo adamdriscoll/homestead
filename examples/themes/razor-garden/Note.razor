@@ -1,0 +1,23 @@
+@if (Model.Post is { } note)
+{
+    <article class="card border border-base-300">
+        <div class="card-body">
+            @if (Model.IsListing)
+            {
+                <h2 class="card-title"><a class="link" href="@note.Url">@note.DisplayTitle</a></h2>
+            }
+            else
+            {
+                <h1 class="card-title">@note.DisplayTitle</h1>
+            }
+            <p>From the garden · <time datetime="@note.PublishedAtUtc.ToString("O")">@note.DisplayDate</time></p>
+            @note.ContentHtml
+            <nav aria-label="Post tags">
+                @foreach (var tag in note.Tags)
+                {
+                    <a class="link" href="@tag.Url">@tag.Name</a>
+                }
+            </nav>
+        </div>
+    </article>
+}

@@ -1,0 +1,18 @@
+@if (Model.IsListing)
+{
+    @Model.DefaultContent
+}
+else if (Model.Post is { } guide)
+{
+    <article>
+        <h1>@guide.DisplayTitle</h1>
+        <p>@guide.Steps.Length steps · @guide.DisplayDate</p>
+        @guide.ContentHtml
+        <nav aria-label="Post tags">
+            @foreach (var tag in guide.Tags)
+            {
+                <a class="link" href="@tag.Url">@tag.Name</a>
+            }
+        </nav>
+    </article>
+}

@@ -166,6 +166,13 @@ Leaflet markers, shared-place popups, safe text, tile failures, and navigation
 without JavaScript on desktop and mobile viewports. Automated tests mock tile
 requests rather than repeatedly downloading OpenStreetMap tiles.
 
+`ThemeTests` covers both legacy HTML and engine 2 Razor packages, typed models
+for all six types, template precedence, preview media URLs, source privacy,
+compilation/render failures, and backup/Hugo portability. Razor's public language
+compiler and Roslyn are exact NuGet dependencies shipped in the runtime image;
+server installations do not need the .NET SDK. Theme authoring and the trust
+boundary are documented in [themes](themes.md).
+
 Choose work from [GitHub issues](https://github.com/PoshTools/homestead/issues),
 and define scope and acceptance before implementing deferred proposals. See
 [agent guidance](../AGENTS.md) for architecture and compatibility invariants.

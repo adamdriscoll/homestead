@@ -151,7 +151,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                     File.Copy(source, destination); files.Add(relative);
                 }
             }
-            foreach (var (file, contents) in theme.Files.Where(x => x.Key != "theme.json" && !x.Key.EndsWith(".html", StringComparison.Ordinal)))
+            foreach (var (file, contents) in theme.Files.Where(x => !ThemePackage.IsSource(x.Key)))
             {
                 var relative = "assets/theme/" + file;
                 var destination = Path.Combine(root, relative);

@@ -63,12 +63,7 @@
         @if (Page.Preview) { <p class="alert" role="status">Private draft preview · unpublished edits</p> }
         @if (Page.Article is { } article)
         {
-            <article class="space-y-6">
-                <h1 class="text-4xl font-semibold break-words">@article.DisplayTitle</h1>
-                <p>@Page.Settings.DisplayAuthor · @article.TypeLabel · <time datetime="@article.PublishedAtUtc.ToString("O")">@Date(article)</time></p>
-                <PostContent Post="article" Preview="Page.Preview" />
-                @Tags(article)
-            </article>
+            @PostMarkup(article, false)
         }
         else if (Page.Path == "/map/")
         {
@@ -90,25 +85,7 @@
             @if (Page.Articles.Length == 0) { <p>No posts here yet. Come back soon, or explore <a class="underline" href="/">the home feed</a>.</p> }
             @foreach (var post in Page.Articles)
             {
-                <article class="card border border-base-300">
-                    <div class="card-body">
-                        <p class="text-sm">@post.TypeLabel · <time datetime="@post.PublishedAtUtc.ToString("O")">@Date(post)</time></p>
-                        <h2 class="card-title break-words"><a href="@($"/posts/{post.Slug}/")">@post.DisplayTitle</a></h2>
-                        @if (post.Type is PostType.Microblog or PostType.Checkin) { <PostContent Post="post" /> }
-                        else
-                        {
-                            @((MarkupString)SafeMarkdown.RenderLocation(post.Location))
-                            @if (post.Type == PostType.Review && post.Review is { } review)
-                            { <p><strong>@review.Subject</strong> · @review.Rating/5</p> }
-                            @if (post.Type == PostType.Guide) { <p>@post.Steps.Length steps</p> }
-                            @if (post.Type == PostType.Gallery) { <p>@post.Media.Length photos</p> }
-                            @if ((post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) ?? (post.Type == PostType.Article ? null : post.Media.FirstOrDefault())) is { } cover)
-                            { <img src="@cover.Url" alt="@cover.AltText" class="w-full max-h-80 object-cover rounded-lg" loading="lazy" /> }
-                            <p>@DiscoveryFiles.Description(post)</p>
-                        }
-                        @Tags(post)
-                    </div>
-                </article>
+                @PostMarkup(post, true)
             }
         }
     </main>
@@ -144,11 +121,10 @@
         ?? Brand(Page.Settings.LogoMediaId))?.Url ?? "/assets/social-default.png");
     private ArticleMedia? Brand(Guid? id) => Page.Branding?.SingleOrDefault(x => x.Id == id);
     private string ImageUrl(ArticleMedia image) => Page.Preview ? image.PrivateUrl : image.Url;
-    private string Date(ArticleSnapshot post) => TimeZoneInfo.ConvertTimeFromUtc(post.PublishedAtUtc,
-        TimeZoneInfo.FindSystemTimeZoneById(Page.Settings.TimeZone)).ToString("MMMM d, yyyy");
     private ArticleSnapshot About => new(1, Guid.Empty, "about", "About", Page.Settings.AboutMarkdown, null,
         DateTime.UtcNow, DateTime.UtcNow, 0, [], null, Page.Branding ?? []);
-    private RenderFragment Tags(ArticleSnapshot post) => @<nav aria-label="Post tags" class="flex flex-wrap gap-3">
-        @foreach (var tag in post.Tags) { <a class="underline py-2" href="@($"/tags/{post.TagSlug(tag)}/")">@tag</a> }
-    </nav>;
+    private RenderFragment PostMarkup(ArticleSnapshot post, bool listing) => @<text>
+        @if (Page.RenderedPosts?.TryGetValue(post.PostId, out var html) == true) { @((MarkupString)html) }
+        else { <PostDocument Page="Page" Post="post" Listing="listing" /> }
+    </text>;
 }

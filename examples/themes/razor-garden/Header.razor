@@ -1,0 +1,14 @@
+<header>
+    @if (Model.Site.HeaderImage is { } image)
+    {
+        <img src="@image.Url" alt="@image.AltText" />
+    }
+    <a class="link" href="/">@Model.Site.Title</a>
+    <p>@Model.Site.Description</p>
+    <nav aria-label="Main navigation">
+        @foreach (var link in Model.Navigation)
+        {
+            <a class="link" href="@link.Url" aria-current="@(Model.Path == link.Url ? "page" : null)">@link.Label</a>
+        }
+    </nav>
+</header>

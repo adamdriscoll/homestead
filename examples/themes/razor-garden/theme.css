@@ -1,0 +1,33 @@
+html[data-public-theme] body {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font-family: Georgia, serif;
+}
+
+html[data-public-theme] header,
+html[data-public-theme] main,
+html[data-public-theme] footer {
+  max-width: 48rem;
+  margin-inline: auto;
+  padding: 1rem;
+}
+
+html[data-public-theme] header > img {
+  max-width: 100%;
+  max-height: 16rem;
+  object-fit: cover;
+}
+
+html[data-public-theme] nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+html[data-public-theme] nav a {
+  padding-block: 0.75rem;
+}
+
+html[data-public-theme] article {
+  overflow-wrap: anywhere;
+}

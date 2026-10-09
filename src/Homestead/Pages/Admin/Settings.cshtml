@@ -62,7 +62,7 @@
                     <h2 id="theme-title" class="text-xl font-semibold">Theme</h2>
                     <fieldset class="fieldset gap-3">
                         <legend class="fieldset-legend">Public theme</legend>
-                        <p>Porch is a familiar feed, Journal focuses on reading, and Ledger uses a wider magazine layout. Administration keeps its own light/dark appearance.</p>
+                        <p>Porch is a familiar feed, Journal focuses on reading, Ledger uses a wider magazine layout, and Folio pairs a bold cover with spacious reading layouts. Administration keeps its own light/dark appearance.</p>
                         <label asp-for="Input.ThemeId"></label>
                         <select asp-for="Input.ThemeId" class="select w-full">
                             @foreach (var theme in Model.Themes) { <option value="@theme.Id">@theme.Name · @theme.Version @(theme.SupportsColors ? "· colors supported" : "")</option> }
@@ -76,7 +76,7 @@
                     </fieldset>
                     <section class="space-y-3 border-t border-base-300 pt-4" aria-labelledby="themes-title">
                         <h3 id="themes-title" class="font-semibold">Install a custom public theme</h3>
-                        <p>Save settings before uploading. Theme ZIPs may include public JavaScript; install only themes from authors you trust. Up to 5 MB.</p>
+                        <p>Save settings before uploading. Theme ZIPs may include public JavaScript and Razor code that runs on your server with access to application data. Install only themes from authors you trust. Up to 5 MB.</p>
                         <label class="block" for="theme-upload">Theme ZIP</label><input id="theme-upload" name="Upload" form="theme-upload-form" type="file" accept=".zip,application/zip" class="file-input w-full" />
                         <button type="submit" form="theme-upload-form" class="btn">Install theme</button>
                     </section>

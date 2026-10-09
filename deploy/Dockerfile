@@ -4,6 +4,7 @@ COPY src/Homestead/package*.json ./
 RUN npm ci --no-audit --no-fund
 COPY src/Homestead/Pages ./Pages
 COPY src/Homestead/Components ./Components
+COPY src/Homestead/Themes ./Themes
 COPY src/Homestead/Program.cs ./Program.cs
 COPY src/Homestead/wwwroot/js/article-editor.js ./wwwroot/js/article-editor.js
 COPY src/Homestead/wwwroot/js/settings.js ./wwwroot/js/settings.js

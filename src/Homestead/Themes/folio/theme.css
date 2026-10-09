@@ -1,0 +1,149 @@
+/* Original Homestead implementation inspired by Typology's typography and cover layout. */
+html[data-public-theme="folio"] {
+  color-scheme: light dark;
+  --color-base-100: #fcfaf5;
+  --color-base-200: #f2efe8;
+  --color-base-300: #ded8ca;
+  --color-base-content: #252725;
+}
+
+html[data-public-theme="folio"]:where([data-accent="porch"]) {
+  --color-primary: #ab2840;
+  --color-primary-content: #ffffff;
+}
+
+@media (prefers-color-scheme: dark) {
+  html[data-public-theme="folio"] {
+    --color-base-100: #1c1d20;
+    --color-base-200: #28292d;
+    --color-base-300: #424348;
+    --color-base-content: #eae7df;
+  }
+}
+
+html[data-public-theme="folio"] body {
+  margin: 0;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font-family: Georgia, "Times New Roman", serif;
+}
+
+html[data-public-theme="folio"] :is(a, h1, h2, p) { overflow-wrap: anywhere; }
+html[data-public-theme="folio"] a { text-underline-offset: 0.25em; }
+html[data-public-theme="folio"] a:focus-visible { outline: 2px solid currentColor; outline-offset: 5px; }
+
+html[data-public-theme="folio"] [data-folio-skip] {
+  position: absolute;
+  left: 1rem;
+  top: -10rem;
+  z-index: 10;
+}
+html[data-public-theme="folio"] [data-folio-skip]:focus { top: 1rem; }
+
+html[data-public-theme="folio"] [data-folio-header] {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+html[data-public-theme="folio"] [data-folio-masthead] {
+  max-width: 76rem;
+  margin: auto;
+  padding: 1.5rem 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1.5rem;
+}
+html[data-public-theme="folio"] [data-folio-wordmark] {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 1.6rem;
+  font-weight: 750;
+  letter-spacing: -0.06em;
+  text-decoration: none;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+html[data-public-theme="folio"] [data-folio-wordmark] img { max-width: 4rem; max-height: 3rem; }
+html[data-public-theme="folio"] [data-folio-header] [data-folio-wordmark] { color: var(--color-primary-content); }
+html[data-public-theme="folio"] nav { display: flex; flex-wrap: wrap; gap: 0.25rem 1.5rem; }
+html[data-public-theme="folio"] nav a { display: inline-flex; align-items: center; min-height: 2.75rem; padding-block: 0.75rem; }
+html[data-public-theme="folio"] [data-folio-header] nav {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.75rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+html[data-public-theme="folio"] [data-folio-header] nav a { text-decoration: none; }
+html[data-public-theme="folio"] [data-folio-header] nav a[aria-current="page"] { text-decoration: underline; }
+
+html[data-public-theme="folio"] [data-folio-cover] {
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  min-height: 29rem;
+  padding: 5rem 2rem 6rem;
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+  text-align: center;
+  display: grid;
+  place-items: center;
+}
+html[data-public-theme="folio"] [data-folio-cover-content] { max-width: 55rem; position: relative; z-index: 1; }
+html[data-public-theme="folio"] [data-folio-cover] h1 {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(2.6rem, 6vw, 5.5rem);
+  line-height: 1.04;
+  letter-spacing: -0.04em;
+  font-weight: 750;
+  margin: 1.25rem 0;
+}
+html[data-public-theme="folio"] [data-folio-introduction] { max-width: 35rem; margin: 0 auto 2rem; font-size: 1.25rem; line-height: 1.6; }
+html[data-public-theme="folio"] [data-folio-cover] .btn { background: var(--color-primary-content); color: var(--color-primary); border: 0; border-radius: 0; padding-inline: 1.5rem; }
+html[data-public-theme="folio"] [data-folio-initial] {
+  position: absolute;
+  font-family: Georgia, serif;
+  font-size: 35rem;
+  line-height: 1;
+  opacity: 0.08;
+  z-index: -1;
+  pointer-events: none;
+}
+html[data-public-theme="folio"] [data-folio-cover-image] { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.12; z-index: -2; }
+html[data-public-theme="folio"] [data-folio-eyebrow] {
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.13em;
+  text-transform: uppercase;
+}
+
+html[data-public-theme="folio"] [data-folio-reading] main { max-width: 68rem; padding: 4rem 2rem 5rem; }
+html[data-public-theme="folio"] [data-folio-page="listing"] main > h1 { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.13em; margin-bottom: 2.5rem; }
+html[data-public-theme="folio"] [data-folio-reading] .card { border-radius: 0; border: 0; border-bottom: 1px solid var(--color-base-300); background: transparent; box-shadow: none; }
+html[data-public-theme="folio"] [data-folio-reading] .card-body { padding: 2.5rem 0 3rem; gap: 1.25rem; }
+html[data-public-theme="folio"] [data-folio-reading] .card-title { display: block; font-family: ui-sans-serif, system-ui, sans-serif; font-weight: 700; font-size: clamp(1.65rem, 3vw, 2.5rem); line-height: 1.15; letter-spacing: -0.035em; }
+html[data-public-theme="folio"] [data-folio-reading] .card-title a { text-decoration: none; }
+html[data-public-theme="folio"] [data-folio-reading] .card-title a:hover { text-decoration: underline; }
+html[data-public-theme="folio"] [data-folio-reading] figure img { width: 100%; max-height: 32rem; object-fit: contain; border-radius: 0; }
+html[data-public-theme="folio"] [data-folio-excerpt] { font-size: 1.15rem; line-height: 1.85; max-width: 45rem; }
+html[data-public-theme="folio"] [data-folio-read] { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; align-self: flex-start; padding-block: 0.5rem; }
+html[data-public-theme="folio"] [data-folio-location] { font-size: 0.9rem; }
+html[data-public-theme="folio"] [data-folio-note] .card-title { font-family: Georgia, serif; font-style: italic; font-weight: 400; }
+html[data-public-theme="folio"] [data-folio-listing="false"] { max-width: 46rem; margin-inline: auto; }
+html[data-public-theme="folio"] [data-folio-listing="false"] .card-title { font-size: clamp(2.25rem, 5vw, 3.8rem); }
+html[data-public-theme="folio"] .prose-content { font-size: 1.1rem; line-height: 1.9; }
+html[data-public-theme="folio"] .prose-content pre { max-width: 100%; overflow-x: auto; }
+html[data-public-theme="folio"] .prose-content img { max-width: 100%; height: auto; }
+
+html[data-public-theme="folio"] [data-folio-footer] { border-top: 1px solid var(--color-base-300); max-width: 68rem; padding: 3rem 2rem; margin: auto; display: grid; grid-template-columns: 1fr auto; gap: 2rem; }
+html[data-public-theme="folio"] [data-folio-footer] p { font-size: 0.9rem; margin-top: 0.75rem; }
+html[data-public-theme="folio"] [data-folio-credit] { grid-column: 1 / -1; }
+
+@media (max-width: 48rem) {
+  html[data-public-theme="folio"] [data-folio-masthead] { flex-direction: column; align-items: flex-start; padding: 1.5rem; }
+  html[data-public-theme="folio"] nav { gap: 0.25rem 1rem; }
+  html[data-public-theme="folio"] [data-folio-cover] { min-height: 25rem; padding: 3rem 1.5rem 4rem; }
+  html[data-public-theme="folio"] [data-folio-reading] main { padding: 2.5rem 1.5rem; }
+  html[data-public-theme="folio"] [data-folio-footer] { grid-template-columns: 1fr; padding: 2.5rem 1.5rem; }
+}

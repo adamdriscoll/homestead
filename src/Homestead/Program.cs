@@ -69,6 +69,7 @@ builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<MediaService>();
 builder.Services.AddScoped<PublishingService>();
 builder.Services.AddSingleton<ThemeService>();
+builder.Services.AddSingleton<RazorThemeCompiler>();
 builder.Services.AddScoped<StaticExportService>();
 builder.Services.AddScoped<HugoExportService>();
 builder.Services.AddScoped<BackupService>();
@@ -161,7 +162,7 @@ app.MapGet("/admin/themes/colors.css", async (HomesteadDbContext db, ThemeServic
 }).RequireAuthorization();
 app.MapGet("/admin/themes/{id}/{**file}", (string id, string file, ThemeService themes) =>
 {
-    if (!ThemePackage.IsAssetPath(file) || file == "theme.json" || file.EndsWith(".html", StringComparison.Ordinal) || file.EndsWith(".js", StringComparison.Ordinal))
+    if (!ThemePackage.IsAssetPath(file) || ThemePackage.IsSource(file) || file.EndsWith(".js", StringComparison.Ordinal))
         return Results.NotFound();
     try
     {

@@ -5,14 +5,15 @@ using System.Xml.Linq;
 namespace Homestead.Features.Themes;
 
 public sealed record ThemeVariant(int EngineVersion, string[] PostTypes, string[] Styles, string[] Scripts,
-    bool SupportsColors = false, string? Layout = null);
+    bool SupportsColors = false, string? Layout = null, Dictionary<string, string>? Templates = null);
 public sealed record ThemeManifest(int FormatVersion, string Name, string Version, ThemeVariant[] Variants);
 public sealed record ThemeSnapshot(string Id, string Name, string Version, int EngineVersion, bool SupportsColors = false);
 public sealed record ThemePackage(string Id, ThemeManifest Manifest, ThemeVariant Variant, Dictionary<string, byte[]> Files)
 {
-    public const int EngineVersion = 1;
+    public const int EngineVersion = 2;
     public const string DefaultLayout = "{{header}}{{main}}{{footer}}";
-    public ThemeSnapshot Snapshot => new(Id, Manifest.Name, Manifest.Version, EngineVersion, Variant.SupportsColors);
+    public ThemeSnapshot Snapshot => new(Id, Manifest.Name, Manifest.Version, Variant.EngineVersion, Variant.SupportsColors);
+    public static bool IsSource(string file) => file == "theme.json" || Path.GetExtension(file) is ".html" or ".razor";
     public string Layout => Variant.Layout is { } file ? System.Text.Encoding.UTF8.GetString(Files[file]) : DefaultLayout;
     public string AssetUrl(string file, bool preview) => preview ? $"/admin/themes/{Id}/{file}" : $"/assets/theme/{file}";
 

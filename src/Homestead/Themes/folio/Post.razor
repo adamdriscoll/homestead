@@ -1,0 +1,35 @@
+@if (Model.Post is { } post)
+{
+    <article class="card" data-folio-post data-folio-listing="@(Model.IsListing ? "true" : "false")">
+        <div class="card-body">
+            <p data-folio-eyebrow>@post.TypeLabel · <time datetime="@post.PublishedAtUtc.ToString("O")">@post.DisplayDate</time></p>
+            @if (Model.IsListing)
+            {
+                <h2 class="card-title"><a href="@post.Url">@post.DisplayTitle</a></h2>
+                @if ((post.Cover ?? post.Media.FirstOrDefault()) is { } cover)
+                {
+                    <figure><img src="@cover.Url" alt="@cover.AltText" loading="lazy" /></figure>
+                }
+                @if (post.Type == PostType.Review && post.Review is { } review)
+                {
+                    <p data-folio-review><strong>@review.Subject</strong> · @review.Rating/5</p>
+                }
+                @if (post.Location is { } location)
+                {
+                    <p data-folio-location>Location: @string.Join(" · ", new[] { location.Name, location.Address, location.Coordinates }.Where(x => !string.IsNullOrWhiteSpace(x)))</p>
+                }
+                <p data-folio-excerpt>@post.Description</p>
+                <a class="link" data-folio-read href="@post.Url">Read @post.TypeLabel.ToLowerInvariant() <span aria-hidden="true">↗</span></a>
+            }
+            else
+            {
+                <h1 class="card-title">@post.DisplayTitle</h1>
+                <p data-folio-byline>By @Model.Site.DisplayAuthor</p>
+                <div class="prose-content">@post.ContentHtml</div>
+            }
+            <nav aria-label="Post tags">
+                @foreach (var tag in post.Tags) { <a class="link" href="@tag.Url">@tag.Name</a> }
+            </nav>
+        </div>
+    </article>
+}

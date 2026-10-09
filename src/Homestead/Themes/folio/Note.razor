@@ -1,0 +1,21 @@
+@if (Model.Post is { } note)
+{
+    <article class="card" data-folio-post data-folio-note data-folio-listing="@(Model.IsListing ? "true" : "false")">
+        <div class="card-body">
+            <p data-folio-eyebrow>Note · <time datetime="@note.PublishedAtUtc.ToString("O")">@note.DisplayDate</time></p>
+            @if (Model.IsListing)
+            {
+                <h2 class="card-title"><a href="@note.Url">@note.DisplayTitle</a></h2>
+            }
+            else
+            {
+                <h1 class="card-title">@note.DisplayTitle</h1>
+                <p data-folio-byline>By @Model.Site.DisplayAuthor</p>
+            }
+            <div class="prose-content">@note.ContentHtml</div>
+            <nav aria-label="Post tags">
+                @foreach (var tag in note.Tags) { <a class="link" href="@tag.Url">@tag.Name</a> }
+            </nav>
+        </div>
+    </article>
+}

@@ -3,6 +3,8 @@ using System.IO.Compression;
 using System.Net;
 using System.Text.Json;
 using System.Text.RegularExpressions;
+using Homestead.Data.Entities;
+using Homestead.Features.Articles;
 using Homestead.Features.Export;
 using Homestead.Features.Publishing;
 using Homestead.Features.Themes;
@@ -13,6 +15,183 @@ namespace Homestead.Tests;
 
 public sealed class ThemeTests
 {
+    private static byte[] RazorPackage(Dictionary<string, string> templates, bool mapped = false)
+    {
+        var manifest = new ThemeManifest(1, "Razor garden", "2.0.0", [
+            new(1, ["microblog", "article", "review", "guide", "gallery"], ["theme.css"], []),
+            new(2, ["microblog", "article", "review", "guide", "gallery", "checkin"], ["theme.css"], ["theme.js"], true,
+                Templates: mapped ? templates.ToDictionary(x => x.Key, x => "templates/" + x.Key + ".razor") : null)]);
+        using var buffer = new MemoryStream();
+        using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            void Add(string file, string content)
+            { using var writer = new StreamWriter(zip.CreateEntry(file).Open()); writer.Write(content); }
+            Add("theme.json", JsonSerializer.Serialize(manifest)); Add("theme.css", "/* Razor garden */"); Add("theme.js", "window.garden = true;");
+            foreach (var (name, content) in templates) Add((mapped ? "templates/" : "") + name + ".razor", content);
+        }
+        return buffer.ToArray();
+    }
+
+    [Fact]
+    public async Task Razor_regions_and_post_precedence_preserve_snapshots_preview_and_private_sources()
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var author = app.Client();
+        _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author); var postId = await Note(author);
+        var package = RazorPackage(new()
+        {
+            ["Header"] = "<header data-razor-header><a href=\"/\">@Model.Site.Title</a></header>",
+            ["Content"] = "<section data-razor-content>@Model.DefaultContent</section>",
+            ["Post"] = "<article data-generic-post><a href=\"@Model.Post!.Url\">@Model.Post.DisplayTitle</a>@Model.Post.ContentHtml</article>",
+            ["Note"] = "<article data-note-post><a href=\"@Model.Post!.Url\">@Model.Post.DisplayTitle</a>@Model.Post.ContentHtml</article>"
+        }, mapped: true);
+        var uploadResult = await Upload(author, package);
+        Assert.True(uploadResult.StatusCode == HttpStatusCode.Redirect, await uploadResult.Content.ReadAsStringAsync());
+        var theme = Assert.Single(app.Services.GetRequiredService<ThemeService>().Installed(), x => x.Id.StartsWith("custom-", StringComparison.Ordinal));
+        Assert.Equal(2, theme.EngineVersion);
+        var fields = Settings(theme.Id); fields["Input.Title"] = "Garden <script>alert(1)</script>";
+        _ = await TestApplication.Submit(author, "/admin/settings", fields);
+        foreach (var path in new[] { "/", "/notes/", "/posts/garden-note/" })
+        {
+            var html = await author.GetStringAsync(path);
+            Assert.Contains("data-razor-header", html); Assert.Contains("data-razor-content", html); Assert.Contains("data-note-post", html);
+            Assert.DoesNotContain("data-generic-post", html); Assert.DoesNotContain("<script>alert", html); Assert.Contains("&lt;script&gt;", html);
+            Assert.Contains("Shared content with {{footer}} text", html); Assert.Contains("Made at home with", html);
+            Assert.Contains("https://example.test" + path, html);
+        }
+        foreach (var path in new[] { "/articles/", "/about/" }) Assert.Contains("data-razor-header", await author.GetStringAsync(path));
+        foreach (var path in new[] { "/assets/theme/templates/Note.razor", $"/admin/themes/{theme.Id}/templates/Note.razor" })
+            Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync(path)).StatusCode);
+        _ = await TestApplication.Submit(author, $"/admin/posts/{postId}/edit", new()
+        { ["Input.Version"] = "1", ["Input.Title"] = "Private note", ["Input.BodyMarkdown"] = "private draft secret" }, $"/admin/posts/{postId}/edit?handler=Save");
+        var preview = await author.GetStringAsync($"/admin/posts/{postId}/preview");
+        Assert.Contains("private draft secret", preview); Assert.Contains("data-note-post", preview); Assert.DoesNotContain("<script", preview);
+        Assert.DoesNotContain("private draft secret", await author.GetStringAsync("/"));
+        await using var scope = app.Services.CreateAsyncScope();
+        await using var archive = await scope.ServiceProvider.GetRequiredService<StaticExportService>().CreateAsync();
+        using var zip = new ZipArchive(archive);
+        Assert.DoesNotContain(zip.Entries, x => x.FullName.EndsWith(".razor", StringComparison.Ordinal));
+        using var home = new StreamReader(zip.GetEntry("index.html")!.Open()); Assert.Contains("data-note-post", await home.ReadToEndAsync());
+    }
+
+    [Fact]
+    public async Task Razor_main_replaces_document_and_all_six_types_receive_structured_models_and_safe_preview_urls()
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var author = app.Client();
+        _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author);
+        var templates = new Dictionary<string, string>
+        {
+            ["Main"] = "<html lang=\"en\" data-custom-document>@Model.Head<body>@Model.Header@Model.Content@Model.Footer</body></html>",
+            ["Footer"] = "<footer data-custom-footer>@Model.Site.FooterText</footer>"
+        };
+        foreach (var name in new[] { "Note", "Article", "Review", "Guide", "Gallery", "Checkin" })
+            templates[name] = "<article data-type=\"" + name + "\"><h1>@Model.Post!.DisplayTitle</h1>@Model.Post.ContentHtml" +
+                "@foreach (var image in Model.Post.Media) { <img src=\"@image.Url\" alt=\"@image.AltText\" /> }" +
+                "@foreach (var step in Model.Post.Steps) { <section>@step.BodyHtml</section> }</article>";
+        var uploadResult = await Upload(author, RazorPackage(templates));
+        Assert.True(uploadResult.StatusCode == HttpStatusCode.Redirect, await uploadResult.Content.ReadAsStringAsync());
+        Assert.Contains("installed. Select", await author.GetStringAsync("/admin/settings"));
+        var themes = app.Services.GetRequiredService<ThemeService>();
+        var theme = themes.Resolve(Assert.Single(themes.Installed(), x => x.Id.StartsWith("custom-", StringComparison.Ordinal)).Id);
+        await using var scope = app.Services.CreateAsyncScope(); var renderer = scope.ServiceProvider.GetRequiredService<IStaticPageRenderer>();
+        foreach (var type in Enum.GetValues<PostType>())
+        {
+            var image = new ArticleMedia(Guid.NewGuid(), "photo.png", "image/png", "<private photo>");
+            var post = new ArticleSnapshot(1, Guid.NewGuid(), "sample", "<title>", "**Safe** <script>unsafe</script>", null,
+                DateTime.UtcNow, DateTime.UtcNow, 0, ["C++", "C#"], image.Id, [image])
+            {
+                Type = type,
+                Review = new("Subject", 4, "https://example.test"),
+                Steps = [new(Guid.NewGuid(), "**Step**")],
+                Location = new("Place", "Address", 12, 34),
+                TagSlugs = new() { ["C++"] = "c-plus", ["C#"] = "c-sharp" }
+            };
+            var page = new PublicPage(new() { CanonicalBaseUrl = "https://example.test" }, post, [], Preview: true, Theme: theme);
+            var html = await renderer.RenderAsync(page);
+            Assert.Contains("data-custom-document", html); Assert.Contains("data-custom-footer", html);
+            Assert.Contains("data-type=\"" + (type == PostType.Microblog ? "Note" : type.ToString()) + "\"", html);
+            Assert.Contains("&lt;title&gt;", html); Assert.DoesNotContain("<script", html);
+            Assert.Contains("src=\"" + image.PrivateUrl + "\"", html); Assert.DoesNotContain("src=\"" + image.Url + "\"", html);
+            Assert.Contains("<strong>Step</strong>", html); Assert.Contains("Place", html);
+            var model = ThemePageModel.From(page, scope.ServiceProvider.GetRequiredService<SafeMarkdown>());
+            Assert.Equal("/tags/c-plus/", model.Post!.Tags[0].Url); Assert.Equal("/tags/c-sharp/", model.Post.Tags[1].Url);
+        }
+    }
+
+    [Theory]
+    [InlineData("<p>@Model.DoesNotExist</p>")]
+    [InlineData("@if (true) {")]
+    [InlineData("<UnknownComponent />")]
+    public async Task Invalid_Razor_is_rejected_before_installation(string source)
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
+        var active = app.Services.GetRequiredService<ActiveSite>().Current!.GenerationId;
+        _ = await Upload(client, RazorPackage(new() { ["Main"] = source }));
+        Assert.Empty(Directory.GetFiles(Path.Combine(data.Path, "themes")));
+        Assert.Equal(active, app.Services.GetRequiredService<ActiveSite>().Current!.GenerationId);
+        Assert.Contains("Razor", await client.GetStringAsync("/admin/settings"));
+    }
+
+    [Fact]
+    public async Task Throwing_Razor_keeps_desired_settings_and_previous_active_site_until_retry()
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); _ = await Note(client);
+        var home = await client.GetStringAsync("/"); var active = app.Services.GetRequiredService<ActiveSite>(); var before = active.Current!.GenerationId;
+        _ = await Upload(client, RazorPackage(new() { ["Content"] = "@if (Model.Site.Title == \"Broken\" && Model.Path == \"/about/\") { throw new InvalidOperationException(\"Theme failure\"); }\n@Model.DefaultContent" }));
+        var theme = Assert.Single(app.Services.GetRequiredService<ThemeService>().Installed(), x => x.Id.StartsWith("custom-", StringComparison.Ordinal));
+        var fields = Settings(theme.Id); fields["Input.Title"] = "Broken";
+        _ = await TestApplication.Submit(client, "/admin/settings", fields);
+        await app.WithDatabase(async db => Assert.Equal(theme.Id, (await db.SiteSettings.SingleAsync()).ThemeId));
+        Assert.Equal(before, active.Current!.GenerationId); Assert.Equal(home, await client.GetStringAsync("/"));
+        Assert.Contains("previous public site remains active", await client.GetStringAsync("/admin/settings"));
+        fields["Input.Title"] = "Fixed";
+        _ = await TestApplication.Submit(client, "/admin/settings", fields);
+        Assert.NotEqual(before, active.Current!.GenerationId); Assert.Equal(theme.Id, active.Current.Theme!.Id);
+        Assert.Contains("Fixed", await client.GetStringAsync("/"));
+    }
+
+    [Fact]
+    public async Task Razor_sources_survive_backup_restore_and_Hugo_export_without_becoming_public_assets()
+    {
+        using var data = new TemporaryData(); using var restored = new TemporaryData(); string id;
+        var archivePath = Path.Combine(data.Path, "backup.zip");
+        using (var app = new TestApplication(data.Path))
+        using (var client = app.Client())
+        {
+            _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); _ = await Note(client);
+            _ = await Upload(client, RazorPackage(new() { ["Header"] = "<header data-restored-razor>@Model.Site.Title</header>" }));
+            id = Assert.Single(app.Services.GetRequiredService<ThemeService>().Installed(), x => x.Id.StartsWith("custom-", StringComparison.Ordinal)).Id;
+            _ = await TestApplication.Submit(client, "/admin/settings", Settings(id));
+            await using var scope = app.Services.CreateAsyncScope();
+            await using (var archive = await scope.ServiceProvider.GetRequiredService<HugoExportService>().CreateAsync())
+            using (var zip = new ZipArchive(archive))
+            {
+                Assert.NotNull(zip.GetEntry("homestead-theme/Header.razor"));
+                Assert.DoesNotContain(zip.Entries, x => x.FullName.StartsWith("static/", StringComparison.Ordinal) && x.FullName.EndsWith(".razor", StringComparison.Ordinal));
+                var root = Path.Combine(data.Path, "hugo-razor"); Directory.CreateDirectory(root); zip.ExtractToDirectory(root);
+                using var process = Process.Start(new ProcessStartInfo(Environment.GetEnvironmentVariable("HOMESTEAD_HUGO") ?? "hugo")
+                {
+                    WorkingDirectory = root,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                    ArgumentList = { "--panicOnWarning" }
+                })!;
+                var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
+                await process.WaitForExitAsync(); Assert.True(process.ExitCode == 0, await stdout + await stderr);
+                Assert.True(File.Exists(Path.Combine(root, "public", "posts", "garden-note", "index.html")));
+                Assert.Empty(Directory.GetFiles(Path.Combine(root, "public"), "*.razor", SearchOption.AllDirectories));
+            }
+            await using var backup = await scope.ServiceProvider.GetRequiredService<BackupService>().CreateAsync();
+            await using var output = File.Create(archivePath); await backup.CopyToAsync(output);
+        }
+        await BackupService.RestoreAsync(archivePath, restored.Path);
+        using var restarted = new TestApplication(restored.Path, setupToken: null); using var visitor = restarted.Client();
+        Assert.Contains("data-restored-razor", await visitor.GetStringAsync("/"));
+        Assert.Equal(id, restarted.Services.GetRequiredService<ActiveSite>().Current!.Theme!.Id);
+    }
+
     private static Dictionary<string, string> Settings(string theme = "porch") => new()
     {
         ["Input.Title"] = "Theme home",
@@ -25,7 +204,7 @@ public sealed class ThemeTests
 
     private static byte[] Package(string? invalid = null)
     {
-        var variant = new ThemeVariant(invalid == "engine" ? 2 : 1,
+        var variant = new ThemeVariant(invalid == "engine" ? 99 : 1,
             invalid == "types" ? ["article"] : ["microblog", "article", "review", "guide", "gallery"],
             [invalid == "missing" ? "missing.css" : "v1/theme.css"], ["v1/theme.js"], true, "v1/layout.html");
         var manifest = new ThemeManifest(1, "Garden <theme>", "1.2.0", [variant,
@@ -82,6 +261,7 @@ public sealed class ThemeTests
     [InlineData("porch")]
     [InlineData("journal")]
     [InlineData("ledger")]
+    [InlineData("folio")]
     public async Task Built_in_themes_style_every_public_route_without_changing_administration(string theme)
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
@@ -105,6 +285,52 @@ public sealed class ThemeTests
         settings["Input.HideHomesteadCredit"] = "true";
         Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", settings)).StatusCode);
         foreach (var path in routes) Assert.DoesNotContain("Made at home with", await client.GetStringAsync(path));
+    }
+
+    [Fact]
+    public async Task Folio_renders_all_six_types_with_locations_media_private_preview_and_portable_static_output()
+    {
+        using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
+        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); await PortabilityTests.Fixture(app);
+        var settings = Settings("folio"); settings["Input.EnableLocationMap"] = "true";
+        _ = await TestApplication.Submit(client, "/admin/settings", settings);
+        var active = app.Services.GetRequiredService<ActiveSite>().Current!;
+        Assert.Equal("folio", active.Theme!.Id); Assert.Equal(2, active.Theme.EngineVersion);
+        var home = await client.GetStringAsync("/");
+        Assert.Contains("data-folio-cover", home); Assert.Contains("Fixture review", home); Assert.Contains("5/5", home);
+        Assert.Contains("Theme home", Regex.Match(home, "(?s)<header data-folio-header>(.*?)</header>").Groups[1].Value);
+        Assert.Contains("Fixture place", home); Assert.DoesNotContain("PRIVATE DRAFT", home);
+        Assert.DoesNotContain("<script>location", home);
+        foreach (var post in active.Articles)
+        {
+            var html = await client.GetStringAsync($"/posts/{post.Slug}/");
+            Assert.Contains("data-folio-header", html); Assert.Contains("data-folio-footer", html);
+            Assert.Contains(post.Type == PostType.Microblog ? "data-folio-note" : "data-folio-post", html);
+            Assert.Contains("Gallery caption", html); Assert.Contains("Fixture place", html);
+            foreach (var image in post.Media) Assert.Contains(image.Url, html);
+            if (post.Type == PostType.Guide) Assert.Contains("Second instruction", html);
+            if (post.Type == PostType.Review) Assert.Contains("5/5", html);
+        }
+        foreach (var path in new[] { "/tags/travel/", "/about/", "/map/" })
+            Assert.Contains("data-folio-header", await client.GetStringAsync(path));
+        Assert.Contains("data-latitude=\"41.88\"", await client.GetStringAsync("/map/"));
+        await using var scope = app.Services.CreateAsyncScope();
+        var article = active.Articles.First(x => x.Type == PostType.Article);
+        var articles = scope.ServiceProvider.GetRequiredService<ArticleService>();
+        var input = ArticleInput.From((await articles.FindAsync(article.PostId))!); input.BodyMarkdown = "PRIVATE FOLIO EDITS";
+        await articles.SaveAsync(article.PostId, input);
+        var preview = await client.GetStringAsync($"/admin/posts/{article.PostId}/preview");
+        Assert.Contains("PRIVATE FOLIO EDITS", preview); Assert.Contains("Private draft preview", preview);
+        Assert.Contains(article.Media[0].PrivateUrl, preview); Assert.DoesNotContain("PRIVATE FOLIO EDITS", await client.GetStringAsync($"/posts/{article.Slug}/"));
+        foreach (var name in new[] { "Main", "Header", "Footer", "Post", "Note" })
+        {
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/assets/theme/{name}.razor")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/admin/themes/folio/{name}.razor")).StatusCode);
+        }
+        await using var archive = await scope.ServiceProvider.GetRequiredService<StaticExportService>().CreateAsync();
+        using var zip = new ZipArchive(archive);
+        Assert.DoesNotContain(zip.Entries, x => x.FullName.EndsWith(".razor", StringComparison.Ordinal));
+        using var exported = new StreamReader(zip.GetEntry("index.html")!.Open()); Assert.Equal(home, await exported.ReadToEndAsync());
     }
 
     [Fact]
@@ -176,7 +402,7 @@ public sealed class ThemeTests
         var generation = app.Services.GetRequiredService<ActiveSite>().Current!.GenerationId;
         Assert.Equal(HttpStatusCode.Redirect, (await Upload(client, Package(invalid))).StatusCode);
         Assert.DoesNotContain("installed. Select", await client.GetStringAsync("/admin/settings"));
-        Assert.Equal(3, app.Services.GetRequiredService<ThemeService>().Installed().Count);
+        Assert.Equal(ThemeService.BuiltInIds.Count, app.Services.GetRequiredService<ThemeService>().Installed().Count);
         Assert.Empty(Directory.GetFiles(Path.Combine(data.Path, "themes")));
         Assert.Equal(generation, app.Services.GetRequiredService<ActiveSite>().Current!.GenerationId);
     }

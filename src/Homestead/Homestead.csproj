@@ -6,6 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <!-- The public Razor language API compiles trusted templates without an SDK at runtime. -->
+    <PackageReference Include="Microsoft.AspNetCore.Razor.Language" Version="6.0.36" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="Humanizer.Core" Version="3.0.10" />
     <PackageReference Include="Markdig" Version="1.4.0" />
     <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
@@ -15,12 +18,20 @@
     <Content Remove="package*.json;Styles/**;wwwroot/js/site.js;wwwroot/favicon.ico;wwwroot/css/site.css" />
     <Content Include="wwwroot/css/site.css" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="Themes/**" />
-    <Content Include="Themes/**" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="Themes/**" Exclude="Themes/**/*.razor" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <None Remove="Themes/**/*.razor" />
+    <None Include="Themes/**/*.razor" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="Maps/**" />
     <Content Include="Maps/location-map.js;Maps/leaflet/leaflet.js;Maps/leaflet/leaflet.css;Maps/leaflet/LICENSE.txt;Maps/leaflet/images/marker-icon.png;Maps/leaflet/images/marker-icon-2x.png;Maps/leaflet/images/marker-shadow.png;Maps/leaflet/images/layers.png;Maps/leaflet/images/layers-2x.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="wwwroot/icons/**" />
     <Content Include="wwwroot/icons/toolbar.svg;wwwroot/icons/LICENSE.txt" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
+  <!-- Theme sources are compiled by the theme engine with its model and imports. -->
+  <Target Name="ExcludeThemeComponents" AfterTargets="ResolveRazorComponentInputs">
+    <ItemGroup>
+      <RazorComponent Remove="Themes/**/*.razor" />
+    </ItemGroup>
+  </Target>
   <Target Name="BuildStyles" BeforeTargets="BeforeBuild" Condition="'$(BuildFrontend)' != 'false'">
     <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(MSBuildProjectDirectory)" Condition="!Exists('node_modules')" />
     <Exec Command="npm run build:css" WorkingDirectory="$(MSBuildProjectDirectory)" />

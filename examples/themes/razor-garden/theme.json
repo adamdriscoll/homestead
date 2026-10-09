@@ -1,0 +1,14 @@
+{
+  "formatVersion": 1,
+  "name": "Razor Garden",
+  "version": "2.0.0",
+  "variants": [
+    {
+      "engineVersion": 2,
+      "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin"],
+      "styles": ["theme.css"],
+      "scripts": [],
+      "supportsColors": true
+    }
+  ]
+}

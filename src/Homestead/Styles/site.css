@@ -1,6 +1,7 @@
 @import "tailwindcss" source(none);
 @source "../Pages";
 @source "../Components";
+@source "../Themes";
 @source "../Program.cs";
 @source "../Features/Publishing/SafeMarkdown.cs";
 @source "../Features/Export/HugoTemplates.cs";

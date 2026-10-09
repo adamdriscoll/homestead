@@ -1,0 +1,17 @@
+<header data-folio-header>
+    <div data-folio-masthead>
+        <a data-folio-wordmark href="/">
+            @if (Model.Site.Logo is { } logo)
+            {
+                <img src="@logo.Url" alt="" />
+            }
+            <span>@Model.Site.Title<span aria-hidden="true">.</span></span>
+        </a>
+        <nav aria-label="Main navigation">
+            @foreach (var link in Model.Navigation)
+            {
+                <a class="link" href="@link.Url" aria-current="@(Model.Path == link.Url ? "page" : null)">@link.Label</a>
+            }
+        </nav>
+    </div>
+</header>
