@@ -21,13 +21,13 @@ public sealed class RazorThemeCompiler : IDisposable
 
     public void Validate(ThemePackage theme)
     {
-        if (theme.Variant.Templates is not { Count: > 0 }) return;
+        if (theme.Manifest.Templates is not { Count: > 0 }) return;
         using var compiled = Compile(theme);
     }
 
     public Type? Resolve(ThemePackage theme, string name)
     {
-        if (theme.Variant.Templates is not { Count: > 0 }) return null;
+        if (theme.Manifest.Templates is not { Count: > 0 }) return null;
         lock (gate)
         {
             if (cachedId != theme.Id)
@@ -54,7 +54,7 @@ public sealed class RazorThemeCompiler : IDisposable
             @inherits ThemeComponent
             """, "/_Imports.razor");
         var trees = new List<SyntaxTree>();
-        foreach (var (name, file) in theme.Variant.Templates!)
+        foreach (var (name, file) in theme.Manifest.Templates!)
         {
             // Logical names provide deterministic classes independently of the package directory.
             var source = RazorSourceDocument.Create(Encoding.UTF8.GetString(theme.Files[file]),
@@ -79,7 +79,7 @@ public sealed class RazorThemeCompiler : IDisposable
         try
         {
             var assembly = context.LoadFromStream(output);
-            var types = theme.Variant.Templates.Keys.ToDictionary(name => name,
+            var types = theme.Manifest.Templates.Keys.ToDictionary(name => name,
                 name => assembly.GetTypes().SingleOrDefault(type => type.Name == name)
                     ?? throw new InvalidDataException($"Razor template {name} did not produce its component class."));
             if (types.Values.Any(type => !typeof(ThemeComponent).IsAssignableFrom(type)))

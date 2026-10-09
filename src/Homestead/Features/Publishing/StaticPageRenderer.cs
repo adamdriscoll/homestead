@@ -27,7 +27,7 @@ public sealed class StaticPageRenderer(IServiceProvider services, ILoggerFactory
         await using var renderer = new HtmlRenderer(services, loggerFactory);
         return await renderer.Dispatcher.InvokeAsync(async () =>
         {
-            var compiler = page.Theme.Variant.Templates is { Count: > 0 } ? services.GetRequiredService<RazorThemeCompiler>() : null;
+            var compiler = page.Theme.Manifest.Templates is { Count: > 0 } ? services.GetRequiredService<RazorThemeCompiler>() : null;
             var model = compiler is null ? null : ThemePageModel.From(page, services.GetRequiredService<SafeMarkdown>());
             async Task<string> Template(Type type, ThemePageModel templateModel)
             {
@@ -66,9 +66,7 @@ public sealed class StaticPageRenderer(IServiceProvider services, ILoggerFactory
                 if (compiler!.Resolve(page.Theme, name) is { } type)
                     regions[region] = await Template(type, model with { DefaultContent = new(regions[region]) });
             }
-            // Replace slots in one pass: authored content containing slot-like text is never reinterpreted.
-            var body = System.Text.RegularExpressions.Regex.Replace(page.Theme.Layout, "\\{\\{(header|main|footer)\\}\\}",
-                match => regions[match.Groups[1].Value]);
+            var body = regions["header"] + regions["main"] + regions["footer"];
             var document = $"<!doctype html>\n<html lang=\"en\" data-public-theme=\"{HtmlEncoder.Default.Encode(page.Theme.Id)}\" data-accent=\"{HtmlEncoder.Default.Encode(page.Settings.AccentColor.ToLowerInvariant())}\">" +
                 regions["head"] + "<body><a href=\"#main\" class=\"btn absolute -top-20 focus:top-2 left-2\">Skip to content</a>" + body + "</body></html>";
             if (model is null) return document;

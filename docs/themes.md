@@ -9,7 +9,7 @@ a profile cover, and a desktop introduction sidebar. Each supports every post
 type, ordinary navigation without JavaScript, system light/dark appearance, the
 four accent presets, and optional primary, background, and text colors.
 
-Folio uses engine 2 Razor templates for the document, navigation, footer, and
+Folio uses Razor templates for the document, navigation, footer, and
 post layouts, including a distinct note layout and structured review details in
 listings. Its original templates and styling take inspiration from
 [Typology by Meks on ThemeForest](https://themeforest.net/item/typology-text-based-minimal-wordpress-blog-theme/19547842).
@@ -17,7 +17,7 @@ No purchased assets or external fonts are required. The sources in
 `src/Homestead/Themes/folio` also serve as a built-in Razor authoring example.
 
 Town Square is included as a built-in option under **Settings → Public theme**.
-Its engine 2 Razor sources live in `src/Homestead/Themes/townsquare`. Notes,
+Its Razor sources live in `src/Homestead/Themes/townsquare`. Notes,
 galleries, and check-ins show their full content in the feed; articles, reviews,
 and guides link from previews to their complete post. All navigation works without
 JavaScript. Styling is original, with no Facebook assets or external fonts.
@@ -48,8 +48,8 @@ installed theme and save. Uploading alone does not change the public site. An
 identical upload reuses its installation. Changed packages install separately,
 allowing you to select an earlier version. Save text settings before uploading.
 
-Themes can contain JavaScript that runs on the public site's origin. Engine 2
-Razor templates also execute C# on the server, with the application's permissions
+Themes can contain JavaScript that runs on the public site's origin. Razor
+templates also execute C# on the server, with the application's permissions
 and access to private data, credentials, and files. They are **trusted code, not
 sandboxed templates**. Install only packages from authors you trust. Installation
 compiles templates and reports syntax/model errors before saving the package.
@@ -68,121 +68,67 @@ Traversal, absolute paths, symbolic links, duplicate paths (including difference
 only in case), Windows device names, and unsupported files are rejected. Paths
 are case-sensitive when referenced by the manifest.
 
-Supported files are `.css`, `.js`, `.html`, `.png`, `.jpg`, `.jpeg`, `.webp`,
-`.woff`, `.woff2`, and `.razor`, plus the root `theme.json`. HTML and Razor files
+Supported files are `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.webp`,
+`.woff`, `.woff2`, and `.razor`, plus the root `theme.json`. Razor files
 are private sources and are never served as assets. Standalone C# files, DLLs,
 project files, and `.cshtml` are not accepted.
 
-## Package format and compatibility
+## Package format
 
-The manifest has its own `formatVersion`. Each variant declares an independent
-theme engine version, supported post types, and entry resources. Engine **2** adds
-Razor templates and typed models. Engine **1** retains the shared regions and
-constrained HTML layout contract. Package `version` is the author's
-release label, independent of both format and engine versions.
+Themes use Razor templates and shared public components. The manifest declares
+supported post types, styles, scripts, optional colors, and template mappings.
+`formatVersion` identifies the package schema; `version` is the author's release
+label. Theme rendering has one contract.
 
 ```text
 theme.json
-v1/theme.css
-v1/theme.js
-v1/layout.html
-v1/fonts/reading.woff2
-v2/theme.css
+theme.css
+Main.razor
+Header.razor
+Note.razor
+fonts/reading.woff2
 ```
 
-```json
-{
-  "formatVersion": 1,
-  "name": "Garden",
-  "version": "1.0.0",
-  "variants": [
-    {
-      "engineVersion": 1,
-      "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin"],
-      "styles": ["v1/theme.css"],
-      "scripts": ["v1/theme.js"],
-      "supportsColors": true,
-      "layout": "v1/layout.html"
-    },
-    {
-      "engineVersion": 2,
-      "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin"],
-      "styles": ["v2/theme.css"],
-      "scripts": []
-    }
-  ]
-}
-```
+Every theme must declare all six post types. Notes use `microblog`, and check-ins
+use `checkin` in the manifest. All referenced styles, scripts, and templates must
+exist. `styles` needs at least one entry; `scripts` can be empty. Both arrays have
+a maximum of 16 entries. `supportsColors` defaults to false. Names have a maximum
+of 80 characters, release labels 40, and manifests/Razor sources 64 KB each.
+Unknown manifest fields are rejected.
 
-One variant per engine version is allowed. Homestead chooses engine 2 if present,
-otherwise engine 1. An invalid engine 2 variant is rejected rather than silently
-using engine 1. Packages lacking both versions are rejected.
-Check-ins use `checkin` in new manifests. Existing engine 1 packages declaring the
-original five types remain compatible: shared Razor regions render check-ins and
-locations using the existing semantic markup. No engine-version change is needed.
-Engine 2 must declare all six post types. Both engines call notes `microblog` in
-the manifest. Other variants can bundle files
-for future or earlier engines; they do not alter which styles or scripts load.
-All referenced current styles/scripts/layouts must exist. `styles` needs at least
-one entry; `scripts` can be empty. Both arrays have a maximum of 16 entries.
-`supportsColors` defaults to false, and `layout` is optional. Names have a maximum
-of 80 characters, release labels 40, and manifests/layouts/Razor sources 64 KB each.
-
-## Engine 1 HTML layouts
-
-Homestead compiles its public Razor components with the application.
+Homestead compiles its shared public Razor components with the application.
 [`SiteDocument.razor`](../src/Homestead/Components/Public/SiteDocument.razor)
 renders the document head, header, main content, and footer;
 [`PostContent.razor`](../src/Homestead/Components/Public/PostContent.razor)
-renders all six post types and optional locations. This keeps escaping, metadata,
-media resolution, previews, and no-JavaScript navigation consistent across themes.
+renders all six post types and optional locations. Themes can replace these
+regions with Razor templates or use the shared defaults. This keeps escaping,
+metadata, media resolution, previews, and navigation consistent across themes.
 
-Engine 1 packages arrange those rendered regions using a constrained HTML layout.
-Their layouts do not execute server-side code. Include each slot exactly once:
-
-```html
-<div class="garden-layout">
-  {{header}}
-  <section aria-label="Posts">{{main}}</section>
-  {{footer}}
-</div>
-```
-
-Layouts accept balanced `div`, `section`, and `aside` wrappers with `class` and
-`aria-label` attributes. Literal text, other attributes/elements, comments,
-processing instructions, and unknown slots are rejected. Without a layout,
-regions appear in header/main/footer order. The head and skip link remain
-application-owned. Changing the Razor content contract requires an application
-build and, when incompatible, an engine-version increment.
-
-## Engine 2 Razor templates
+## Razor templates
 
 Start with the [Razor Garden example](../examples/themes/razor-garden/theme.json).
 ZIP the contents of that directory with `theme.json` at the root. Its `Main.razor`
 replaces the document, `Header.razor` replaces the header, and `Note.razor` replaces
 notes. Remove any template to use the shared default for that part.
 
-An engine 2 variant can use named files at the ZIP root (`Main.razor`,
+A theme can use named files at the ZIP root (`Main.razor`,
 `Header.razor`, etc.) or map names to source files explicitly:
 
 ```json
 {
   "formatVersion": 1,
   "name": "Razor Garden",
-  "version": "2.0.0",
-  "variants": [{
-    "engineVersion": 2,
-    "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin"],
-    "styles": ["theme.css"],
-    "scripts": [],
-    "supportsColors": true,
-    "templates": {
-      "Main": "templates/Main.razor",
-      "Header": "templates/Header.razor",
-      "Post": "templates/Post.razor",
-      "Note": "templates/Note.razor"
-    }
-  }]
+  "version": "1.0.0",
+  "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin"],
+  "styles": ["theme.css"],
+  "scripts": [],
+  "supportsColors": true,
+  "templates": {
+    "Main": "templates/Main.razor",
+    "Header": "templates/Header.razor",
+    "Post": "templates/Post.razor",
+    "Note": "templates/Note.razor"
+  }
 }
 ```
 
@@ -193,7 +139,7 @@ ones that currently have no matching posts. Unreferenced sources remain private.
 
 | Template | Replacement and fallback |
 | --- | --- |
-| `Main` | Entire HTML document. Without it, Homestead supplies the document, head, skip link, and configured HTML layout. |
+| `Main` | Entire HTML document. Without it, Homestead supplies the document, head, skip link, and shared regions. |
 | `Header` | Shared header on every page. |
 | `Content` | Entire main region on feeds, post pages, About, tag pages, and the map. Include `main id="main"` for the skip link. |
 | `Footer` | Shared footer on every page. |
@@ -321,7 +267,7 @@ html[data-public-theme] .card {
 }
 ```
 
-Compiled Homestead CSS loads first, variant styles next in manifest order, and
+Compiled Homestead CSS loads first, theme styles next in manifest order, and
 optional color overrides last. These overrides set `--color-primary`,
 `--color-primary-content`, `--color-base-100`, and `--color-base-content` on
 `html[data-public-theme]`. Use these variables if declaring `supportsColors`.
@@ -329,7 +275,7 @@ Keep other surface colors compatible in both light and dark mode.
 
 Styles are already compiled CSS: uploaded utility classes do not cause Tailwind
 to run. Ship CSS for any additional layout classes. Use relative local references
-for fonts and images (for example `url("fonts/reading.woff2")` from `v1/theme.css`).
+for fonts and images (for example `url("fonts/reading.woff2")` from `theme.css`).
 Homestead serves only same-origin theme assets under its Content Security Policy.
 External fonts, inline styles/scripts, and embedded script handlers are unsupported.
 Script files load with `defer` on public pages only. Keep scripts optional and
@@ -340,20 +286,20 @@ preserve keyboard, touch, narrow-screen, and reduced-motion usability.
 Installed custom ZIPs have immutable content-hash IDs under private `data/themes`.
 Built-ins are application files outside `wwwroot`. Each build copies theme assets
 to its own `assets/theme/`, writes `assets/theme-colors.css`, and records the theme
-identity/version/selected engine in the generation manifest. Theme manifests and layout/Razor sources
-are excluded from the public allowlist. Active pages never read theme files from
-private storage or SQLite while serving traffic.
+identity and release version in the generation manifest. Theme manifests and
+Razor sources are excluded from the public allowlist. Active pages never read
+theme files from private storage or SQLite while serving traffic.
 
 Static exports contain the active generation's theme and colors, even after a
-failed desired change. Hugo exports carry the selected saved theme's layout,
-assets, and colors in their migration layouts, plus the complete source package
+failed desired change. Hugo exports carry the selected saved theme's
+assets and colors in their migration layouts, plus the complete source package
 under `homestead-theme/`. Razor sources never enter Hugo's `static/` or `public/`.
-Hugo cannot execute Razor: engine 2 exports use the shared Hugo layouts and any
-optional HTML layout, carrying all structured content and assets. Translate the
-preserved Razor templates to Hugo templates when migrating their custom UI.
+Hugo cannot execute Razor: exports use the shared Hugo layouts, carrying all
+structured content and assets. Translate the preserved Razor templates to Hugo
+templates when migrating their custom UI.
 
 Backups include all installed custom packages and checksum them. Restore validates
-their package identities and current engine compatibility, and requires the
-selected custom package to be present. Restore with the same application version
+package identities, manifests, and Razor templates, and requires the selected
+custom package to be present. Restore with the same application version
 into an empty data directory; startup rebuilds public output. Existing databases
 and generation manifests default to Porch when theme fields are absent.

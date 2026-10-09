@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using Homestead.Data.Entities;
 using Homestead.Features.Publishing;
 using Homestead.Infrastructure.Storage;
@@ -13,9 +14,8 @@ public sealed class ThemeService(StoragePaths paths, IWebHostEnvironment environ
     public const int MaximumUploadBytes = 5 * 1024 * 1024;
     public const int MaximumExpandedBytes = 20 * 1024 * 1024;
     public static IReadOnlyList<string> BuiltInIds { get; } = ["porch", "journal", "ledger", "folio", "townsquare"];
-    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };
-    // Engine 1 packages declaring the original types also render check-ins through shared regions.
-    private static readonly string[] RequiredPostTypes = ["microblog", "article", "review", "guide", "gallery"];
+    private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true, UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
+    private static readonly string[] RequiredPostTypes = ["microblog", "article", "review", "guide", "gallery", "checkin"];
 
     public ThemePackage Resolve(string id)
     {
@@ -105,7 +105,7 @@ public sealed class ThemeService(StoragePaths paths, IWebHostEnvironment environ
                 continue;
             }
             if (!ThemePackage.IsAssetPath(file) ||
-                file != "theme.json" && Path.GetExtension(file) is not (".css" or ".js" or ".html" or ".razor" or ".png" or ".jpg" or ".jpeg" or ".webp" or ".woff" or ".woff2"))
+                file != "theme.json" && Path.GetExtension(file) is not (".css" or ".js" or ".razor" or ".png" or ".jpg" or ".jpeg" or ".webp" or ".woff" or ".woff2"))
                 throw new InvalidDataException("Theme ZIP contains an unsafe path or unsupported file.");
             var limit = ThemePackage.IsSource(file) ? 64 * 1024 : MaximumExpandedBytes;
             if (entry.Length > limit || files.ContainsKey(file)) throw new InvalidDataException("Theme ZIP contains an oversized or duplicate file.");
@@ -130,47 +130,31 @@ public sealed class ThemeService(StoragePaths paths, IWebHostEnvironment environ
         try { manifest = JsonSerializer.Deserialize<ThemeManifest>(json, JsonOptions) ?? throw new InvalidDataException("Empty theme manifest."); }
         catch (JsonException ex) { throw new InvalidDataException("Invalid theme manifest JSON.", ex); }
         if (manifest.FormatVersion != 1 || string.IsNullOrWhiteSpace(manifest.Name) || manifest.Name.Length > 80 ||
-            string.IsNullOrWhiteSpace(manifest.Version) || manifest.Version.Length > 40 || manifest.Variants is not { Length: > 0 and <= 16 } ||
-            manifest.Variants.Any(v => v is null) || manifest.Variants.Select(v => v.EngineVersion).Distinct().Count() != manifest.Variants.Length)
-            throw new InvalidDataException("Theme manifest requires formatVersion 1, name, version, and distinct engine variants.");
-        var variant = manifest.Variants.SingleOrDefault(v => v.EngineVersion == ThemePackage.EngineVersion)
-            ?? manifest.Variants.SingleOrDefault(v => v.EngineVersion == 1)
-            ?? throw new InvalidDataException($"Theme does not support engine version {ThemePackage.EngineVersion}.");
-        if (variant.PostTypes is null || !RequiredPostTypes.All(type => variant.PostTypes.Contains(type, StringComparer.Ordinal)) ||
-            variant.Styles is not { Length: > 0 and <= 16 } || variant.Scripts is not { Length: <= 16 })
-            throw new InvalidDataException("Theme must declare styles, scripts, and support for the original five post types.");
-        foreach (var (items, extension) in new[] { (variant.Styles, ".css"), (variant.Scripts, ".js") })
+            string.IsNullOrWhiteSpace(manifest.Version) || manifest.Version.Length > 40)
+            throw new InvalidDataException("Theme manifest requires formatVersion 1, name, and version.");
+        if (manifest.PostTypes is null || !RequiredPostTypes.All(type => manifest.PostTypes.Contains(type, StringComparer.Ordinal)) ||
+            manifest.Styles is not { Length: > 0 and <= 16 } || manifest.Scripts is not { Length: <= 16 })
+            throw new InvalidDataException("Theme must declare styles, scripts, and support for all six post types, including checkin.");
+        foreach (var (items, extension) in new[] { (manifest.Styles, ".css"), (manifest.Scripts, ".js") })
             if (items.Any(file => file is null || !ThemePackage.IsAssetPath(file) || !file.EndsWith(extension, StringComparison.Ordinal) || !files.ContainsKey(file)) ||
                 items.Distinct(StringComparer.OrdinalIgnoreCase).Count() != items.Length)
                 throw new InvalidDataException("Theme references a missing, duplicate, or invalid stylesheet or script.");
-        if (variant.Layout is { } layout)
+        if (manifest.Templates is { Count: > 0 } templates)
         {
-            if (!ThemePackage.IsAssetPath(layout) || !layout.EndsWith(".html", StringComparison.Ordinal) || !files.TryGetValue(layout, out var contents))
-                throw new InvalidDataException("Theme layout file is missing or invalid.");
-            ThemePackage.ValidateLayout(Encoding.UTF8.GetString(contents));
-        }
-        if (variant.Templates is { Count: > 0 } templates)
-        {
-            if (variant.EngineVersion != 2 || templates.Count > RazorThemeCompiler.TemplateNames.Length ||
+            if (templates.Count > RazorThemeCompiler.TemplateNames.Length ||
                 templates.Any(x => !RazorThemeCompiler.TemplateNames.Contains(x.Key, StringComparer.Ordinal) ||
                     x.Value is null || !ThemePackage.IsAssetPath(x.Value) || !x.Value.EndsWith(".razor", StringComparison.Ordinal) || !files.ContainsKey(x.Value)))
-                throw new InvalidDataException("Engine 2 templates must reference existing .razor files with supported template names.");
+                throw new InvalidDataException("Theme templates must reference existing .razor files with supported template names.");
         }
-        if (variant.EngineVersion == 2)
-        {
-            if (!variant.PostTypes.Contains("checkin", StringComparer.Ordinal))
-                throw new InvalidDataException("Engine 2 themes must declare support for all six post types, including checkin.");
-            var mappedTemplates = new Dictionary<string, string>(variant.Templates ?? [], StringComparer.Ordinal);
-            foreach (var name in RazorThemeCompiler.TemplateNames)
-                if (!mappedTemplates.ContainsKey(name) && files.ContainsKey(name + ".razor")) mappedTemplates.Add(name, name + ".razor");
-            variant = variant with { Templates = mappedTemplates };
-        }
-        return new(id, manifest, variant, files);
+        var mappedTemplates = new Dictionary<string, string>(manifest.Templates ?? [], StringComparer.Ordinal);
+        foreach (var name in RazorThemeCompiler.TemplateNames)
+            if (!mappedTemplates.ContainsKey(name) && files.ContainsKey(name + ".razor")) mappedTemplates.Add(name, name + ".razor");
+        return new(id, manifest with { Templates = mappedTemplates }, files);
     }
 
     public static string ColorStyles(SiteSettings settings, ThemePackage theme)
     {
-        if (!theme.Variant.SupportsColors) return "";
+        if (!theme.Manifest.SupportsColors) return "";
         var rules = new StringBuilder();
         foreach (var (value, variable) in new[] { (settings.ThemePrimaryColor, "primary"),
             (settings.ThemeBackgroundColor, "base-100"), (settings.ThemeTextColor, "base-content") })

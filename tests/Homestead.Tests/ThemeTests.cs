@@ -17,10 +17,9 @@ public sealed class ThemeTests
 {
     private static byte[] RazorPackage(Dictionary<string, string> templates, bool mapped = false)
     {
-        var manifest = new ThemeManifest(1, "Razor garden", "2.0.0", [
-            new(1, ["microblog", "article", "review", "guide", "gallery"], ["theme.css"], []),
-            new(2, ["microblog", "article", "review", "guide", "gallery", "checkin"], ["theme.css"], ["theme.js"], true,
-                Templates: mapped ? templates.ToDictionary(x => x.Key, x => "templates/" + x.Key + ".razor") : null)]);
+        var manifest = new ThemeManifest(1, "Razor garden", "1.0.0",
+            ["microblog", "article", "review", "guide", "gallery", "checkin"], ["theme.css"], ["theme.js"], true,
+            Templates: mapped ? templates.ToDictionary(x => x.Key, x => "templates/" + x.Key + ".razor") : null);
         using var buffer = new MemoryStream();
         using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
         {
@@ -47,7 +46,6 @@ public sealed class ThemeTests
         var uploadResult = await Upload(author, package);
         Assert.True(uploadResult.StatusCode == HttpStatusCode.Redirect, await uploadResult.Content.ReadAsStringAsync());
         var theme = Assert.Single(app.Services.GetRequiredService<ThemeService>().Installed(), x => x.Id.StartsWith("custom-", StringComparison.Ordinal));
-        Assert.Equal(2, theme.EngineVersion);
         var fields = Settings(theme.Id); fields["Input.Title"] = "Garden <script>alert(1)</script>";
         _ = await TestApplication.Submit(author, "/admin/settings", fields);
         foreach (var path in new[] { "/", "/notes/", "/posts/garden-note/" })
@@ -210,11 +208,17 @@ public sealed class ThemeTests
 
     private static byte[] Package(string? invalid = null)
     {
-        var variant = new ThemeVariant(invalid == "engine" ? 99 : 1,
-            invalid == "types" ? ["article"] : ["microblog", "article", "review", "guide", "gallery"],
-            [invalid == "missing" ? "missing.css" : "v1/theme.css"], ["v1/theme.js"], true, "v1/layout.html");
-        var manifest = new ThemeManifest(1, "Garden <theme>", "1.2.0", [variant,
-            new(3, ["future-type"], ["v3/theme.css"], [])]);
+        var manifest = new ThemeManifest(1, "Garden <theme>", "1.2.0",
+            invalid == "types" ? ["article"] : invalid == "checkin" ? ["microblog", "article", "review", "guide", "gallery"] :
+                ["microblog", "article", "review", "guide", "gallery", "checkin"],
+            [invalid == "missing" ? "missing.css" : "assets/theme.css"], ["assets/theme.js"], true);
+        var json = System.Text.Json.Nodes.JsonNode.Parse(JsonSerializer.Serialize(manifest))!;
+        if (invalid == "format") json["FormatVersion"] = 99;
+        if (invalid == "variants") json["variants"] = System.Text.Json.Nodes.JsonNode.Parse("[{\"engineVersion\":1}]");
+        if (invalid == "engine") json["engineVersion"] = 1;
+        if (invalid == "layout") json["layout"] = "layout.html";
+        if (invalid == "templates") json["Templates"] = System.Text.Json.Nodes.JsonNode.Parse("{\"Header\":\"missing.razor\"}");
+        if (invalid == "template-name") json["Templates"] = System.Text.Json.Nodes.JsonNode.Parse("{\"Sidebar\":\"Main.razor\"}");
         using var buffer = new MemoryStream();
         using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
         {
@@ -223,18 +227,16 @@ public sealed class ThemeTests
                 var entry = zip.CreateEntry(file); entry.ExternalAttributes = attributes;
                 using var writer = new StreamWriter(entry.Open()); writer.Write(content);
             }
-            Add("theme.json", invalid == "json" ? "not JSON" : JsonSerializer.Serialize(manifest));
-            Add("v1/", "");
-            Add("v1/theme.css", "html[data-public-theme] { --color-base-100: #f8f8f8; }", invalid == "symlink" ? 0xa000 << 16 : 0);
-            Add("v1/theme.js", "window.themeLoaded = true;");
-            Add("v1/layout.html", invalid == "layout" ? "<script>{{header}}{{main}}{{footer}}</script>" :
-                invalid == "cdata" ? "{{header}}<![CDATA[{{main}}]]>{{footer}}" :
-                "<div class=\"garden-layout\">{{header}}<section aria-label=\"Posts\">{{main}}</section>{{footer}}</div>");
-            Add("v3/theme.css", "/* Future engine resources */");
+            Add("theme.json", invalid == "json" ? "not JSON" : json.ToJsonString());
+            Add("assets/", "");
+            Add("assets/theme.css", "html[data-public-theme] { --color-base-100: #f8f8f8; }", invalid == "symlink" ? 0xa000 << 16 : 0);
+            Add("assets/theme.js", "window.themeLoaded = true;");
+            Add("Main.razor", "<!DOCTYPE html>\n<html lang=\"en\" data-public-theme=\"@Model.ThemeId\">@Model.Head<body><div class=\"garden-layout\">@Model.Header@Model.Content@Model.Footer</div></body></html>");
+            if (invalid == "html") Add("layout.html", "<div>{{header}}{{main}}{{footer}}</div>");
             if (invalid == "traversal") Add("../escape.css", "bad");
-            if (invalid == "duplicate") Add("V1/theme.css", "duplicate");
-            if (invalid == "newline") Add("v1\n/escape.css", "bad");
-            if (invalid == "device") Add("v1/con.css", "bad");
+            if (invalid == "duplicate") Add("ASSETS/theme.css", "duplicate");
+            if (invalid == "newline") Add("assets\n/escape.css", "bad");
+            if (invalid == "device") Add("assets/con.css", "bad");
             if (invalid == "razor") Add("page.cshtml", "@{ System.IO.File.Delete(\"anything\"); }");
             if (invalid == "large") Add("large.css", new string('a', ThemeService.MaximumExpandedBytes));
         }
@@ -304,7 +306,7 @@ public sealed class ThemeTests
         var settings = Settings(theme); settings["Input.EnableLocationMap"] = "true";
         _ = await TestApplication.Submit(client, "/admin/settings", settings);
         var active = app.Services.GetRequiredService<ActiveSite>().Current!;
-        Assert.Equal(theme, active.Theme!.Id); Assert.Equal(2, active.Theme.EngineVersion);
+        Assert.Equal(theme, active.Theme!.Id);
         var home = await client.GetStringAsync("/");
         var prefix = theme == "folio" ? "folio" : "town";
         Assert.Contains($"data-{prefix}-cover", home); Assert.Contains("Fixture review", home); Assert.Contains("5/5", home);
@@ -332,7 +334,7 @@ public sealed class ThemeTests
         var preview = await client.GetStringAsync($"/admin/posts/{article.PostId}/preview");
         Assert.Contains("PRIVATE FOLIO EDITS", preview); Assert.Contains("Private draft preview", preview);
         Assert.Contains(article.Media[0].PrivateUrl, preview); Assert.DoesNotContain("PRIVATE FOLIO EDITS", await client.GetStringAsync($"/posts/{article.Slug}/"));
-        foreach (var name in scope.ServiceProvider.GetRequiredService<ThemeService>().Resolve(theme).Variant.Templates!.Keys)
+        foreach (var name in scope.ServiceProvider.GetRequiredService<ThemeService>().Resolve(theme).Manifest.Templates!.Keys)
         {
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/assets/theme/{name}.razor")).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync($"/admin/themes/{theme}/{name}.razor")).StatusCode);
@@ -361,24 +363,26 @@ public sealed class ThemeTests
             Assert.Single(themes.Installed(), x => x.Id.StartsWith("custom-", StringComparison.Ordinal));
             var fields = Settings(id); fields["Input.ThemeBackgroundColor"] = "#f8f8f8"; fields["Input.ThemeTextColor"] = "#123456";
             Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(author, "/admin/settings", fields)).StatusCode);
+            var settingsHtml = await author.GetStringAsync("/admin/settings");
+            Assert.Contains("Settings saved and public site rebuilt.", settingsHtml);
             var html = await visitor.GetStringAsync("/");
-            Assert.Contains("class=\"garden-layout\"", html); Assert.Contains("/assets/theme/v1/theme.js", html);
+            Assert.Contains("class=\"garden-layout\"", html); Assert.Contains("/assets/theme/assets/theme.js", html);
             Assert.Contains("Shared content with {{footer}} text", html);
             Assert.Contains("Made at home with", html);
-            Assert.Contains("window.themeLoaded", await visitor.GetStringAsync("/assets/theme/v1/theme.js"));
+            Assert.Contains("window.themeLoaded", await visitor.GetStringAsync("/assets/theme/assets/theme.js"));
             Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("/assets/theme/theme.json")).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("/assets/theme/v1/layout.html")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("/assets/theme/Main.razor")).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync("/themes/" + id + ".zip")).StatusCode);
             var preview = await author.GetAsync($"/admin/posts/{postId}/preview");
             var previewHtml = await preview.Content.ReadAsStringAsync();
             Assert.Contains("garden-layout", previewHtml); Assert.DoesNotContain("<script", previewHtml);
             Assert.Contains("Made at home with", previewHtml);
-            Assert.Contains($"/admin/themes/{id}/v1/theme.css", previewHtml);
+            Assert.Contains($"/admin/themes/{id}/assets/theme.css", previewHtml);
             Assert.Contains("script-src 'none'", preview.Headers.GetValues("Content-Security-Policy").Single());
             Assert.Equal("no-store", preview.Headers.CacheControl!.ToString());
-            Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"/admin/themes/{id}/v1/theme.css")).StatusCode);
-            Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync($"/admin/themes/{id}/v1/theme.css")).StatusCode);
-            Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync($"/admin/themes/{id}/v1/theme.js")).StatusCode);
+            Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"/admin/themes/{id}/assets/theme.css")).StatusCode);
+            Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync($"/admin/themes/{id}/assets/theme.css")).StatusCode);
+            Assert.Equal(HttpStatusCode.NotFound, (await author.GetAsync($"/admin/themes/{id}/assets/theme.js")).StatusCode);
             Assert.Equal(id, app.Services.GetRequiredService<ActiveSite>().Current!.Theme!.Id);
             fields["Input.HideHomesteadCredit"] = "true";
             Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(author, "/admin/settings", fields)).StatusCode);
@@ -397,7 +401,12 @@ public sealed class ThemeTests
     [InlineData("missing")]
     [InlineData("json")]
     [InlineData("layout")]
-    [InlineData("cdata")]
+    [InlineData("html")]
+    [InlineData("variants")]
+    [InlineData("format")]
+    [InlineData("checkin")]
+    [InlineData("templates")]
+    [InlineData("template-name")]
     [InlineData("traversal")]
     [InlineData("duplicate")]
     [InlineData("newline")]
@@ -473,7 +482,7 @@ public sealed class ThemeTests
     }
 
     [Fact]
-    public async Task Backups_restore_custom_theme_and_Hugo_carries_layout_assets_and_colors()
+    public async Task Backups_restore_custom_theme_and_Hugo_carries_shared_layout_assets_and_colors()
     {
         using var data = new TemporaryData(); using var restored = new TemporaryData(); string id;
         var archivePath = Path.Combine(data.Path, "backup.zip");
@@ -489,9 +498,10 @@ public sealed class ThemeTests
             await using (var archive = await scope.ServiceProvider.GetRequiredService<HugoExportService>().CreateAsync())
             using (var zip = new ZipArchive(archive))
             {
-                Assert.NotNull(zip.GetEntry("static/assets/theme/v1/theme.js")); Assert.NotNull(zip.GetEntry("homestead-theme/theme.json"));
+                Assert.NotNull(zip.GetEntry("static/assets/theme/assets/theme.js")); Assert.NotNull(zip.GetEntry("homestead-theme/theme.json"));
                 using var layout = new StreamReader(zip.GetEntry("layouts/baseof.html")!.Open());
-                var html = await layout.ReadToEndAsync(); Assert.Contains("garden-layout", html); Assert.Contains("assets/theme/v1/theme.css", html);
+                var html = await layout.ReadToEndAsync(); Assert.DoesNotContain("garden-layout", html); Assert.Contains("assets/theme/assets/theme.css", html);
+                Assert.NotNull(zip.GetEntry("homestead-theme/Main.razor")); Assert.Null(zip.GetEntry("static/assets/theme/Main.razor"));
                 using var colors = new StreamReader(zip.GetEntry("static/assets/theme-colors.css")!.Open()); Assert.Contains("#123456", await colors.ReadToEndAsync());
                 var hugoRoot = Path.Combine(data.Path, "hugo-theme");
                 Directory.CreateDirectory(hugoRoot); zip.ExtractToDirectory(hugoRoot);
@@ -505,8 +515,8 @@ public sealed class ThemeTests
                 })!;
                 var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
                 await process.WaitForExitAsync(); Assert.True(process.ExitCode == 0, await stdout + await stderr);
-                Assert.Contains("garden-layout", await File.ReadAllTextAsync(Path.Combine(hugoRoot, "public", "posts", "garden-note", "index.html")));
-                Assert.True(File.Exists(Path.Combine(hugoRoot, "public", "assets", "theme", "v1", "theme.js")));
+                Assert.Contains("Shared content with {{footer}} text", await File.ReadAllTextAsync(Path.Combine(hugoRoot, "public", "posts", "garden-note", "index.html")));
+                Assert.True(File.Exists(Path.Combine(hugoRoot, "public", "assets", "theme", "assets", "theme.js")));
             }
             await using var backup = await scope.ServiceProvider.GetRequiredService<BackupService>().CreateAsync();
             await using var output = File.Create(archivePath); await backup.CopyToAsync(output);

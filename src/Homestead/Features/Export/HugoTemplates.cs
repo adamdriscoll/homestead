@@ -13,7 +13,7 @@ internal static class HugoTemplates
             "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
             "<title>{{ .Title }} · {{ .Site.Title }}</title><link rel=\"canonical\" href=\"{{ .Permalink }}\">" +
             "<link rel=\"stylesheet\" href=\"{{ \"assets/site.css\" | relURL }}\">");
-        foreach (var file in theme.Variant.Styles)
+        foreach (var file in theme.Manifest.Styles)
             head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme/" + file + "\" | relURL }}\">");
         head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme-colors.css\" | relURL }}\">");
         if (settings.EnableLocationMap)
@@ -21,7 +21,7 @@ internal static class HugoTemplates
                 "<link rel=\"stylesheet\" href=\"{{ \"assets/map/leaflet/leaflet.css\" | relURL }}\">" +
                 "<script defer src=\"{{ \"assets/map/leaflet/leaflet.js\" | relURL }}\"></script>" +
                 "<script defer src=\"{{ \"assets/map/location-map.js\" | relURL }}\"></script>{{ end }}");
-        foreach (var file in theme.Variant.Scripts)
+        foreach (var file in theme.Manifest.Scripts)
             head.Append("<script defer src=\"{{ \"assets/theme/" + file + "\" | relURL }}\"></script>");
         head.Append("{{ with .OutputFormats.Get \"rss\" }}<link rel=\"alternate\" type=\"application/rss+xml\" href=\"{{ .Permalink }}\">{{ end }}</head><body>" +
             "<a href=\"#main\" class=\"btn absolute -top-20 focus:top-2 left-2\">Skip to content</a>");
@@ -33,7 +33,7 @@ internal static class HugoTemplates
             ["footer"] = "<footer class=\"max-w-3xl mx-auto p-4 border-t border-base-300 space-y-4\"><a class=\"underline\" href=\"{{ \"index.xml\" | relURL }}\">RSS feed</a>" +
                 (settings.HideHomesteadCredit ? "" : "<p class=\"text-sm\">Made at home with <a class=\"link\" href=\"https://github.com/PoshTools/homestead\">Homestead</a></p>") + "</footer>"
         };
-        var body = System.Text.RegularExpressions.Regex.Replace(theme.Layout, "\\{\\{(header|main|footer)\\}\\}", m => regions[m.Groups[1].Value]);
+        var body = regions["header"] + regions["main"] + regions["footer"];
         return head + body + "</body></html>";
     }
 

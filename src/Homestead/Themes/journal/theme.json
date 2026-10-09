@@ -2,22 +2,17 @@
   "formatVersion": 1,
   "name": "Journal",
   "version": "1.0.0",
-  "variants": [
-    {
-      "engineVersion": 1,
-      "postTypes": [
-        "microblog",
-        "article",
-        "review",
-        "guide",
-        "gallery",
-        "checkin"
-      ],
-      "styles": [
-        "theme.css"
-      ],
-      "scripts": [],
-      "supportsColors": true
-    }
-  ]
+  "postTypes": [
+    "microblog",
+    "article",
+    "review",
+    "guide",
+    "gallery",
+    "checkin"
+  ],
+  "styles": [
+    "theme.css"
+  ],
+  "scripts": [],
+  "supportsColors": true
 }

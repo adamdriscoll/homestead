@@ -21,7 +21,7 @@
     <meta name="twitter:image" content="@SocialImage" />
     @if (Page.Preview) { <meta name="robots" content="noindex, nofollow" /> }
     <link rel="stylesheet" href="@(Page.Preview ? "/css/site.css" : "/assets/site.css")" />
-    @foreach (var style in Page.Theme!.Variant.Styles)
+    @foreach (var style in Page.Theme!.Manifest.Styles)
     { <link rel="stylesheet" href="@Page.Theme.AssetUrl(style, Page.Preview)" /> }
     <link rel="stylesheet" href="@(Page.Preview ? "/admin/themes/colors.css" : "/assets/theme-colors.css")" />
     @if (Page.Path == "/map/" && !Page.Preview)
@@ -33,7 +33,7 @@
     }
     @if (!Page.Preview)
     {
-        @foreach (var script in Page.Theme.Variant.Scripts)
+        @foreach (var script in Page.Theme.Manifest.Scripts)
         { <script src="@Page.Theme.AssetUrl(script, false)" defer></script> }
     }
 </head>
