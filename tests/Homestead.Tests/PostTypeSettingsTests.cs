@@ -54,6 +54,7 @@ public sealed class PostTypeSettingsTests
     [InlineData(PostType.Guide, "EnableGuides", "/guides/")]
     [InlineData(PostType.Gallery, "EnableGalleries", "/galleries/")]
     [InlineData(PostType.Checkin, "EnableCheckins", "/checkins/")]
+    [InlineData(PostType.Fitness, "EnableFitness", "/fitness/")]
     public async Task Disabled_types_are_hidden_retained_exported_privately_and_restored_after_restart(PostType type, string field, string listing)
     {
         using var data = new TemporaryData(); ArticleSnapshot original; string savedSnapshot; long draftVersion;
@@ -147,7 +148,7 @@ public sealed class PostTypeSettingsTests
         var active = app.Services.GetRequiredService<ActiveSite>(); var before = active.Current!.GenerationId;
         fault.Fail = true;
         var fields = Settings();
-        foreach (var field in new[] { "EnableNotes", "EnableArticles", "EnableReviews", "EnableGuides", "EnableGalleries", "EnableCheckins" }) fields["Input." + field] = "false";
+        foreach (var field in new[] { "EnableNotes", "EnableArticles", "EnableReviews", "EnableGuides", "EnableGalleries", "EnableCheckins", "EnableFitness" }) fields["Input." + field] = "false";
         Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin/settings", fields)).StatusCode);
         Assert.Contains("previous public site remains active", await client.GetStringAsync("/admin/settings"));
         Assert.Equal(before, active.Current!.GenerationId); Assert.True(active.Current.Settings.EnableArticles);

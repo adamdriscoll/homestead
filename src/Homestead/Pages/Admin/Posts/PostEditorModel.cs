@@ -17,6 +17,7 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
     [BindProperty(SupportsGet = true)] public string? EditorTab { get; set; } = "write";
     [BindProperty(SupportsGet = true)] public PostType? NewPostType { get; set; }
     [BindProperty] public IFormFile? Upload { get; set; }
+    [BindProperty] public IFormFile? GpxUpload { get; set; }
     [BindProperty] public List<IFormFile> Uploads { get; set; } = [];
     [BindProperty] public string? UploadAlt { get; set; }
     [BindProperty] public bool InlineUpload { get; set; }
@@ -28,7 +29,32 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
     public bool IsNew { get; private set; }
     public bool IsTypeEnabled { get; private set; }
     public ArticleSnapshot? Live => active.Current?.Articles.SingleOrDefault(x => x.PostId == Post.Id);
-    public string TypeLabel => Post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", _ => Post.Type.ToString().ToLowerInvariant() };
+    public string TypeLabel => Post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", PostType.Fitness => "fitness activity", _ => Post.Type.ToString().ToLowerInvariant() };
+    public FitnessSnapshot? Activity => Post.Activity is { } activity ? System.Text.Json.JsonSerializer.Deserialize<FitnessSnapshot>(activity.TrackJson) : null;
+    public FitnessUnitSystem FitnessUnits { get; private set; }
+
+    public async Task<IActionResult> OnGetGpxAsync(Guid id)
+    {
+        var post = await articles.FindAsync(id);
+        if (post?.Activity is not { } activity) return NotFound();
+        Response.Headers.CacheControl = "no-store";
+        return File(activity.OriginalGpx, "application/gpx+xml", "activity.gpx");
+    }
+
+    public async Task<IActionResult> OnPostGpxAsync(Guid id, bool remove = false)
+    {
+        if (!ModelState.IsValid) return await InvalidUploadAsync(id, "Check the GPX upload fields.");
+        try
+        {
+            var version = await articles.ImportGpxAsync(id, Input.Version, GpxUpload, NewPostType, remove, HttpContext.RequestAborted);
+            if (WantsJson) return new JsonResult(new { version, editorUrl = Url.Page(EditorPage, new { id }) });
+            StatusMessage = remove ? "GPX track removed from this draft." : "GPX track imported privately. Review the route and measurements before publishing.";
+            return RedirectToPage(new { id });
+        }
+        catch (DraftConflictException) { return await InvalidAsync(id, "Another tab saved this draft. Reload before replacing its GPX track.", 409); }
+        catch (InvalidOperationException ex) { return await InvalidUploadAsync(id, ex.Message); }
+        catch (KeyNotFoundException) { return NotFound(); }
+    }
     public virtual async Task<IActionResult> OnGetAsync(Guid id)
     {
         if (!ModelState.IsValid || NewPostType is { } type && !Enum.IsDefined(type)) return BadRequest();
@@ -178,7 +204,9 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
         post ??= await articles.FindOrNewAsync(id, NewPostType);
         if (post is null) return false;
         Post = post;
-        IsTypeEnabled = (await db.SiteSettings.AsNoTracking().SingleAsync()).IsPostTypeEnabled(post.Type);
+        var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
+        IsTypeEnabled = settings.IsPostTypeEnabled(post.Type);
+        FitnessUnits = settings.FitnessUnits;
         return true;
     }
     private async Task<IActionResult> InvalidAsync(Guid id, string error, int status)

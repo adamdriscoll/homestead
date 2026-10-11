@@ -14,6 +14,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
     public DbSet<PostMedia> PostMedia => Set<PostMedia>();
     public DbSet<ReviewDetails> Reviews => Set<ReviewDetails>();
+    public DbSet<FitnessActivity> FitnessActivities => Set<FitnessActivity>();
     public DbSet<GuideStep> GuideSteps => Set<GuideStep>();
     public DbSet<GuideSupply> GuideSupplies => Set<GuideSupply>();
     public DbSet<Tag> Tags => Set<Tag>();
@@ -40,7 +41,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.ToTable("NewsletterSubscribers", t =>
             {
                 t.HasCheckConstraint("CK_NewsletterSubscriber_Frequency", "Frequency BETWEEN 0 AND 1 AND PendingFrequency BETWEEN 0 AND 1");
-                t.HasCheckConstraint("CK_NewsletterSubscriber_Types", "PostTypes BETWEEN 1 AND 63 AND PendingPostTypes BETWEEN 0 AND 63");
+                t.HasCheckConstraint("CK_NewsletterSubscriber_Types", "PostTypes BETWEEN 1 AND 127 AND PendingPostTypes BETWEEN 0 AND 127");
             });
         });
         builder.Entity<NewsletterPost>().HasKey(x => x.PostId);
@@ -67,7 +68,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.HasIndex(x => x.Slug).IsUnique();
             e.ToTable("Posts", t =>
             {
-                t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 5");
+                t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 6");
                 t.HasCheckConstraint("CK_Post_Status", "Status BETWEEN 0 AND 3");
                 t.HasCheckConstraint("CK_Post_PublishedSlug", "FirstPublishedAtUtc IS NULL OR (Slug IS NOT NULL AND length(trim(Slug)) > 0)");
                 t.HasTrigger("TR_Post_LockedPublication");
@@ -93,6 +94,11 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.HasKey(x => x.PostId);
             e.HasOne(x => x.Post).WithOne(x => x.Review).HasForeignKey<ReviewDetails>(x => x.PostId);
             e.ToTable("Reviews", t => t.HasCheckConstraint("CK_Review_Rating", "Rating IS NULL OR Rating BETWEEN 1 AND 5"));
+        });
+        builder.Entity<FitnessActivity>(e =>
+        {
+            e.HasKey(x => x.PostId);
+            e.HasOne(x => x.Post).WithOne(x => x.Activity).HasForeignKey<FitnessActivity>(x => x.PostId);
         });
         builder.Entity<GuideStep>(e =>
         {
@@ -155,7 +161,13 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.Property(x => x.EnableGuides).HasDefaultValue(true);
             e.Property(x => x.EnableGalleries).HasDefaultValue(true);
             e.Property(x => x.EnableCheckins).HasDefaultValue(true);
-            e.ToTable("SiteSettings", t => t.HasCheckConstraint("CK_Settings_Singleton", "Id = 1"));
+            e.Property(x => x.EnableFitness).HasDefaultValue(true);
+            e.Property(x => x.FitnessUnits).HasDefaultValue(FitnessUnitSystem.Metric);
+            e.ToTable("SiteSettings", t =>
+            {
+                t.HasCheckConstraint("CK_Settings_Singleton", "Id = 1");
+                t.HasCheckConstraint("CK_Settings_FitnessUnits", "FitnessUnits BETWEEN 0 AND 1");
+            });
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.AvatarMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.LogoMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.HeaderMediaId).OnDelete(DeleteBehavior.Restrict);

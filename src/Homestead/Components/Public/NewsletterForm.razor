@@ -51,5 +51,5 @@ else if (Form.Mode is "subscribe" or "manage")
 @code {
     [Parameter, EditorRequired] public NewsletterFormModel Form { get; set; } = null!;
     private static string Label(PostType type) => type switch
-    { PostType.Microblog => "Notes", PostType.Checkin => "Check-ins", PostType.Gallery => "Galleries", _ => type + "s" };
+    { PostType.Microblog => "Notes", PostType.Checkin => "Check-ins", PostType.Gallery => "Galleries", PostType.Fitness => "Fitness activities", _ => type + "s" };
 }

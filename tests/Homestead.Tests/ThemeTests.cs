@@ -18,7 +18,7 @@ public sealed class ThemeTests
     private static byte[] RazorPackage(Dictionary<string, string> templates, bool mapped = false)
     {
         var manifest = new ThemeManifest(1, "Razor garden", "1.0.0",
-            ["microblog", "article", "review", "guide", "gallery", "checkin"], ["theme.css"], ["theme.js"], true,
+            ["microblog", "article", "review", "guide", "gallery", "checkin", "fitness"], ["theme.css"], ["theme.js"], true,
             Templates: mapped ? templates.ToDictionary(x => x.Key, x => "templates/" + x.Key + ".razor") : null);
         using var buffer = new MemoryStream();
         using (var zip = new ZipArchive(buffer, ZipArchiveMode.Create, leaveOpen: true))
@@ -81,7 +81,7 @@ public sealed class ThemeTests
             ["Main"] = "<html lang=\"en\" data-custom-document>@Model.Head<body>@Model.Header@Model.Content@Model.Footer</body></html>",
             ["Footer"] = "<footer data-custom-footer>@Model.Site.FooterText</footer>"
         };
-        foreach (var name in new[] { "Note", "Article", "Review", "Guide", "Gallery", "Checkin" })
+        foreach (var name in new[] { "Note", "Article", "Review", "Guide", "Gallery", "Checkin", "Fitness" })
             templates[name] = "<article data-type=\"" + name + "\"><h1>@Model.Post!.DisplayTitle</h1>@Model.Post.ContentHtml" +
                 "@foreach (var image in Model.Post.Media) { <img src=\"@image.Url\" alt=\"@image.AltText\" /> }" +
                 "@foreach (var step in Model.Post.Steps) { <section>@step.BodyHtml</section> }</article>";

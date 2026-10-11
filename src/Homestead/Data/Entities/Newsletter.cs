@@ -22,7 +22,7 @@ public sealed class NewsletterSubscriber
     public string Email { get; set; } = "";
     public bool Subscribed { get; set; }
     public NewsletterFrequency Frequency { get; set; }
-    public int PostTypes { get; set; } = 63;
+    public int PostTypes { get; set; } = 127;
     public DateTime? ConfirmedAtUtc { get; set; }
     public DateTime? NextDigestAtUtc { get; set; }
     public Guid TokenVersion { get; set; } = Guid.NewGuid();

@@ -33,6 +33,8 @@ public static class PostValidation
         PostType.Guide when post.Supplies.Any(x => string.IsNullOrWhiteSpace(x.Name) || !IsExternalUrl(x.Url))
             => "Every included tool and material needs a name and an optional absolute HTTP or HTTPS link before publication.",
         PostType.Gallery when !ArticleService.DraftMedia(post).Any() => "A gallery needs at least one photo before publication.",
+        PostType.Fitness when post.Activity is null && string.IsNullOrWhiteSpace(post.Draft!.BodyMarkdown) && !ArticleService.DraftMedia(post).Any()
+            => "A fitness activity needs a GPX track, text, or at least one photo before publication.",
         PostType.Checkin when string.IsNullOrWhiteSpace(post.Draft!.LocationName) => "A check-in needs a place name before publication.",
         _ => null
     };

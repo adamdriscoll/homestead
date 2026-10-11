@@ -36,6 +36,8 @@ public sealed class SettingsInput : IValidatableObject
     [Display(Name = "Guides")] public bool EnableGuides { get; set; } = true;
     [Display(Name = "Galleries")] public bool EnableGalleries { get; set; } = true;
     [Display(Name = "Check-ins")] public bool EnableCheckins { get; set; } = true;
+    [Display(Name = "Fitness activities")] public bool EnableFitness { get; set; } = true;
+    [EnumDataType(typeof(FitnessUnitSystem)), Display(Name = "Fitness units")] public FitnessUnitSystem FitnessUnits { get; set; }
     [Required, Display(Name = "Accent preset")] public string AccentColor { get; set; } = "Porch";
     [Required, StringLength(80), Display(Name = "Public theme")] public string ThemeId { get; set; } = "porch";
     [StringLength(7), Display(Name = "Primary color")] public string? ThemePrimaryColor { get; set; }
@@ -101,6 +103,8 @@ public sealed class SettingsInput : IValidatableObject
         EnableGuides = s.EnableGuides,
         EnableGalleries = s.EnableGalleries,
         EnableCheckins = s.EnableCheckins,
+        EnableFitness = s.EnableFitness,
+        FitnessUnits = s.FitnessUnits,
         AccentColor = s.AccentColor,
         ThemeId = s.ThemeId,
         ThemePrimaryColor = s.ThemePrimaryColor,
@@ -133,6 +137,8 @@ public sealed class SettingsInput : IValidatableObject
         s.EnableGuides = EnableGuides;
         s.EnableGalleries = EnableGalleries;
         s.EnableCheckins = EnableCheckins;
+        s.EnableFitness = EnableFitness;
+        s.FitnessUnits = FitnessUnits;
         s.AccentColor = AccentColor;
         s.ThemeId = ThemeId;
         s.ThemePrimaryColor = ThemePrimaryColor ?? "";

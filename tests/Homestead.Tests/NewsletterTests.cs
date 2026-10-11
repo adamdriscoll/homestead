@@ -177,13 +177,13 @@ public sealed class NewsletterTests
     }
 
     [Fact]
-    public async Task Instant_notices_cover_all_six_types_and_confirmation_expires_without_changing_preferences()
+    public async Task Instant_notices_cover_all_seven_types_and_confirmation_expires_without_changing_preferences()
     {
         using var data = new TemporaryData(); var emails = new Emails(); var clock = new Clock();
         using var app = Application(data, emails, clock); using var client = app.Client(); _ = await TestApplication.Setup(client);
         await Enable(app); var manage = await Subscribe(app, emails); emails.Sent.Clear();
         await PortabilityTests.Fixture(app); await Run(app);
-        Assert.Equal(6, emails.Sent.Count);
+        Assert.Equal(7, emails.Sent.Count);
         foreach (var post in app.Services.GetRequiredService<ActiveSite>().Current!.Articles)
             Assert.Single(emails.Sent, email => email.Text.Contains($"/posts/{post.Slug}/", StringComparison.Ordinal));
         await using var scope = app.Services.CreateAsyncScope(); var service = scope.ServiceProvider.GetRequiredService<NewsletterService>();
@@ -199,7 +199,7 @@ public sealed class NewsletterTests
             Assert.Equal(NewsletterFrequency.Weekly, subscriber.Frequency); Assert.Equal(1 << (int)PostType.Review, subscriber.PostTypes);
         });
         Assert.True(await service.ManageAsync(manage, null));
-        await Run(app); Assert.Equal(7, emails.Sent.Count);
+        await Run(app); Assert.Equal(8, emails.Sent.Count);
     }
 
     [Fact]

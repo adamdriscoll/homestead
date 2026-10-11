@@ -12,6 +12,7 @@ public sealed record ThemeSiteModel(string Title, string Description, string Can
     MarkupString AboutHtml, ThemeMediaModel? Avatar, ThemeMediaModel? Logo, ThemeMediaModel? HeaderImage)
 {
     public bool EnableNewsletter { get; init; }
+    public FitnessUnitSystem FitnessUnits { get; init; }
 }
 public sealed record ThemeLinkModel(string Label, string Url);
 public sealed record ThemeMediaModel(Guid Id, string Url, string MimeType, string AltText, string? Caption, Guid? GuideStepId);
@@ -31,6 +32,7 @@ public sealed record ThemePostModel(Guid Id, PostType Type, string TypeLabel, st
     public ImmutableArray<GuideSupplySnapshot> Tools { get; init; } = [];
     public ImmutableArray<GuideSupplySnapshot> Materials { get; init; } = [];
     public ImmutableArray<ThemeLinkModel> ShareLinks { get; init; } = [];
+    public FitnessSnapshot? Activity { get; init; }
 }
 
 public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Heading, bool Preview, bool IsListing,
@@ -45,9 +47,9 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             media.MimeType, media.AltText, media.Caption, media.GuideStepId);
         ThemeMediaModel? Brand(Guid? id) => page.Branding?.SingleOrDefault(x => x.Id == id) is { } image ? Image(image) : null;
         ThemePostModel Post(ArticleSnapshot post) => new(post.PostId, post.Type, post.TypeLabel, post.Title, post.DisplayTitle,
-            $"/posts/{post.Slug}/", post.Summary, DiscoveryFiles.Description(post), post.PublishedAtUtc, post.ModifiedAtUtc,
+            $"/posts/{post.Slug}/", post.Summary, DiscoveryFiles.Description(post, page.Settings.FitnessUnits), post.PublishedAtUtc, post.ModifiedAtUtc,
             TimeZoneInfo.ConvertTimeFromUtc(post.PublishedAtUtc, TimeZoneInfo.FindSystemTimeZoneById(page.Settings.TimeZone)).ToString("MMMM d, yyyy"),
-            new(markdown.Render(post, page.Preview)), new(markdown.RenderContent(post, page.Preview)),
+            new(markdown.Render(post, page.Preview)), new(markdown.RenderContent(post, page.Preview, fitnessUnits: page.Settings.FitnessUnits)),
             post.Tags.Select(tag => new ThemeTagModel(tag, $"/tags/{post.TagSlug(tag)}/")).ToImmutableArray(),
             post.Media.Select(Image).ToImmutableArray(), post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover ? Image(cover) : null,
             post.Review, post.Steps.Select(step => new ThemeStepModel(step.Id,
@@ -56,6 +58,7 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             { Title = step.Title, DurationSeconds = step.DurationSeconds, DurationText = step.DurationText }).ToImmutableArray(), post.Location)
         {
             Tools = post.Tools.ToImmutableArray(),
+            Activity = post.Activity,
             Materials = post.Materials.ToImmutableArray(),
             ShareLinks = SocialSharing.Links(page.Settings, post.Slug, post.DisplayTitle, page.Preview).ToImmutableArray()
         };
@@ -65,7 +68,7 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
         var navigation = new List<ThemeLinkModel> { new("Home", "/") };
         foreach (var (type, label, path) in new[] { (PostType.Microblog, "Notes", "/notes/"), (PostType.Article, "Articles", "/articles/"),
             (PostType.Review, "Reviews", "/reviews/"), (PostType.Guide, "Guides", "/guides/"),
-            (PostType.Gallery, "Galleries", "/galleries/"), (PostType.Checkin, "Check-ins", "/checkins/") })
+            (PostType.Gallery, "Galleries", "/galleries/"), (PostType.Checkin, "Check-ins", "/checkins/"), (PostType.Fitness, "Fitness", "/fitness/") })
             if (settings.IsPostTypeEnabled(type)) navigation.Add(new(label, path));
         navigation.Add(new("About", "/about/"));
         if (settings.EnableLocationMap) navigation.Add(new("Map", "/map/"));
@@ -75,7 +78,7 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             settings.AuthorBio, settings.FooterText, settings.HideHomesteadCredit, settings.TimeZone, settings.AccentColor,
             settings.EnableLocationMap, settings.EnabledPostTypes.ToImmutableArray(), settings.ProfileLinks.Select(x => new ThemeLinkModel(x.Label ?? "", x.Url ?? "")).ToImmutableArray(),
             new(markdown.Render(about, page.Preview)), Brand(settings.AvatarMediaId), Brand(settings.LogoMediaId), Brand(settings.HeaderMediaId))
-        { EnableNewsletter = settings.EnableNewsletter },
+        { EnableNewsletter = settings.EnableNewsletter, FitnessUnits = settings.FitnessUnits },
             page.Path, page.Heading, page.Preview, page.Article is null && page.Path is not ("/about/" or "/map/" or "/newsletter/"), page.Theme!.Id,
             DiscoveryFiles.Absolute(settings, page.Article is { } article ? $"/posts/{article.Slug}/" : page.Path),
             page.Article is { } current ? Post(current) : null, page.Articles.Select(Post).ToImmutableArray())

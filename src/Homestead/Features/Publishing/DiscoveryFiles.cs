@@ -11,7 +11,7 @@ public static partial class DiscoveryFiles
     public static string Absolute(SiteSettings settings, string path) => settings.CanonicalBaseUrl.TrimEnd('/') + path;
     public static string SiteDescription(SiteSettings settings) => string.IsNullOrWhiteSpace(settings.Description)
         ? $"Notes and stories from {settings.Title}." : settings.Description;
-    public static string Description(ArticleSnapshot post)
+    public static string Description(ArticleSnapshot post, FitnessUnitSystem units = FitnessUnitSystem.Metric)
     {
         var source = post.BodyMarkdown;
         if (post.Type == PostType.Guide) source += "\n" + string.Join("\n", post.Steps.Select(x => x.BodyMarkdown));
@@ -19,6 +19,8 @@ public static partial class DiscoveryFiles
         text = Whitespace().Replace(text, " ").Trim();
         if (text.Length == 0 && post.Type == PostType.Checkin)
             text = $"Check-in at {post.Location?.Name}";
+        if (text.Length == 0 && post.Type == PostType.Fitness)
+            text = "Fitness activity" + (post.Activity is { } activity ? $" · {activity.FormatDistance(units)}" : "");
         return text.Length == 0 ? $"{(post.Type == PostType.Gallery ? "A photo gallery" : "A photo note")} · {post.PublishedAtUtc:MMMM d, yyyy}" : text[..Math.Min(280, text.Length)];
     }
 
@@ -36,11 +38,11 @@ public static partial class DiscoveryFiles
                 {
                     var url = Absolute(settings, $"/posts/{post.Slug}/");
                     // XML serializes HTML as text; consumers decode it once as RSS content.
-                    var html = markdown.RenderContent(post, false, settings.CanonicalBaseUrl);
+                    var html = markdown.RenderContent(post, false, settings.CanonicalBaseUrl, settings.FitnessUnits);
                     return new XElement("item", new XElement("title", post.DisplayTitle), new XElement("link", url),
                         new XElement("guid", new XAttribute("isPermaLink", "true"), url),
                         new XElement("pubDate", post.PublishedAtUtc.ToString("r", CultureInfo.InvariantCulture)),
-                        new XElement("description", Description(post)), new XElement(content + "encoded", html),
+                        new XElement("description", Description(post, settings.FitnessUnits)), new XElement(content + "encoded", html),
                         post.Tags.Select(tag => new XElement("category", tag)));
                 })))).ToString();
     }

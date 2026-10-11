@@ -191,6 +191,7 @@ public sealed class SocialSharingTests
         PostType.Guide => "/guides/",
         PostType.Gallery => "/galleries/",
         PostType.Checkin => "/checkins/",
+        PostType.Fitness => "/fitness/",
         _ => throw new ArgumentOutOfRangeException(nameof(type))
     };
     private sealed class ActivationFault { public bool Fail { get; set; } }

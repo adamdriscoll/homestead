@@ -17,6 +17,11 @@ Caddy certificates, reverse-proxy configuration, and the application image are
 not included; preserve those separately. Saved canonical URL and branding are
 included in SQLite.
 
+Fitness activity drafts retain their current original GPX bytes and parsed tracks
+in private SQLite, alongside the committed public snapshots. Backups preserve both
+so pending track replacements remain private after restoration. Replacing/removing
+a draft track discards its previous original; a prior backup retains that version.
+
 Optional newsletter configuration, protected Brevo keys, subscriber addresses and
 preferences, confirmation state, mailing schedules, and delivery history are also
 included in SQLite. The key ring is required to decrypt the API key and preserve
@@ -185,4 +190,4 @@ affected credentials as well.
 | Public rebuild failure | Inspect logs and original media; use **Maintenance → Rebuild site**. Drafts stay private. |
 
 The regression suite and production Compose smoke exercise fresh-volume restore,
-original checksums, all six types, locations, persisted keys/account, settings, and rebuild.
+original checksums, all seven types, locations, persisted keys/account, settings, and rebuild.

@@ -1,6 +1,7 @@
 @inject SafeMarkdown Markdown
-<div class="prose-content">@((MarkupString)Markdown.RenderContent(Post, Preview))</div>
+<div class="prose-content">@((MarkupString)Markdown.RenderContent(Post, Preview, fitnessUnits: FitnessUnits))</div>
 @code {
     [Parameter, EditorRequired] public ArticleSnapshot Post { get; set; } = null!;
     [Parameter] public bool Preview { get; set; }
+    [Parameter] public Homestead.Data.Entities.FitnessUnitSystem FitnessUnits { get; set; }
 }

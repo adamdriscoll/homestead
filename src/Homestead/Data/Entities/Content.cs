@@ -1,6 +1,6 @@
 namespace Homestead.Data.Entities;
 
-public enum PostType { Microblog, Article, Review, Guide, Gallery, Checkin }
+public enum PostType { Microblog, Article, Review, Guide, Gallery, Checkin, Fitness }
 public enum PostStatus { Draft, Published, Unpublished, Deleted }
 public enum MediaRole { Inline, Cover, Gallery, GuideStep }
 public enum GenerationStatus { Building, Succeeded, Failed }
@@ -19,6 +19,7 @@ public sealed class Post
     public PostDraft? Draft { get; set; }
     public PostPublishedSnapshot? PublishedSnapshot { get; set; }
     public ReviewDetails? Review { get; set; }
+    public FitnessActivity? Activity { get; set; }
     public List<GuideStep> Steps { get; set; } = [];
     public List<GuideSupply> Supplies { get; set; } = [];
     public List<PostMedia> Media { get; set; } = [];
@@ -57,6 +58,14 @@ public sealed class ReviewDetails
     public string Subject { get; set; } = "";
     public int? Rating { get; set; }
     public string? ExternalUrl { get; set; }
+}
+
+public sealed class FitnessActivity
+{
+    public Guid PostId { get; set; }
+    public Post Post { get; set; } = null!;
+    public byte[] OriginalGpx { get; set; } = [];
+    public string TrackJson { get; set; } = "{}";
 }
 
 public sealed class GuideStep

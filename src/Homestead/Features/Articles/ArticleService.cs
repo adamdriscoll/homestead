@@ -13,13 +13,58 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
     public Task<Post?> FindAsync(Guid id) => db.Posts.AsSplitQuery().Include(x => x.Draft)
         .Include(x => x.PublishedSnapshot).Include(x => x.Tags).ThenInclude(x => x.Tag)
         .Include(x => x.Media).ThenInclude(x => x.MediaAsset)
-        .Include(x => x.Review).Include(x => x.Steps).Include(x => x.Supplies)
+        .Include(x => x.Review).Include(x => x.Activity).Include(x => x.Steps).Include(x => x.Supplies)
         .SingleOrDefaultAsync(x => x.Id == id && x.Status != PostStatus.Deleted);
 
     public async Task<Post> CreateAsync(PostType type = PostType.Article)
     {
         var post = NewEditor(type);
         db.Posts.Add(post); await db.SaveChangesAsync(); return post;
+    }
+
+    public async Task<long> ImportGpxAsync(Guid id, long version, IFormFile? upload, PostType? newPostType = null, bool remove = false,
+        CancellationToken ct = default)
+    {
+        byte[] bytes = [];
+        FitnessSnapshot? snapshot = null;
+        if (!remove)
+        {
+            if (upload is null || !upload.FileName.EndsWith(".gpx", StringComparison.OrdinalIgnoreCase) || upload.Length is <= 0 or > GpxParser.MaximumBytes)
+                throw new InvalidOperationException("Choose a GPX file up to 10 MB.");
+            using var buffer = new MemoryStream();
+            await using var source = upload.OpenReadStream();
+            var chunk = new byte[81920]; int read;
+            while ((read = await source.ReadAsync(chunk, ct)) > 0)
+            {
+                if (buffer.Length + read > GpxParser.MaximumBytes) throw new InvalidOperationException("Choose a GPX file up to 10 MB.");
+                await buffer.WriteAsync(chunk.AsMemory(0, read), ct);
+            }
+            bytes = buffer.ToArray(); snapshot = GpxParser.Parse(bytes);
+        }
+        await writer.Semaphore.WaitAsync(ct);
+        try
+        {
+            db.ChangeTracker.Clear();
+            var post = await FindOrNewAsync(id, newPostType) ?? throw new KeyNotFoundException();
+            if (post.Type != PostType.Fitness) throw new InvalidOperationException("GPX files belong to fitness activity posts.");
+            if (post.Draft!.Version != version) throw new DraftConflictException();
+            if (remove)
+            {
+                if (post.Activity is null) return version;
+                db.FitnessActivities.Remove(post.Activity); post.Activity = null;
+            }
+            else
+            {
+                if (db.Entry(post).State == EntityState.Detached) db.Posts.Add(post);
+                post.Activity ??= new FitnessActivity();
+                post.Activity.OriginalGpx = bytes;
+                post.Activity.TrackJson = JsonSerializer.Serialize(snapshot);
+            }
+            post.Draft.Version++; post.UpdatedAtUtc = DateTime.UtcNow;
+            await db.SaveChangesAsync(ct);
+            return post.Draft.Version;
+        }
+        finally { writer.Semaphore.Release(); }
     }
 
     public static Post NewEditor(PostType type, Guid? id = null)
@@ -181,6 +226,7 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
     {
         Type = post.Type,
         Location = LocationSnapshot.From(post.Draft),
+        Activity = post.Activity is { } activity ? JsonSerializer.Deserialize<FitnessSnapshot>(activity.TrackJson) : null,
         TagSlugs = post.Tags.ToDictionary(x => x.Tag.Name, x => x.Tag.Slug),
         Review = post.Review is { } review ? new(review.Subject, review.Rating, review.ExternalUrl) : null,
         Steps = post.Steps.OrderBy(x => x.Order).Select(GuideStepSnapshot.From).ToArray(),
@@ -204,10 +250,11 @@ public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer
         ((draft.Title ?? "") != live.Title || draft.BodyMarkdown != live.BodyMarkdown || draft.Summary != live.Summary ||
          draft.CoverMediaId != live.CoverMediaId ||
          LocationSnapshot.From(draft) != live.Location ||
+         (post.Type == PostType.Fitness && (post.Activity?.TrackJson ?? "null") != JsonSerializer.Serialize(live.Activity)) ||
          !post.Tags.Select(x => x.Tag.Name).Order(StringComparer.Ordinal).SequenceEqual(live.Tags.Order(StringComparer.Ordinal)) ||
          live.Media.Any(x => post.Media.SingleOrDefault(m => m.MediaAssetId == x.Id) is not { } media ||
              (media.AltText ?? "") != x.AltText || media.Caption != x.Caption || media.GuideStepId != x.GuideStepId) ||
-         (post.Type is PostType.Microblog or PostType.Review or PostType.Gallery or PostType.Guide or PostType.Checkin &&
+         (post.Type is PostType.Microblog or PostType.Review or PostType.Gallery or PostType.Guide or PostType.Checkin or PostType.Fitness &&
           !DraftMedia(post).OrderBy(x => x.SortOrder).Select(x => x.MediaAssetId).SequenceEqual(live.Media.Select(x => x.Id))) ||
          (post.Type == PostType.Review && new ReviewSnapshot(post.Review?.Subject ?? "", post.Review?.Rating, post.Review?.ExternalUrl) != live.Review) ||
          (post.Type == PostType.Guide && (!post.Steps.OrderBy(x => x.Order).Select(GuideStepSnapshot.From).SequenceEqual(live.Steps) ||

@@ -118,7 +118,7 @@ public sealed class PortabilityTests
             using var zip = new ZipArchive(archive); Directory.CreateDirectory(output.Path); zip.ExtractToDirectory(output.Path);
         }
         var markdown = Directory.GetFiles(Path.Combine(output.Path, "content", "posts"), "index.md", SearchOption.AllDirectories).Select(File.ReadAllText).ToArray();
-        Assert.Equal(9, markdown.Length); // six public, one draft, one working copy, one unpublished
+        Assert.Equal(10, markdown.Length); // seven public, one draft, one working copy, one unpublished
         Assert.Contains(markdown, x => x.Contains("## Step 1: Mix ingredients") && x.Contains("\"title\": \"Mix ingredients\""));
         Assert.Contains(markdown, x => x.Contains("PRIVATE PENDING EDITS") && x.Contains("\"draft\": true"));
         Assert.Contains(markdown, x => x.Contains("PRIVATE UNPUBLISHED") && x.Contains("\"homestead_unpublished\": true"));
@@ -234,7 +234,7 @@ public sealed class PortabilityTests
         foreach (var (relative, hash) in mediaHashes)
             Assert.Equal(hash, Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(Path.Combine(restored.Path, relative)))));
         Assert.NotEmpty(Directory.GetFiles(Path.Combine(restored.Path, "keys")));
-        Assert.Equal(6, fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Length);
+        Assert.Equal(7, fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Length);
         Assert.Equal("Fixture place", fresh.Services.GetRequiredService<ActiveSite>().Current!.Articles.Single(x => x.Type == PostType.Checkin).Location!.Name);
         Assert.DoesNotContain("PRIVATE DRAFT", await client.GetStringAsync("/"));
         Assert.DoesNotContain("Made at home with", await client.GetStringAsync("/"));

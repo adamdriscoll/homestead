@@ -15,7 +15,7 @@ with separate messages for each reader. The server needs outbound HTTPS access t
 account sending limits and charges apply. No new environment variables or runtime
 services are required. Blank API key fields retain the protected saved key.
 
-Readers choose instant notices or weekly summaries and any of the six post types
+Readers choose instant notices or weekly summaries and any of the seven post types
 at `/newsletter/`. Confirmation links expire after 24 hours and require an explicit
 form submission. Repeated confirmation requests for an address are throttled; POST
 requests are also limited by peer IP. Link-scanning GET requests never subscribe,
@@ -135,8 +135,13 @@ per post. Marker popups link to posts; shared coordinates list all posts at that
 spot. A linked list below also works without JavaScript. Leaflet 1.9.4 and its
 assets are bundled locally. The map loads online tiles directly from
 `https://tile.openstreetmap.org` with OpenStreetMap attribution, without an API key.
-Only map responses allow that tile host in the image Content Security Policy and
-send an origin referrer. Follow the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/);
+Map responses and sites with published GPX activity routes allow that tile host
+in the image Content Security Policy and send an origin referrer. Fitness routes
+use the same bundled Leaflet and tiles independently of the location-map setting.
+Private activity editors/previews require **Show route map** before requesting
+tiles; draft coordinates stay in the authenticated page. Tile failures leave the
+route lines, markers, and toolbar available. Maps require JavaScript; activity
+statistics and charts remain available without it. Follow the [OpenStreetMap tile policy](https://operations.osmfoundation.org/policies/tiles/);
 tiles are subject to provider availability and are not bundled for offline use.
 If tiles fail, markers and the post list remain available. Static exports preserve
 the active map and its Leaflet assets; Hugo exports include a map
