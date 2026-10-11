@@ -334,7 +334,8 @@ public sealed class GuideTests
         var stdout = process.StandardOutput.ReadToEndAsync(); var stderr = process.StandardError.ReadToEndAsync();
         await process.WaitForExitAsync(); Assert.True(process.ExitCode == 0, await stdout + await stderr);
         var html = File.ReadAllText(Path.Combine(output.Path, "public", "posts", "inline-guide", "index.html"));
-        Assert.Single(System.Text.RegularExpressions.Regex.Matches(html, "<img\\b"));
+        Assert.Single(System.Text.RegularExpressions.Regex.Matches(html,
+            "<img\\b[^>]*\\bsrc=\"[^\"]*" + System.Text.RegularExpressions.Regex.Escape(photo.Filename) + "\""));
         Assert.Contains(photo.Filename, html); Assert.DoesNotContain("/admin/media/", html); Assert.DoesNotContain(photo.Url, html);
         Assert.True(File.Exists(Path.Combine(output.Path, "public", "posts", "inline-guide", photo.Filename)));
     }

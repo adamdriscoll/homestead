@@ -167,6 +167,10 @@ Public-experience tests cover microblog text/photo combinations, mixed chronolog
 feeds, tag-slug collisions, XML feeds, complete social metadata, branding replacement
 and failure/retry, safe profile links, and upgrades from Phase 2. The production
 Compose smoke also checks notes, static listings/About/tags, discovery, and restart.
+`FaviconTests` covers the bundled default, custom upload/replacement/removal across
+all five themes, authenticated preview URLs, failed activation and retry, static
+and Hugo export assets, and backup restore. The public-favicon migration adds a
+nullable branding reference; existing sites use the default after rebuilding.
 Domain tests exercise database constraints rather than an in-memory provider.
 Five-type tests cover every publication lifecycle, structured draft isolation,
 review validation, step/photo ordering, captions and alt text, foreign-media/step

@@ -17,7 +17,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
 
     public Task<ArticleMedia> UploadBrandingAsync(string slot, IFormFile file)
     {
-        if (slot is not ("Avatar" or "Logo" or "Header")) throw new InvalidOperationException("Choose an avatar, logo, or header image.");
+        if (slot is not ("Avatar" or "Logo" or "Header" or "Favicon")) throw new InvalidOperationException("Choose an avatar, logo, header, or favicon image.");
         return StoreAsync(null, file, "", slot);
     }
 
@@ -95,6 +95,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
                     case "Avatar": settings.AvatarMediaId = asset.Id; break;
                     case "Logo": settings.LogoMediaId = asset.Id; break;
                     case "Header": settings.HeaderMediaId = asset.Id; break;
+                    case "Favicon": settings.FaviconMediaId = asset.Id; break;
                 }
             }
             await db.SaveChangesAsync();

@@ -55,6 +55,7 @@ public sealed class SiteSettings
     public Guid? AvatarMediaId { get; set; }
     public Guid? LogoMediaId { get; set; }
     public Guid? HeaderMediaId { get; set; }
+    public Guid? FaviconMediaId { get; set; }
     public string ProfileLinksJson { get; set; } = "[]";
     [NotMapped] public ProfileLink[] ProfileLinks => JsonSerializer.Deserialize<ProfileLink[]>(ProfileLinksJson) ?? [];
 }

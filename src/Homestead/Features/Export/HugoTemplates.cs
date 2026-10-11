@@ -1,6 +1,7 @@
 using System.Text;
 using System.Text.Encodings.Web;
 using Homestead.Data.Entities;
+using Homestead.Features.Articles;
 using Homestead.Features.Publishing;
 using Homestead.Features.Themes;
 
@@ -27,12 +28,14 @@ internal static class HugoTemplates
         return html.Append("</nav>{{ end }}").ToString();
     }
 
-    public static string ThemedLayout(SiteSettings settings, ThemePackage theme, bool activityMaps = false)
+    public static string ThemedLayout(SiteSettings settings, ThemePackage theme, bool activityMaps = false, ArticleMedia? favicon = null)
     {
         var head = new StringBuilder($"<!doctype html>\n<html lang=\"en\" data-public-theme=\"{HtmlEncoder.Default.Encode(theme.Id)}\" data-accent=\"{HtmlEncoder.Default.Encode(settings.AccentColor.ToLowerInvariant())}\"><head>" +
             "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
             "<title>{{ .Title }} · {{ .Site.Title }}</title><link rel=\"canonical\" href=\"{{ .Permalink }}\">" +
             "<link rel=\"stylesheet\" href=\"{{ \"assets/site.css\" | relURL }}\">");
+        head.Append("<link rel=\"icon\" href=\"{{ \"" + (favicon?.Url.TrimStart('/') ?? "assets/favicon.png") +
+            "\" | relURL }}\" type=\"" + (favicon?.MimeType ?? "image/png") + "\">");
         foreach (var file in theme.Manifest.Styles)
             head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme/" + file + "\" | relURL }}\">");
         head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme-colors.css\" | relURL }}\">");
@@ -58,7 +61,7 @@ internal static class HugoTemplates
                 $" <a class=\"btn\" href=\"{HtmlEncoder.Default.Encode(DiscoveryFiles.Absolute(settings, "/admin"))}\">Admin</a></nav></header>",
             ["main"] = "<main id=\"main\" class=\"max-w-3xl mx-auto px-4 py-8 space-y-6\">{{ block \"main\" . }}{{ end }}</main>",
             ["footer"] = "<footer class=\"max-w-3xl mx-auto p-4 border-t border-base-300 space-y-4\"><a class=\"underline\" href=\"{{ \"index.xml\" | relURL }}\">RSS feed</a>" +
-                (settings.HideHomesteadCredit ? "" : "<p class=\"text-sm\">Made at home with <a class=\"link\" href=\"https://github.com/PoshTools/homestead\">Homestead</a></p>") + "</footer>"
+                (settings.HideHomesteadCredit ? "" : "<p class=\"text-sm\">Made at home with <a class=\"link inline-flex items-center gap-1 align-middle\" href=\"https://github.com/PoshTools/homestead\"><img src=\"{{ \"assets/favicon.png\" | relURL }}\" alt=\"\" width=\"20\" height=\"20\" class=\"size-5 shrink-0\">Homestead</a></p>") + "</footer>"
         };
         var body = regions["header"] + regions["main"] + regions["footer"];
         return head + body + "</body></html>";

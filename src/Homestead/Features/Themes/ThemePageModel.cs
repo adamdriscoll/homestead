@@ -13,6 +13,10 @@ public sealed record ThemeSiteModel(string Title, string Description, string Can
 {
     public bool EnableNewsletter { get; init; }
     public FitnessUnitSystem FitnessUnits { get; init; }
+    public ThemeMediaModel? Favicon { get; init; }
+    public string FaviconUrl { get; init; } = "/assets/favicon.png";
+    public string FaviconMimeType { get; init; } = "image/png";
+    public string HomesteadIconUrl { get; init; } = "/assets/favicon.png";
 }
 public sealed record ThemeLinkModel(string Label, string Url);
 public sealed record ThemeMediaModel(Guid Id, string Url, string MimeType, string AltText, string? Caption, Guid? GuideStepId);
@@ -78,7 +82,14 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             settings.AuthorBio, settings.FooterText, settings.HideHomesteadCredit, settings.TimeZone, settings.AccentColor,
             settings.EnableLocationMap, settings.EnabledPostTypes.ToImmutableArray(), settings.ProfileLinks.Select(x => new ThemeLinkModel(x.Label ?? "", x.Url ?? "")).ToImmutableArray(),
             new(markdown.Render(about, page.Preview)), Brand(settings.AvatarMediaId), Brand(settings.LogoMediaId), Brand(settings.HeaderMediaId))
-        { EnableNewsletter = settings.EnableNewsletter, FitnessUnits = settings.FitnessUnits },
+        {
+            EnableNewsletter = settings.EnableNewsletter,
+            FitnessUnits = settings.FitnessUnits,
+            Favicon = Brand(settings.FaviconMediaId),
+            FaviconUrl = Brand(settings.FaviconMediaId)?.Url ?? (page.Preview ? "/logo.png" : "/assets/favicon.png"),
+            FaviconMimeType = Brand(settings.FaviconMediaId)?.MimeType ?? "image/png",
+            HomesteadIconUrl = page.Preview ? "/logo.png" : "/assets/favicon.png"
+        },
             page.Path, page.Heading, page.Preview, page.Article is null && page.Path is not ("/about/" or "/map/" or "/newsletter/"), page.Theme!.Id,
             DiscoveryFiles.Absolute(settings, page.Article is { } article ? $"/posts/{article.Slug}/" : page.Path),
             page.Article is { } current ? Post(current) : null, page.Articles.Select(Post).ToImmutableArray())

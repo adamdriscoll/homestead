@@ -171,6 +171,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.AvatarMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.LogoMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.HeaderMediaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.FaviconMediaId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

@@ -20,13 +20,16 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
         db.ChangeTracker.Clear();
         var settings = await db.SiteSettings.AsNoTracking().SingleAsync(ct);
         var theme = themes.Resolve(settings.ThemeId);
+        var faviconAsset = settings.FaviconMediaId is { } faviconId
+            ? await db.MediaAssets.AsNoTracking().SingleAsync(x => x.Id == faviconId, ct) : null;
+        var favicon = faviconAsset is null ? null : new ArticleMedia(faviconAsset.Id, faviconAsset.StoredFilename, faviconAsset.MimeType, "");
         await ArchiveFiles.TextAsync(zip, "hugo.toml", $"baseURL = {TomlString(settings.CanonicalBaseUrl.TrimEnd('/') + "/")}\n" +
             $"title = {TomlString(settings.Title)}\nlanguageCode = 'en-us'\nenableRobotsTXT = true\n" +
             "[markup.goldmark.renderer]\nunsafe = false\n", ct);
         var activityMaps = await db.Posts.AnyAsync(x => x.Status != PostStatus.Deleted && x.Type == PostType.Fitness, ct) ||
             active.Current?.Articles.Any(x => x.Type == PostType.Fitness && x.Activity is not null) == true;
         foreach (var (path, text) in HugoTemplates.Files)
-            await ArchiveFiles.TextAsync(zip, path, path == "layouts/baseof.html" ? HugoTemplates.ThemedLayout(settings, theme, activityMaps) : text, ct);
+            await ArchiveFiles.TextAsync(zip, path, path == "layouts/baseof.html" ? HugoTemplates.ThemedLayout(settings, theme, activityMaps, favicon) : text, ct);
         await ArchiveFiles.TextAsync(zip, "layouts/partials/social-sharing.html", HugoTemplates.SharingPartial(settings), ct);
         if (settings.EnableLocationMap)
         {
@@ -37,6 +40,10 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             foreach (var (relative, source) in LocationMapAssets.Files(environment.ContentRootPath))
                 await ArchiveFiles.CopyAsync(zip, "static/" + relative, source, ct);
         await ArchiveFiles.CopyAsync(zip, "static/assets/site.css", Path.Combine(environment.WebRootPath, "css", "site.css"), ct);
+        await ArchiveFiles.CopyAsync(zip, "static/" + (favicon?.Url.TrimStart('/') ?? "assets/favicon.png"),
+            favicon is null ? Path.Combine(environment.WebRootPath, "logo.png") : media.OriginalPath(favicon), ct);
+        if (favicon is not null && !settings.HideHomesteadCredit)
+            await ArchiveFiles.CopyAsync(zip, "static/assets/favicon.png", Path.Combine(environment.WebRootPath, "logo.png"), ct);
         foreach (var (file, bytes) in theme.Files)
         {
             await using (var output = zip.CreateEntry("homestead-theme/" + file).Open())

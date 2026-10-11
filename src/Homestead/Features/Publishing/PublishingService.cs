@@ -100,7 +100,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                         tag.NormalizedName == name.Normalize().ToUpperInvariant())?.Slug ?? Slugs.Create(name))
                 }).ToArray();
             }
-            var brandingIds = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId }.OfType<Guid>().ToArray();
+            var brandingIds = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId, settings.FaviconMediaId }.OfType<Guid>().ToArray();
             var branding = (await db.MediaAssets.AsNoTracking().Where(x => brandingIds.Contains(x.Id)).ToArrayAsync())
                 .Select(x => new ArticleMedia(x.Id, x.StoredFilename, x.MimeType, settings.Title)).ToArray();
             if (branding.Length != brandingIds.Distinct().Count()) throw new InvalidOperationException("A branding image is missing.");
@@ -147,6 +147,11 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             Directory.CreateDirectory(Path.Combine(root, "assets"));
             File.Copy(Path.Combine(environment.WebRootPath, "css", "site.css"), Path.Combine(root, "assets", "site.css"));
             files.Add("assets/site.css");
+            if (settings.FaviconMediaId is null || !settings.HideHomesteadCredit)
+            {
+                File.Copy(Path.Combine(environment.WebRootPath, "logo.png"), Path.Combine(root, "assets", "favicon.png"));
+                files.Add("assets/favicon.png");
+            }
             if (settings.EnableLocationMap || posts.Any(x => x.Type == PostType.Fitness && x.Activity is not null))
             {
                 foreach (var (relative, source) in LocationMapAssets.Files(environment.ContentRootPath))

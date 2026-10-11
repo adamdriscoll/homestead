@@ -201,12 +201,17 @@
             </section>
             <section id="images" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="images-title" data-settings-panel>
                 <h2 id="images-title" class="text-xl font-semibold">Images</h2>
-                <p>Upload your avatar, logo, and header. Save changes in the other sections before uploading. JPEG, PNG, or WebP, up to 20 MB.</p>
-                @foreach (var (slot, id) in new[] { ("Avatar", Model.Settings.AvatarMediaId), ("Logo", Model.Settings.LogoMediaId), ("Header", Model.Settings.HeaderMediaId) })
+                <p>Upload your avatar, logo, header, and favicon. Save changes in the other sections before uploading. JPEG, PNG, or WebP, up to 20 MB.</p>
+                @foreach (var (slot, id) in new[] { ("Avatar", Model.Settings.AvatarMediaId), ("Logo", Model.Settings.LogoMediaId), ("Header", Model.Settings.HeaderMediaId), ("Favicon", Model.Settings.FaviconMediaId) })
                 {
                     <div class="space-y-3 border border-base-300 rounded-lg p-4">
                         <h3 class="font-semibold">@slot</h3>
                         @if (id is not null) { <img src="/admin/media/@id" alt="Current @slot" class="max-w-full max-h-32" /> }
+                        @if (slot == "Favicon")
+                        {
+                            <p>A square image works best. Without a custom favicon, the public site uses the Homestead icon.</p>
+                            @if (id is null) { <img src="/logo.png" alt="Default Homestead favicon" width="64" height="64" /> }
+                        }
                         <form method="post" asp-page-handler="Upload" enctype="multipart/form-data" class="space-y-3">
                             <input type="hidden" name="Slot" value="@slot" />
                             <label class="block" for="upload-@slot">New @slot image</label><input id="upload-@slot" name="Upload" type="file" accept="image/jpeg,image/png,image/webp" class="file-input w-full" />

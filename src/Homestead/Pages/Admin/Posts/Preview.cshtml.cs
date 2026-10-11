@@ -19,7 +19,7 @@ public sealed class PreviewModel(ArticleService articles, HomesteadDbContext db,
             Response.Headers["Content-Security-Policy"] = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: https://tile.openstreetmap.org; object-src 'none'; base-uri 'self'; frame-ancestors 'self'; form-action 'self'";
         }
         var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
-        var ids = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId }.OfType<Guid>().ToArray();
+        var ids = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId, settings.FaviconMediaId }.OfType<Guid>().ToArray();
         var branding = (await db.MediaAssets.AsNoTracking().Where(x => ids.Contains(x.Id)).ToArrayAsync())
             .Select(x => new ArticleMedia(x.Id, x.StoredFilename, x.MimeType, settings.Title)).ToArray();
         return Content(await renderer.RenderAsync(new(settings, snapshot, [], true, Branding: branding)), "text/html");

@@ -9,6 +9,7 @@
     <title>@Title</title>
     <meta name="description" content="@Description" />
     <link rel="canonical" href="@Canonical" />
+    <link rel="icon" href="@FaviconUrl" type="@(Brand(Page.Settings.FaviconMediaId)?.MimeType ?? "image/png")" />
     <link rel="alternate" type="application/rss+xml" title="@Page.Settings.Title" href="@Absolute("/rss.xml")" />
     <meta property="og:title" content="@Title" />
     <meta property="og:description" content="@Description" />
@@ -109,7 +110,7 @@
         </nav>
         @if (!Page.Settings.HideHomesteadCredit)
         {
-            <p class="text-sm">Made at home with <a class="link" href="https://github.com/PoshTools/homestead">Homestead</a></p>
+            <p class="text-sm">Made at home with <a class="link inline-flex items-center gap-1 align-middle" href="https://github.com/PoshTools/homestead"><img src="@HomesteadIconUrl" alt="" width="20" height="20" class="size-5 shrink-0" />Homestead</a></p>
         }
     </footer>
 }
@@ -130,6 +131,9 @@
         ?? Page.Article?.Media.FirstOrDefault() ?? Brand(Page.Settings.HeaderMediaId) ?? Brand(Page.Settings.AvatarMediaId)
         ?? Brand(Page.Settings.LogoMediaId))?.Url ?? "/assets/social-default.png");
     private ArticleMedia? Brand(Guid? id) => Page.Branding?.SingleOrDefault(x => x.Id == id);
+    private string FaviconUrl => Brand(Page.Settings.FaviconMediaId) is { } favicon ? ImageUrl(favicon)
+        : HomesteadIconUrl;
+    private string HomesteadIconUrl => Page.Preview ? "/logo.png" : "/assets/favicon.png";
     private string ImageUrl(ArticleMedia image) => Page.Preview ? image.PrivateUrl : image.Url;
     private ArticleSnapshot About => new(1, Guid.Empty, "about", "About", Page.Settings.AboutMarkdown, null,
         DateTime.UtcNow, DateTime.UtcNow, 0, [], null, Page.Branding ?? []);

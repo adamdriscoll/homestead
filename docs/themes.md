@@ -38,6 +38,24 @@ automatically for contrast. A custom theme can decline color overrides.
 Administration has a separate **Appearance** selector for System, Light, or Dark.
 That preference is stored in the current browser and does not change public pages.
 
+Upload a public favicon in **Settings → Images → Favicon**. JPEG, PNG, and WebP
+use the same validation and private original storage as other branding images;
+a square image works best. Without a custom favicon, public pages use the bundled
+256-pixel Homestead PNG. Administration always uses that Homestead icon. Removing
+the custom favicon restores the default on the next successful build. Failed builds
+keep the previously active favicon, and replaced originals are no longer public.
+
+All five built-in themes include the favicon through the shared head, including
+Folio and Town Square's document overrides. `Model.Site.Favicon` is the optional
+custom image; `Model.Site.FaviconUrl` and `Model.Site.FaviconMimeType` describe the
+effective icon, including the default. Custom document templates should preserve
+`Model.Head`, or emit an icon link using those effective values. Private previews
+use authenticated custom media URLs or the bundled default. Static exports retain
+the active favicon; Hugo exports bundle the saved custom favicon or default and
+reference it through `relURL`, so both work independently of Homestead. Legacy
+settings and generation manifests without `FaviconMediaId` use the default when
+rebuilt. This setting adds a nullable media reference without altering post data.
+
 Every built-in theme includes an **Admin** link at the end of its main navigation,
 including on listings, post pages, and private previews. Porch, Journal, and
 Ledger use the shared header; Folio and Town Square render `Model.Navigation`.
@@ -59,11 +77,19 @@ are private and are absent from public theme models and generation manifests.
 Theme templates need no backup handling; private previews do not trigger backups.
 
 The shared footer shows “Made at home with Homestead”,
-with Homestead linking to the project repository. To remove it, check
+with the bundled Homestead icon before the linked name. Administration also shows
+the icon before its Homestead title. The footer always uses the Homestead icon,
+including when a custom public favicon is selected. All five built-in themes
+support it, including Folio's footer override. Images have empty alternative text
+because the adjacent link text supplies their accessible name. To remove it, check
 **Settings → About → Hide Homestead credit** and save. The preference also
 applies to private previews and Hugo exports; static exports keep the currently
 active footer. Razor themes replacing the footer or entire document must honor
 `Model.Site.HideHomesteadCredit` themselves, or include the shared footer.
+`Model.Site.HomesteadIconUrl` supplies the bundled icon URL for custom attribution:
+`/assets/favicon.png` on public pages and `/logo.png` in private previews. Builds
+and exports include that asset whenever needed for the default favicon or visible
+attribution. Hugo uses `relURL` so the icon also works when hosted in a subdirectory.
 
 Enable optional sharing buttons in **Settings → Social**. Bluesky, Facebook, X,
 LinkedIn, Reddit, and email can each be selected independently; all start disabled.

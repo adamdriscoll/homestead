@@ -748,6 +748,9 @@ namespace Homestead.Data.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<Guid?>("FaviconMediaId")
+                        .HasColumnType("TEXT");
+
                     b.Property<int>("FitnessUnits")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -817,6 +820,8 @@ namespace Homestead.Data.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("AvatarMediaId");
+
+                    b.HasIndex("FaviconMediaId");
 
                     b.HasIndex("HeaderMediaId");
 
@@ -1051,6 +1056,11 @@ namespace Homestead.Data.Migrations
                     b.HasOne("Homestead.Data.Entities.MediaAsset", null)
                         .WithMany()
                         .HasForeignKey("AvatarMediaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("Homestead.Data.Entities.MediaAsset", null)
+                        .WithMany()
+                        .HasForeignKey("FaviconMediaId")
                         .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("Homestead.Data.Entities.MediaAsset", null)

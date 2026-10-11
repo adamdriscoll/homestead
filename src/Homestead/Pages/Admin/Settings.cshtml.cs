@@ -131,6 +131,7 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
                 case "Avatar": settings.AvatarMediaId = null; break;
                 case "Logo": settings.LogoMediaId = null; break;
                 case "Header": settings.HeaderMediaId = null; break;
+                case "Favicon": settings.FaviconMediaId = null; break;
                 default: return BadRequest();
             }
             await db.SaveChangesAsync();
