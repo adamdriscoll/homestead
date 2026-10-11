@@ -123,6 +123,36 @@ try {
   const published = await http(publicPath);
   assert.equal(published.status, 200); assert.ok(published.text.includes('https://changed.example.test/posts/compose-article/'));
   assert.equal((await http(imageUrl)).status, 200);
+  // Exercise the native Linux decoder with fixtures from independent encoders.
+  // Keep this corpus in a private draft so malformed optional metadata is not public.
+  const validationDraft = await form('/admin/posts', '/admin/posts?handler=New', {});
+  assert.equal(validationDraft.status, 302);
+  const validationEditor = validationDraft.headers.location;
+  const validationPage = await http(validationEditor);
+  const validationToken = validationPage.text.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)[1];
+  async function uploadFixture(filename, bytes, mime) {
+    const body = Buffer.concat([
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n${validationToken}\r\n--${boundary}\r\nContent-Disposition: form-data; name="Upload"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`),
+      bytes, Buffer.from(`\r\n--${boundary}--\r\n`)
+    ]);
+    return http(editorHandler(validationEditor, 'Upload'), 'POST', body, `multipart/form-data; boundary=${boundary}`);
+  }
+  for (const filename of ['PNG.png', 'interlaced-PNG.png', 'palette-PNG.png', '16bit-PNG.png', 'animated-PNG.png',
+    'JPEG.jpg', 'noninterleaved-JPEG.jpg', 'Pillow-progressive.jpg', 'Pillow-CMYK.jpg',
+    'lossy-WebP.webp', 'lossless-WebP.webp', 'animated-WebP.webp', 'metadata.png', 'metadata.jpg', 'metadata.webp']) {
+    const mime = filename.endsWith('.png') ? 'image/png' : filename.endsWith('.jpg') ? 'image/jpeg' : 'image/webp';
+    const bytes = readFileSync(resolve('tests/Homestead.Tests/Fixtures/Images', filename));
+    assert.equal((await uploadFixture(filename, bytes, mime)).status, 302, filename);
+    const uploaded = await http(validationEditor);
+    const images = [...uploaded.text.matchAll(/data-insert-image="([^"]+)"/g)];
+    const privateId = images.at(-1)[1].split('/')[2];
+    const original = await http(`/admin/media/${privateId}`, 'GET', undefined, undefined, true);
+    assert.equal(original.status, 200); assert.deepEqual(original.text, bytes, filename);
+    assert.equal((await http(images.at(-1)[1])).status, 404);
+    assert.equal((await uploadFixture(filename, bytes.subarray(0, 32), mime)).status, 400, `truncated ${filename}`);
+  }
+  assert.equal((await uploadFixture('spoofed.jpg', photo, 'image/jpeg')).status, 400);
+  console.log('SkiaSharp Linux upload corpus passed; original bytes preserved and truncated files rejected.');
   assert.equal((await form(editor, editorHandler(editor, 'Save'), { ...article, 'Input.Version': '1', 'Input.BodyMarkdown': 'Private pending edits' })).status, 302);
   assert.equal((await http(publicPath)).text, published.text);
   assert.equal((await form(editor, editorHandler(editor, 'Publish'), { ...article, 'Input.Version': '2', 'Input.BodyMarkdown': `Updated story.\n\n![Home](${imageUrl})` })).status, 302);

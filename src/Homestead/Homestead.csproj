@@ -12,7 +12,8 @@
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="5.0.0" />
     <PackageReference Include="Humanizer.Core" Version="3.0.10" />
     <PackageReference Include="Markdig" Version="1.4.0" />
-    <PackageReference Include="SixLabors.ImageSharp" Version="3.1.12" />
+    <PackageReference Include="SkiaSharp" Version="4.153.1" GeneratePathProperty="true" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="4.153.1" GeneratePathProperty="true" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.12" />
     <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="10.0.12" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.12" PrivateAssets="all" />
@@ -26,6 +27,13 @@
     <Content Include="Maps/location-map.js;Maps/fitness-map.js;Maps/leaflet/leaflet.js;Maps/leaflet/leaflet.css;Maps/leaflet/LICENSE.txt;Maps/leaflet/images/marker-icon.png;Maps/leaflet/images/marker-icon-2x.png;Maps/leaflet/images/marker-shadow.png;Maps/leaflet/images/layers.png;Maps/leaflet/images/layers-2x.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="wwwroot/icons/**" />
     <Content Include="wwwroot/icons/toolbar.svg;wwwroot/icons/LICENSE.txt" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <AssemblyAttribute Include="System.Runtime.CompilerServices.InternalsVisibleToAttribute">
+      <_Parameter1>Homestead.Tests</_Parameter1>
+    </AssemblyAttribute>
+    <Content Include="$(PkgSkiaSharp)/LICENSE.txt" Link="licenses/SkiaSharp.LICENSE.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    <Content Include="$(PkgSkiaSharp_NativeAssets_Linux_NoDependencies)/THIRD-PARTY-NOTICES.txt" Link="licenses/SkiaSharp.THIRD-PARTY-NOTICES.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
   </ItemGroup>
   <!-- Theme sources are compiled by the theme engine with its model and imports. -->
   <Target Name="ExcludeThemeComponents" AfterTargets="ResolveRazorComponentInputs">

@@ -5,6 +5,14 @@ The supplied Compose configuration adds Caddy for HTTPS. It serves administratio
 article authoring/uploads/preview, and a generated public site. Ordinary public requests
 read the active generation's HTML, CSS, and selected media without querying SQLite.
 
+Image uploads use bundled SkiaSharp native libraries. The Linux container includes
+the matching `Linux.NoDependencies` assets; operators need no image tool or extra
+runtime service. JPEG/PNG/WebP files retain the 20 MB/40 MP limits. Validation skips
+optional metadata in a temporary copy, decodes the first frame, and preserves the
+original file bytes. Incomplete containers and damaged pixel data detected by the
+decoder are rejected; some damaged files tolerated by the previous decoder now
+need re-exporting. Existing saved photos are not revalidated or rewritten on upgrade.
+
 ## Scheduled publication
 
 In a post editor, open **Details → Scheduled publication**, choose a future date

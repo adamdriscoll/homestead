@@ -106,8 +106,7 @@ public sealed class EditorTests
         var path = created.Headers.Location!.ToString(); var html = await client.GetStringAsync(path);
         var token = WebUtility.HtmlDecode(Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-        using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+        using var bytes = new MemoryStream(TestImages.Create());
         foreach (var valid in new[] { false, true })
         {
             using var form = new MultipartFormDataContent(); form.Add(new StringContent(token), "__RequestVerificationToken");
@@ -206,8 +205,7 @@ public sealed class EditorTests
         var token = WebUtility.HtmlDecode(Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
         using var form = new MultipartFormDataContent(); form.Add(new StringContent(token), "__RequestVerificationToken");
         form.Add(new StringContent("true"), "InlineUpload");
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-        using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+        using var bytes = new MemoryStream(TestImages.Create());
         var file = new ByteArrayContent(bytes.ToArray()); file.Headers.ContentType = new("image/png"); form.Add(file, "Upload", "clipboard.png");
         client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
         Assert.Equal(HttpStatusCode.OK, (await client.PostAsync(path + "&handler=Upload", form)).StatusCode);
@@ -217,8 +215,7 @@ public sealed class EditorTests
 
     private static async Task<ArticleMedia> Photo(MediaService media, Guid id, bool inlineOnly)
     {
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-        using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder()); bytes.Position = 0;
+        using var bytes = new MemoryStream(TestImages.Create());
         return await media.UploadAsync(id, new FormFile(bytes, 0, bytes.Length, "Upload", "photo.png") { Headers = new HeaderDictionary(), ContentType = "image/png" }, "Sky", inlineOnly);
     }
 }

@@ -11,8 +11,7 @@ using Homestead.Features.Themes;
 using Homestead.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.PixelFormats;
+using SkiaSharp;
 
 namespace Homestead.Tests;
 
@@ -44,7 +43,7 @@ public sealed class FaviconTests
         AssertIcon(await author.GetStringAsync($"/admin/posts/{post.Id}/preview"), "/logo.png");
         var defaultBytes = await author.GetByteArrayAsync("/logo.png");
         Assert.Equal(defaultBytes, await author.GetByteArrayAsync("/assets/favicon.png"));
-        using (var image = Image.Load(defaultBytes)) { Assert.Equal(256, image.Width); Assert.Equal(256, image.Height); }
+        using (var image = SKBitmap.Decode(defaultBytes)) { Assert.NotNull(image); Assert.Equal(256, image.Width); Assert.Equal(256, image.Height); }
         Assert.True(defaultBytes.Length < 40_000);
         Assert.Contains("assets/favicon.png", active.Current!.Files);
         Assert.Contains("href=\"/logo.png?v=", await author.GetStringAsync("/admin/settings"));
@@ -178,8 +177,7 @@ public sealed class FaviconTests
     }
     private static byte[] Photo()
     {
-        using var image = new Image<Rgba32>(32, 32); using var buffer = new MemoryStream();
-        image.SaveAsPng(buffer); return buffer.ToArray();
+        return TestImages.Create(32, 32);
     }
     private static async Task<HttpResponseMessage> Upload(HttpClient author)
     {

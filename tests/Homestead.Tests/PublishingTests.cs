@@ -51,8 +51,7 @@ public sealed class PublishingTests
 
     private static byte[] Photo()
     {
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(2, 2);
-        using var stream = new MemoryStream(); image.Save(stream, new SixLabors.ImageSharp.Formats.Png.PngEncoder()); return stream.ToArray();
+        return TestImages.Create(2, 2);
     }
 
     [Fact]
@@ -209,11 +208,8 @@ public sealed class PublishingTests
     {
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path); using var client = app.Client();
         _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client); var id = await Create(app);
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 4);
-        using var bytes = new MemoryStream();
-        SixLabors.ImageSharp.Formats.IImageEncoder encoder = extension == "webp" ? new SixLabors.ImageSharp.Formats.Webp.WebpEncoder() : new SixLabors.ImageSharp.Formats.Jpeg.JpegEncoder();
-        image.Save(bytes, encoder);
-        Assert.Equal(HttpStatusCode.OK, (await Upload(client, id, "phone." + extension, bytes.ToArray(), mime)).StatusCode);
+        var bytes = TestImages.Create(3, 4, extension == "webp" ? SkiaSharp.SKEncodedImageFormat.Webp : SkiaSharp.SKEncodedImageFormat.Jpeg);
+        Assert.Equal(HttpStatusCode.OK, (await Upload(client, id, "phone." + extension, bytes, mime)).StatusCode);
         await app.WithDatabase(async db =>
         {
             var asset = await db.MediaAssets.SingleAsync(); Assert.Equal(3, asset.Width); Assert.Equal(4, asset.Height); Assert.Equal(mime, asset.MimeType);

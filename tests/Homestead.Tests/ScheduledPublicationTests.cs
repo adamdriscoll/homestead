@@ -49,8 +49,7 @@ public sealed class ScheduledPublicationTests
         var post = await articles.CreateAsync(type);
         if (type == PostType.Gallery)
         {
-            using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-            using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder()); bytes.Position = 0;
+            using var bytes = new MemoryStream(TestImages.Create());
             await scope.ServiceProvider.GetRequiredService<MediaService>().UploadAsync(post.Id,
                 new FormFile(bytes, 0, bytes.Length, "Upload", "photo.png") { Headers = new HeaderDictionary(), ContentType = "image/png" }, "Scheduled photo");
         }

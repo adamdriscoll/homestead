@@ -144,12 +144,15 @@ metadata from it rather than request Host headers. Site-root HTTP(S) URLs exclud
 credentials/query/fragment; production requires HTTPS. Trust forwarded headers
 only from `HOMESTEAD_TRUSTED_PROXIES`; blanket framework proxy trust is disabled.
 
-ImageSharp 3.1.12 has five scoped audit suppressions in `Directory.Build.props`.
-The recorded rationale is skipped metadata (ICC), unused histogram processing/TIFF
-encoding, and TIFF/BigTIFF rejection before decoding. These are reachability
-assumptions, not a globally fixed dependency. Keep other audits enabled; reassess
-before adding metadata parsing, image processing, or formats. Dependency/licensing
-follow-up and the advisory IDs are in [#8](https://github.com/PoshTools/homestead/issues/8).
+`ImageUploadValidator` uses SkiaSharp with matching Linux native assets. Detect and
+match JPEG/PNG/WebP before native codec creation. Filter optional metadata from a
+bounded temporary decode copy; persist the untouched original. Retain pixel,
+palette, transparency, animation, and JPEG Adobe color-transform structure.
+Check dimensions before pixel allocation, decode only frame zero, and require
+`SKCodecResult.Success`; convenience decoders accept incomplete input. Keep NuGet
+audits enabled and managed/native versions paired. Reassess the filter and native
+codecs before adding metadata parsing, image processing, or formats. The
+ImageSharp replacement evidence is in [#8](https://github.com/PoshTools/homestead/issues/8).
 
 ## Portability and verification
 

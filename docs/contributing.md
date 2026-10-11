@@ -122,6 +122,20 @@ Screenshots, videos, traces, and container logs are retained on failure under
 
 ### Application checks
 
+`ImageUploadValidationTests` exercises independent JPEG/PNG/WebP fixtures,
+including progressive/CMYK JPEG, palette/16-bit/Adam7 PNG, and PNG/WebP animation.
+It checks all truncated prefixes, damaged pixels and containers, skipped malformed
+ICC/EXIF/text, exact 20 MiB/40 MP boundaries, integer-overflow headers, one decoded
+frame, byte-for-byte post/branding originals, and rejection without records/files.
+The Docker smoke runs the same supported corpus through Linux uploads and private
+downloads, then checks publication, static export, restart, and backup restore.
+SkiaSharp and `SkiaSharp.NativeAssets.Linux.NoDependencies` use paired exact
+versions. Build/publish copies their license and third-party notices into
+`licenses/`; these are application files outside the generated public allowlist.
+The exploratory ImageSharp comparison is preserved on
+[`codex/skiasharp-prototype`](https://github.com/PoshTools/homestead/tree/codex/skiasharp-prototype).
+It is separate from the application and tests, which no longer reference ImageSharp.
+
 `FitnessTests` covers GPX 1.0/1.1 and Garmin sensor extensions, segment boundaries,
 missing timestamps/sensors, malformed XML/DTD/coordinate/measurement limits,
 authenticated and antiforgery-protected imports/downloads, stale draft conflicts,

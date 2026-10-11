@@ -28,8 +28,7 @@ public sealed class PublicExperienceTests
     }
     private static byte[] Photo()
     {
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-        using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder()); return bytes.ToArray();
+        return TestImages.Create();
     }
     private static async Task<HttpResponseMessage> Upload(HttpClient client, string path, string? slot = null)
     {

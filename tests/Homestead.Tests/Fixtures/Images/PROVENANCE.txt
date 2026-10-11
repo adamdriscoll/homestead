@@ -1,0 +1,18 @@
+Compatibility fixtures created during the SkiaSharp upload prototype, 2026-10-11.
+All images are synthetic solid-color images with no personal data.
+
+PNG/JPEG/noninterleaved/16-bit/palette/Adam7/animation/WebP images were encoded
+with ImageSharp 3.1.12 by tests/prototypes/SkiaSharpUpload/Program.cs on the
+codex/skiasharp-prototype branch. Pillow encoded Pillow-progressive.jpg and
+Pillow-CMYK.jpg from a synthetic 3 x 4 RGB image (50, 100, 150).
+
+The metadata fixtures insert deliberately malformed ICC/EXIF/text profiles into
+valid containers. The original bytes must survive upload exactly; the hostile
+metadata must never reach the native codec in the validation copy.
+
+invalid-small-interlaced-PNG.png is an ImageSharp 3.1.12 Adam7 encoder output that
+Pillow and Skia both reject. It is retained as a damaged-image regression.
+The valid Adam7 fixture is 16 x 16; the other valid images are 3 x 4.
+
+Fixtures are kept independent of the current Skia encoder. Generation code and
+the ImageSharp comparison remain on the prototype branch, not in production.

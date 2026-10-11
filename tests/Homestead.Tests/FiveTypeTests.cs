@@ -22,8 +22,7 @@ public sealed class FiveTypeTests
 
     private static async Task<ArticleMedia> Photo(TestApplication app, Guid id)
     {
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-        using var bytes = new MemoryStream(); image.Save(bytes, new SixLabors.ImageSharp.Formats.Png.PngEncoder()); bytes.Position = 0;
+        using var bytes = new MemoryStream(TestImages.Create());
         await using var scope = app.Services.CreateAsyncScope();
         return await scope.ServiceProvider.GetRequiredService<MediaService>().UploadAsync(id,
             new FormFile(bytes, 0, bytes.Length, "Upload", "photo.png") { Headers = new HeaderDictionary(), ContentType = "image/png" }, "Garden & sky");
@@ -305,8 +304,7 @@ public sealed class FiveTypeTests
         var path = $"/admin/posts/{id}/edit"; var html = await client.GetStringAsync(path);
         var token = WebUtility.HtmlDecode(Regex.Match(html, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
         using var form = new MultipartFormDataContent(); form.Add(new StringContent(token), "__RequestVerificationToken");
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-        using var buffer = new MemoryStream(); image.Save(buffer, new SixLabors.ImageSharp.Formats.Png.PngEncoder()); var bytes = buffer.ToArray();
+        var bytes = TestImages.Create();
         foreach (var name in new[] { "first.png", "second.png" })
         { var file = new ByteArrayContent(bytes); file.Headers.ContentType = new("image/png"); form.Add(file, "Uploads", name); }
         Assert.Equal(HttpStatusCode.Redirect, (await client.PostAsync(path + "?handler=Upload", form)).StatusCode);
@@ -347,8 +345,7 @@ public sealed class FiveTypeTests
         var editor = await client.GetStringAsync(path);
         var token = WebUtility.HtmlDecode(Regex.Match(editor, "name=\"__RequestVerificationToken\"[^>]*value=\"([^\"]+)\"").Groups[1].Value);
         using var form = new MultipartFormDataContent(); form.Add(new StringContent(token), "__RequestVerificationToken");
-        using var image = new SixLabors.ImageSharp.Image<SixLabors.ImageSharp.PixelFormats.Rgba32>(3, 2);
-        using var buffer = new MemoryStream(); image.Save(buffer, new SixLabors.ImageSharp.Formats.Png.PngEncoder());
+        using var buffer = new MemoryStream(TestImages.Create());
         var valid = new ByteArrayContent(buffer.ToArray()); valid.Headers.ContentType = new("image/png"); form.Add(valid, "Uploads", "valid.png");
         var invalid = new ByteArrayContent([1, 2, 3]); invalid.Headers.ContentType = new("image/png"); form.Add(invalid, "Uploads", "invalid.png");
         var response = await client.PostAsync(path + "?handler=Upload", form); Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);

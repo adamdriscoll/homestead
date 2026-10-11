@@ -12,9 +12,12 @@
   Docker restore plus static-only hosting.
 - Deployment, upgrade/rollback, and backup scheduling guides, with release
   acceptance tracked in GitHub issues.
+- SkiaSharp upload validation with metadata isolation, bounded full first-frame
+  decoding, and original-byte preservation; ImageSharp and its audit suppressions
+  removed from the application and tests.
 
 Release candidate preparation; real-phone and public-DNS Droplet checks remain
 pending in [release readiness](https://github.com/PoshTools/homestead/issues/22).
-ImageSharp audit suppression assumptions and the dependency follow-up are
-documented in [agent guidance](AGENTS.md#privacy-security-and-configuration) and
+Image decoder requirements and replacement evidence are documented in
+[agent guidance](AGENTS.md#privacy-security-and-configuration) and
 [#8](https://github.com/PoshTools/homestead/issues/8).

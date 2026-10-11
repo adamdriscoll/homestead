@@ -4,14 +4,12 @@ using Homestead.Features.Articles;
 using Homestead.Features.Publishing;
 using Homestead.Infrastructure.Storage;
 using Microsoft.EntityFrameworkCore;
-using SixLabors.ImageSharp;
-using SixLabors.ImageSharp.Formats;
 
 namespace Homestead.Features.Media;
 
 public sealed class MediaService(HomesteadDbContext db, ArticleService articles, PublicationLock writer, StoragePaths paths)
 {
-    public const long MaximumBytes = 20 * 1024 * 1024;
+    public const long MaximumBytes = ImageUploadValidator.MaximumBytes;
     public Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText, bool inlineOnly = false, PostType? newPostType = null)
         => StoreAsync(postId, file, altText, null, inlineOnly, newPostType);
 
@@ -41,23 +39,8 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
                 await buffer.WriteAsync(chunk.AsMemory(0, count));
             }
         }
-        buffer.Position = 0;
-        int width, height; string mime;
-        try
-        {
-            var format = Image.DetectFormat(buffer); buffer.Position = 0;
-            mime = format.DefaultMimeType;
-            var expected = extension switch { ".png" => "image/png", ".webp" => "image/webp", _ => "image/jpeg" };
-            if (mime != expected || (!string.IsNullOrEmpty(file.ContentType) && file.ContentType != mime))
-                throw new InvalidOperationException("The file contents, extension, and image type must match.");
-            var options = new DecoderOptions { MaxFrames = 1, SkipMetadata = true };
-            var info = Image.Identify(options, buffer); buffer.Position = 0;
-            if ((long)info.Width * info.Height > 40_000_000) throw new InvalidOperationException("Choose an image of at most 40 megapixels.");
-            using var decoded = Image.Load(options, buffer); // Reject truncated/corrupt images, not just spoofed headers.
-            width = decoded.Width; height = decoded.Height;
-        }
-        catch (Exception ex) when (ex is UnknownImageFormatException or InvalidImageContentException or NotSupportedException)
-        { throw new InvalidOperationException("This image is damaged or unsupported. Export it as JPEG, PNG, or WebP.", ex); }
+        var original = buffer.ToArray();
+        var (width, height, mime) = ImageUploadValidator.Validate(original, extension, file.ContentType);
 
         await writer.Semaphore.WaitAsync();
         string? destination = null;
@@ -75,7 +58,7 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
             };
             var directory = Path.Combine(paths.OriginalsPath, asset.Id.ToString("D")); Directory.CreateDirectory(directory);
             destination = Path.Combine(directory, asset.StoredFilename);
-            await File.WriteAllBytesAsync(destination, buffer.ToArray());
+            await File.WriteAllBytesAsync(destination, original);
             if (post is not null && db.Entry(post).State == EntityState.Detached) db.Posts.Add(post);
             if (post is not null) db.PostMedia.Add(new PostMedia
             {
