@@ -40,6 +40,8 @@ public sealed class StaticPageRenderer(IServiceProvider services, ILoggerFactory
             foreach (var post in page.Article is { } article ? [article] : page.Articles)
             {
                 if (model is null) break;
+                // Existing six-type packages retain the shared fallback for the new type.
+                if (post.Type == PostType.Fitness && !page.Theme.Manifest.PostTypes.Contains("fitness")) continue;
                 var name = post.Type switch { PostType.Microblog => "Note", PostType.Checkin => "Checkin", _ => post.Type.ToString() };
                 var type = compiler!.Resolve(page.Theme, name) ?? compiler.Resolve(page.Theme, "Post");
                 if (type is null) continue;

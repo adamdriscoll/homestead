@@ -10,6 +10,7 @@ COPY src/Homestead/wwwroot/js/article-editor.js ./wwwroot/js/article-editor.js
 COPY src/Homestead/wwwroot/js/settings.js ./wwwroot/js/settings.js
 COPY src/Homestead/wwwroot/js/admin-appearance.js ./wwwroot/js/admin-appearance.js
 COPY src/Homestead/Features/Publishing/SafeMarkdown.cs ./Features/Publishing/SafeMarkdown.cs
+COPY src/Homestead/Features/Publishing/FitnessRendering.cs ./Features/Publishing/FitnessRendering.cs
 COPY src/Homestead/Features/Export/HugoTemplates.cs ./Features/Export/HugoTemplates.cs
 COPY src/Homestead/Styles ./Styles
 COPY src/Homestead/build-icons.mjs ./build-icons.mjs

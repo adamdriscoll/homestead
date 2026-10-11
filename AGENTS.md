@@ -2,8 +2,9 @@
 
 ## Scope and sources of truth
 
-Homestead is a single-author, self-hosted publishing application with six fixed
-post types: microblog (called a note in the UI), article, review, guide, gallery, and checkin (check-in in the UI).
+Homestead is a single-author, self-hosted publishing application with seven fixed
+post types: microblog (called a note in the UI), article, review, guide, gallery,
+checkin (check-in in the UI), and fitness (fitness activity in the UI).
 Keep focused Markdown editors, private drafts, portable content, and a static
 public website. Prefer concrete services within the existing application.
 
@@ -45,7 +46,7 @@ keep layouts semantic, responsive, and usable by keyboard and touch.
   health, private media, and the public static fallback.
 - `Data/`: EF Core SQLite entities, constraints, migrations, and UTC conversion.
 - `Features/Articles/`: shared editing, snapshots, validation, and slugs for all
-  six types despite the historical namespace name.
+  seven types despite the historical namespace name.
 - `Features/Publishing/`: Markdown, rendering/discovery, serialized builds,
   atomic activation, and active-site serving/recovery.
 - `Features/Media/` and `Features/Export/`: originals, static/Hugo ZIPs, backup/restore.
@@ -88,7 +89,7 @@ Pointer activation stays authoritative even if the final database build-record
 write fails; startup reconciles interrupted records. Damaged active output fails
 readiness and offers an explicit rebuild. Retain three successful generations.
 
-`ArticleSnapshot` and `GenerationManifest.Articles` carry all six types. Preserve
+`ArticleSnapshot` and `GenerationManifest.Articles` carry all seven types. Preserve
 legacy JSON compatibility: absent type means article and additive fields have
 defaults. Legacy tag maps resolve through stored tags so colliding names such as
 C++/C# retain distinct URLs.
@@ -109,6 +110,12 @@ step moves photos to its intro.
 All types can have draft location name/address and paired finite coordinates
 (latitude -90–90, longitude -180–180). Capture locations in published snapshots;
 absent snapshot location means none. Location-only edits must count as draft changes.
+Fitness activities need a GPX track, message, or photo to publish. GPX imports and
+removals check the draft version under `PublicationLock`. Original bytes and parsed
+draft tracks live in private SQLite; snapshots contain only parsed measurements
+and segments. Replacing a track changes only the draft until publication. Preserve
+segment boundaries when measuring or drawing routes. Read `docs/themes.md` for GPX
+limits, missing sensor behavior, static diagrams, and legacy theme fallback.
 
 ## Privacy, security, and configuration
 
@@ -151,7 +158,7 @@ and must serve independently of Homestead. Hugo ZIPs include all nondeleted post
 with drafts/unpublished work marked `draft: true`; pending edits get a separate
 private working bundle beside the published bundle. Preserve stable IDs/URLs,
 tags, structured fields, ordering, captions, and rewritten local media references.
-Ship layouts that actually build all six types. Deleted posts are omitted even
+Ship layouts that actually build all seven types. Deleted posts are omitted even
 if a failed deletion left an old page active on Homestead.
 
 Backups capture SQLite through its online backup API plus every recorded original
@@ -163,7 +170,7 @@ Never downgrade a migrated database in place.
 
 Tests use real migrated SQLite files and isolated temporary data via
 `TestApplication`; use these fixtures rather than EF's in-memory provider. Select
-regressions for affected domain/auth/settings, six-type lifecycle, draft privacy,
+regressions for affected domain/auth/settings, seven-type lifecycle, draft privacy,
 snapshots/upgrades, generation/recovery failure, or portability. Check desired vs.
 active state as well as success. Use contributing's build/test/format/model checks
 and report only checks actually run, migration/config impact, and remaining issues.

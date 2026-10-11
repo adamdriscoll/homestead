@@ -97,7 +97,7 @@ TLS verification is skipped only for these test instances' internal Caddy CAs.
 
 The suite exercises browser setup/login/logout, autosave and stale-tab conflicts,
 private preview, publication/update/unpublish/delete, Markdown formatting and inline
-image uploads, gallery batch uploads/captions/order, all six post types, and public
+image uploads, gallery batch uploads/captions/order, all seven post types, and public
 navigation and article forms without JavaScript. Mobile emulation does not replace
 the physical-phone acceptance checks in release readiness.
 
@@ -110,6 +110,30 @@ Screenshots, videos, traces, and container logs are retained on failure under
 .NET integration tests and deployment/portability smoke rather than replacing them.
 
 ### Application checks
+
+`FitnessTests` covers GPX 1.0/1.1 and Garmin sensor extensions, segment boundaries,
+missing timestamps/sensors, malformed XML/DTD/coordinate/measurement limits,
+authenticated and antiforgery-protected imports/downloads, stale draft conflicts,
+all built-in theme listings/details/previews, photo rendering, private replacements
+and removals, failed builds/retry, lifecycle, static exports, real Hugo builds, and
+backup restoration of original GPX bytes and committed snapshots. Browser fitness
+tests use isolated Docker data and fixture tracks, checking autosave before imports,
+ordinary forms without JavaScript, mobile/light/dark rendering, and each theme.
+The fitness migration expands post/newsletter type constraints, adds private
+`FitnessActivities` and `EnableFitness`, and restores the publication trigger in a
+separate migration after SQLite's Posts rebuild. Existing newsletter preferences
+keep their selected types. No new environment configuration or runtime service is
+needed. The fitness-display-units migration adds a metric-default preference and
+an enum constraint to SiteSettings without changing stored GPX measurements.
+Fitness tests cover both unit systems in every built-in theme, settings validation,
+failed rebuilds and active static exports, restart, RSS, Hugo, and backup restore.
+Leaflet browser checks cover segmented route lines, start-marker keyboard activation,
+private map consent, mocked tile loading/failures, responsive light/dark maps in all
+themes, icon-only toolbar placement and keyboard route fitting after zoom,
+tab selection/keyboard navigation, map resizing after tab changes, conditional
+heart-rate tabs, and
+JavaScript-free statistics/charts with map guidance. They never request production tiles.
+Route maps reuse the existing Leaflet bundle and need no additional migration.
 
 `NewsletterTests` uses real migrated SQLite and a fake Brevo sender/clock. It covers
 confirmation and authenticated settings forms, antiforgery, protected API keys,
@@ -147,7 +171,7 @@ Domain tests exercise database constraints rather than an in-memory provider.
 Five-type tests cover every publication lifecycle, structured draft isolation,
 review validation, step/photo ordering, captions and alt text, foreign-media/step
 rejection, safe Markdown, conflict detection, batch uploads, and failed build retry.
-The Compose smoke publishes all six types and checks locations and gallery batch uploads.
+The Compose smoke publishes all seven types and checks locations and gallery batch uploads.
 The CI workflow also builds and tests the Linux container with Caddy.
 Portability tests build the exported Hugo project with the real CLI and restore
 checksum-verified backups. Reliability tests inject activation and database
@@ -225,7 +249,7 @@ JavaScript, and private previews across all built-in themes. The social-sharing
 migration adds six disabled-by-default settings; it does not change post data.
 
 `ThemeTests` covers Razor theme packages, rejection of unsupported layouts, typed
-models for all six types, template precedence, preview media URLs, source privacy,
+models for all seven types, template precedence, preview media URLs, source privacy,
 compilation/render failures, and backup/Hugo portability. Razor's public language
 compiler and Roslyn are exact NuGet dependencies shipped in the runtime image;
 server installations do not need the .NET SDK. Theme authoring and the trust

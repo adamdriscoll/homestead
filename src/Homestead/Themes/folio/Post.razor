@@ -19,6 +19,8 @@
                     <p data-folio-location>Location: @string.Join(" · ", new[] { location.Name, location.Address, location.Coordinates }.Where(x => !string.IsNullOrWhiteSpace(x)))</p>
                 }
                 <p data-folio-excerpt>@post.Description</p>
+                @if (post.Activity is { } activity)
+                { @((MarkupString)Homestead.Features.Publishing.FitnessRendering.Summary(activity, Model.Site.FitnessUnits)) }
                 <a class="link" data-folio-read href="@post.Url">Read @post.TypeLabel.ToLowerInvariant() <span aria-hidden="true">↗</span></a>
             }
             else

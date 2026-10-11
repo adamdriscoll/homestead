@@ -151,6 +151,24 @@ namespace Homestead.Data.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Homestead.Data.Entities.FitnessActivity", b =>
+                {
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<byte[]>("OriginalGpx")
+                        .IsRequired()
+                        .HasColumnType("BLOB");
+
+                    b.Property<string>("TrackJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PostId");
+
+                    b.ToTable("FitnessActivities");
+                });
+
             modelBuilder.Entity("Homestead.Data.Entities.GuideStep", b =>
                 {
                     b.Property<Guid>("Id")
@@ -427,7 +445,7 @@ namespace Homestead.Data.Migrations
                         {
                             t.HasCheckConstraint("CK_NewsletterSubscriber_Frequency", "Frequency BETWEEN 0 AND 1 AND PendingFrequency BETWEEN 0 AND 1");
 
-                            t.HasCheckConstraint("CK_NewsletterSubscriber_Types", "PostTypes BETWEEN 1 AND 63 AND PendingPostTypes BETWEEN 0 AND 63");
+                            t.HasCheckConstraint("CK_NewsletterSubscriber_Types", "PostTypes BETWEEN 1 AND 127 AND PendingPostTypes BETWEEN 0 AND 127");
                         });
                 });
 
@@ -473,7 +491,7 @@ namespace Homestead.Data.Migrations
 
                             t.HasCheckConstraint("CK_Post_Status", "Status BETWEEN 0 AND 3");
 
-                            t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 5");
+                            t.HasCheckConstraint("CK_Post_Type", "Type BETWEEN 0 AND 6");
                         });
                 });
 
@@ -699,6 +717,11 @@ namespace Homestead.Data.Migrations
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
 
+                    b.Property<bool>("EnableFitness")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(true);
+
                     b.Property<bool>("EnableGalleries")
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
@@ -724,6 +747,11 @@ namespace Homestead.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER")
                         .HasDefaultValue(true);
+
+                    b.Property<int>("FitnessUnits")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("INTEGER")
+                        .HasDefaultValue(0);
 
                     b.Property<string>("FooterText")
                         .IsRequired()
@@ -796,6 +824,8 @@ namespace Homestead.Data.Migrations
 
                     b.ToTable("SiteSettings", null, t =>
                         {
+                            t.HasCheckConstraint("CK_Settings_FitnessUnits", "FitnessUnits BETWEEN 0 AND 1");
+
                             t.HasCheckConstraint("CK_Settings_Singleton", "Id = 1");
                         });
                 });
@@ -893,6 +923,17 @@ namespace Homestead.Data.Migrations
                     b.HasKey("UserId", "LoginProvider", "Name");
 
                     b.ToTable("AspNetUserTokens", (string)null);
+                });
+
+            modelBuilder.Entity("Homestead.Data.Entities.FitnessActivity", b =>
+                {
+                    b.HasOne("Homestead.Data.Entities.Post", "Post")
+                        .WithOne("Activity")
+                        .HasForeignKey("Homestead.Data.Entities.FitnessActivity", "PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
                 });
 
             modelBuilder.Entity("Homestead.Data.Entities.GuideStep", b =>
@@ -1052,6 +1093,8 @@ namespace Homestead.Data.Migrations
 
             modelBuilder.Entity("Homestead.Data.Entities.Post", b =>
                 {
+                    b.Navigation("Activity");
+
                     b.Navigation("Draft");
 
                     b.Navigation("Media");

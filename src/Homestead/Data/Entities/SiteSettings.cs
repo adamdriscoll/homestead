@@ -4,6 +4,8 @@ using Homestead.Features.Settings;
 
 namespace Homestead.Data.Entities;
 
+public enum FitnessUnitSystem { Metric, Imperial }
+
 public sealed class SiteSettings
 {
     public int Id { get; set; } = 1;
@@ -30,6 +32,8 @@ public sealed class SiteSettings
     public bool EnableGuides { get; set; } = true;
     public bool EnableGalleries { get; set; } = true;
     public bool EnableCheckins { get; set; } = true;
+    public bool EnableFitness { get; set; } = true;
+    public FitnessUnitSystem FitnessUnits { get; set; }
     [NotMapped] public PostType[] EnabledPostTypes => Enum.GetValues<PostType>().Where(IsPostTypeEnabled).ToArray();
 
     public bool IsPostTypeEnabled(PostType type) => type switch
@@ -40,6 +44,7 @@ public sealed class SiteSettings
         PostType.Guide => EnableGuides,
         PostType.Gallery => EnableGalleries,
         PostType.Checkin => EnableCheckins,
+        PostType.Fitness => EnableFitness,
         _ => false
     };
     public string AccentColor { get; set; } = "Porch";

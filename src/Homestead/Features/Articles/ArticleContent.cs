@@ -134,8 +134,9 @@ public sealed record ArticleSnapshot(int SchemaVersion, Guid PostId, string Slug
     public GuideSupplySnapshot[] Tools { get; init; } = [];
     public GuideSupplySnapshot[] Materials { get; init; } = [];
     public LocationSnapshot? Location { get; init; }
+    public FitnessSnapshot? Activity { get; init; }
     [JsonIgnore]
-    public string TypeLabel => Type switch { PostType.Microblog => "Note", PostType.Checkin => "Check-in", _ => Type.ToString() };
+    public string TypeLabel => Type switch { PostType.Microblog => "Note", PostType.Checkin => "Check-in", PostType.Fitness => "Fitness activity", _ => Type.ToString() };
     [JsonIgnore]
     public string DisplayTitle => string.IsNullOrWhiteSpace(Title)
         ? Type switch
@@ -143,6 +144,7 @@ public sealed record ArticleSnapshot(int SchemaVersion, Guid PostId, string Slug
             PostType.Microblog => $"Note · {PublishedAtUtc:yyyy-MM-dd}",
             PostType.Review => string.IsNullOrWhiteSpace(Review?.Subject) ? "Untitled review" : Review.Subject,
             PostType.Gallery => $"Gallery · {PublishedAtUtc:yyyy-MM-dd}",
+            PostType.Fitness => $"Fitness activity · {PublishedAtUtc:yyyy-MM-dd}",
             PostType.Checkin => string.IsNullOrWhiteSpace(Location?.Name) ? $"Check-in · {PublishedAtUtc:yyyy-MM-dd}" : $"Check-in at {Location.Name}",
             _ => $"Untitled {Type.ToString().ToLowerInvariant()}"
         } : Title;

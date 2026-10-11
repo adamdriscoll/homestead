@@ -9,6 +9,7 @@
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
     <script src="~/js/admin-appearance.js" asp-append-version="true"></script>
     <script src="~/js/admin-navigation.js" asp-append-version="true" defer></script>
+    @await RenderSectionAsync("Head", required: false)
 </head>
 <body>
     <a href="#main" class="btn absolute -top-20 focus:top-2 left-2">Skip to content</a>

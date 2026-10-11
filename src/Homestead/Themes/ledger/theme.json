@@ -1,14 +1,15 @@
 {
   "formatVersion": 1,
   "name": "Ledger",
-  "version": "1.1.2",
+  "version": "1.6.1",
   "postTypes": [
     "microblog",
     "article",
     "review",
     "guide",
     "gallery",
-    "checkin"
+    "checkin",
+    "fitness"
   ],
   "styles": [
     "theme.css"

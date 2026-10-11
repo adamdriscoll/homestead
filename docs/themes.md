@@ -68,7 +68,7 @@ active footer. Razor themes replacing the footer or entire document must honor
 Enable optional sharing buttons in **Settings → Social**. Bluesky, Facebook, X,
 LinkedIn, Reddit, and email can each be selected independently; all start disabled.
 Every built-in theme shows enabled buttons on post details and home/type/tag feed
-cards for all six post types. Buttons show only 16-pixel service icons, with no
+cards for all seven post types. Buttons show only 16-pixel service icons, with no
 border or shadow. The post-opening arrow uses the same size and styling.
 Invisible padding retains at least 44-pixel touch targets, and keyboard focus
 remains visible. Buttons have no visible “Share:” prefix or service text.
@@ -190,8 +190,11 @@ Note.razor
 fonts/reading.woff2
 ```
 
-Every theme must declare all six post types. Notes use `microblog`, and check-ins
-use `checkin` in the manifest. All referenced styles, scripts, and templates must
+New themes should declare all seven post types, including `fitness`. Notes use
+`microblog`, and check-ins use `checkin` in the manifest. Existing six-type packages
+remain installable; fitness posts use the shared post fallback when the package
+does not declare `fitness`, bypassing its generic Post override. Content/Main
+overrides that build their own listings must still include these posts. All referenced styles, scripts, and templates must
 exist. `styles` needs at least one entry; `scripts` can be empty. Both arrays have
 a maximum of 16 entries. `supportsColors` defaults to false. Names have a maximum
 of 80 characters, release labels 40, and manifests/Razor sources 64 KB each.
@@ -201,7 +204,7 @@ Homestead compiles its shared public Razor components with the application.
 [`SiteDocument.razor`](../src/Homestead/Components/Public/SiteDocument.razor)
 renders the document head, header, main content, and footer;
 [`PostContent.razor`](../src/Homestead/Components/Public/PostContent.razor)
-renders all six post types and optional locations. Themes can replace these
+renders all seven post types and optional locations. Themes can replace these
 regions with Razor templates or use the shared defaults. This keeps escaping,
 metadata, media resolution, previews, and navigation consistent across themes.
 
@@ -220,7 +223,7 @@ A theme can use named files at the ZIP root (`Main.razor`,
   "formatVersion": 1,
   "name": "Razor Garden",
   "version": "1.0.0",
-  "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin"],
+  "postTypes": ["microblog", "article", "review", "guide", "gallery", "checkin", "fitness"],
   "styles": ["theme.css"],
   "scripts": [],
   "supportsColors": true,
@@ -245,7 +248,7 @@ ones that currently have no matching posts. Unreferenced sources remain private.
 | `Content` | Entire main region on feeds, post pages, About, tag pages, and the map. Include `main id="main"` for the skip link. |
 | `Footer` | Shared footer on every page. |
 | `Post` | Entire post detail or feed card, when there is no matching type template. |
-| `Note`, `Article`, `Review`, `Guide`, `Gallery`, `Checkin` | Entire post detail or feed card of that type, preferred over `Post`. |
+| `Note`, `Article`, `Review`, `Guide`, `Gallery`, `Checkin`, `Fitness` | Entire post detail or feed card of that type, preferred over `Post`. Fitness requires `fitness` in the manifest. |
 
 Absent post templates use shared `PostDocument.razor`/`PostContent.razor` rendering.
 `Model.IsListing` distinguishes feed cards from post details. Post overrides are
@@ -278,13 +281,13 @@ public requests read only generated static files.
 | `Navigation` | Ordered `ThemeLinkModel` entries (`Label`, `Url`) for Home, enabled types, About, optional Map and Newsletter, and Admin. Newsletter and Admin use absolute URLs to the saved canonical site. |
 | `Post` | Current `ThemePostModel` in a post detail/type/Post template; otherwise null. |
 | `Posts` | Ordered snapshots for the current listing, or map's posts; empty on details/About. |
-| `Head` | Shared encoded metadata, stylesheet links, and public-only script links as a `MarkupString`. Available to region/Main templates. |
+| `Head` | Shared encoded metadata and stylesheet links as a `MarkupString`. Includes theme scripts on public pages and trusted bundled route-map scripts in fitness previews. Available to region/Main templates. |
 | `Header`, `Content`, `Footer` | Rendered regions as `MarkupString`s. Main receives all replacements. Region templates see replacements completed earlier in the order above. |
 | `DefaultContent` | Shared post/card for a post template; shared/composed region for a region template; complete composed document for Main. |
 
 `ThemeSiteModel` includes `Title`, `Description`, `CanonicalBaseUrl`,
 `DisplayAuthor`, `AuthorBio`, `FooterText`, `HideHomesteadCredit`, `TimeZone`,
-`AccentColor`, `EnableLocationMap`, `EnabledPostTypes`, `ProfileLinks` (Label/Url),
+`AccentColor`, `EnableLocationMap`, `EnabledPostTypes`, `FitnessUnits`, `ProfileLinks` (Label/Url),
 sanitized `AboutHtml`, and optional `Avatar`, `Logo`, and `HeaderImage` media.
 It contains public settings only, with no database entities, credentials, or
 private filesystem paths.
@@ -310,6 +313,7 @@ structured fields:
 | `ShareLinks` | Ordered `ThemeLinkModel` entries (`Label`, `Url`) for enabled sharing services, built from the published display title and canonical post URL. Empty in private previews. |
 | `Steps` | Ordered `ThemeStepModel` entries with stable `Id`, optional `Title`, sanitized `BodyHtml`, step `Media`, optional `DurationSeconds`, and Humanizer-formatted `DurationText`. |
 | `Location` | Optional name/address and paired nullable latitude/longitude; `Coordinates` provides display text. |
+| `Activity` | Optional immutable `FitnessSnapshot` with ordered segments/points, distance in meters, nullable duration/elevation gain/start time and heart-rate averages/maxima, plus formatted distance/duration/pace. Empty on old snapshots and activities without GPX. |
 
 All model media URLs use authenticated `/admin/media/{id}` URLs in previews and
 snapshot-owned `/media/{id}/{filename}` URLs publicly. Use these URLs instead of
@@ -350,6 +354,124 @@ the skip link, preview disclosure, and the footer if it omits shared regions:
     </body>
 </html>
 ```
+
+## Fitness activities and GPX
+
+Fitness activity posts have an optional title, Markdown message, ordered photos,
+captions, tags, and location. Publish a message, photo, or recorded GPX track.
+Activities appear at `/posts/{slug}/` with a `/fitness/` listing and a Fitness
+navigation link when enabled in Settings. Newsletter preferences include Fitness
+activities; existing subscriber selections retain their original six-type mask
+until the subscriber chooses to include fitness.
+
+**Settings → Posts → Fitness activities → Fitness units** selects Metric (km,
+km/h, min/km, meters) or Imperial (mi, mi/h, min/mi, feet). Metric is the default
+for new and existing sites and old generation manifests. Saving rebuilds the
+public site. Editors and private previews use the saved preference immediately;
+public pages, RSS, metadata, newsletter excerpts, and static exports use the
+activated generation's preference. Failed rebuilds retain the previous complete
+site and its units. Hugo exports use the saved preference and include
+`fitness_units` in front matter. Original GPX and parsed snapshot measurements
+remain in meters, meters/second, seconds, and bpm; units only change presentation.
+
+Import GPX 1.0 or 1.1 recorded tracks from Garmin, Strava, or another exporter in
+the Write tab. Routes/waypoints alone are rejected. Limits are 10 MB, 50,000 points,
+100 nonempty segments, and 32 levels of XML nesting. DTDs and external entities
+are prohibited. Latitude/longitude must be finite and in range; elevation is
+limited to -12,000–100,000 meters and sensor speed to 0–1,000 m/s. Timestamps need
+a UTC offset and must increase within each segment. Garmin TrackPointExtension
+v1/v2 `hr` values are integer bpm from 1 to 300; v2 `speed` and GPX 1.0 `speed`
+use meters per second. Other extension data is ignored.
+
+Imports replace the draft track; Remove GPX removes it from the draft. Both check
+the current draft version. With JavaScript, outstanding text/photo changes save
+first; ordinary forms require saving the draft before importing or removing a
+track. Original GPX bytes remain in private SQLite for the current draft, with an
+authenticated, no-store Download original GPX link. They may contain metadata that
+is absent from the public snapshot. Replacement/removal discards that draft's prior
+original; take a backup first if you want to retain it. Review the route before
+publication: parsed coordinates, timestamps, and sensor measurements become public.
+
+All built-in themes show distance/duration/pace and available heart-rate metrics
+in home/type/tag listings. Post pages add a Leaflet 1.9.4 route map over OpenStreetMap
+tiles, with zoom, pan, keyboard controls, and Start/Finish markers. A toolbar above
+each map contains an icon-only Fit route button with an accessible label, hover
+title, and a 44-pixel touch target. The toolbar appears when its map initializes.
+Map, Speed, and Heart rate appear in tabs with matching map, speedometer, and
+heart/pulse icons beside their labels, initially showing Map. Icons inherit the
+tab text color and are decorative for assistive technology. Heart rate is
+omitted when no chart readings are available. Speed shows a message when there
+are no speed readings. Tabs support arrow keys, Home, and End, with linked ARIA
+tab/panel roles and a single tab stop. Each activity has independent controls,
+including feeds with multiple routes. Without JavaScript, the tab buttons remain
+hidden and every available chart stays visible beneath the map guidance.
+Town Square also shows full activity content and route maps in its feed. Each GPX
+segment is a separate line; dateline crossings stay in the same world copy. Maps
+use the complete parsed coordinates and fit the entire route. They initialize only
+when visible, and scrolling the page does not zoom the map.
+
+Private editors and previews offer **Show route map**, which loads tiles after
+disclosing that OpenStreetMap receives requests for the
+viewed area. Only locally bundled Leaflet and the shared route script run in fitness
+previews; theme scripts remain excluded. Authentication protects `/admin/maps/`
+assets independently of the active public generation. No draft data is placed in
+asset files. Public map dependencies are copied into the active allowlist even
+when the separate location-map listing is disabled. Tile requests use the normal
+browser cache, visible attribution, and `strict-origin-when-cross-origin` referrers.
+No tiles are bundled, proxied, or prefetched.
+
+There is no separate route diagram below the map. Tile failures show a status;
+recorded lines, markers, and map controls remain available. Without JavaScript,
+the route region explains that JavaScript is needed to view the map. Activity
+measurements, speed/heart-rate charts, photos, and navigation remain available.
+Charts use responsive static SVG with `currentColor`, accessible labels, and text
+ranges in light and dark appearance, sampling points for display. Snapshots and
+Leaflet maps retain the complete track. Shared figures use `block` so captions
+stack above charts and below photos even inside daisyUI cards.
+
+Distance sums great-circle distances between consecutive points in each segment.
+Duration sums elapsed time within timed segments, excluding gaps between segments;
+pauses within a segment count. Speed comes from a sensor when present, otherwise
+distance/time between adjacent timed points. Missing timestamps omit duration,
+average speed, and pace. Missing heart rate omits its statistics/chart; untimed
+heart-rate charts use point order. Elevation gain sums positive recorded elevation
+changes. Heart-rate averages use available samples rather than time weighting.
+GPS noise and recording gaps affect results; these are not Strava's moving-time,
+zone, segment-ranking, or GPS-correction calculations.
+
+`Model.Post.Activity` exposes `Segments` (immutable arrays of `FitnessSegment`),
+whose `Points` contain `Latitude`, `Longitude`, nullable `ElevationMeters`,
+`TimeUtc`, `HeartRate`, and `SpeedMetersPerSecond`. Summary members are
+`DistanceMeters`, `DurationSeconds`, `ElevationGainMeters`, `StartedAtUtc`,
+`AverageHeartRate`, `MaximumHeartRate`, `AverageSpeedMetersPerSecond`,
+`DistanceText`, `DurationText`, and `PaceText`. `DistanceText` and `PaceText` retain
+metric defaults for compatibility. Use `FormatDistance(Model.Site.FitnessUnits)`
+and `FormatPace(Model.Site.FitnessUnits)` for formatted values in the chosen units.
+`Model.Site.FitnessUnits` is a `Homestead.Data.Entities.FitnessUnitSystem` enum
+(`Metric` or `Imperial`). `ContentHtml` includes the shared
+activity presentation. Preserve its `data-fitness-activity`, `data-fitness-tabs`,
+`data-fitness-tab`, and `data-fitness-panel` wrappers when customizing the markup;
+the shared script connects each activity's tabs and panels. Custom Fitness/Post templates should include it or use
+`FitnessRendering.Summary(activity, Model.Site.FitnessUnits)` /
+`FitnessRendering.Render(activity, Model.Site.FitnessUnits, Model.Preview)` from
+`Homestead.Features.Publishing`, casting only that server-rendered HTML to
+`MarkupString`. Preserve the shared head region to load map assets, preview consent,
+media URLs, and ordinary post links. The shared HTML includes scoped
+`data-fitness-route` / `data-fitness-map` containers with encoded numeric coordinate
+arrays, allowing multiple maps without duplicate IDs. Keep their dimensions,
+toolbar, attribution, no-JavaScript guidance, and status visible and avoid styling Leaflet tiles
+as post photos.
+
+All five built-in themes honor this setting in listings, details, and previews,
+including Folio's summary override and Town Square's full activity feed.
+Static exports retain active maps, toolbars, bundled assets, charts, and measurements;
+basemap tiles require connectivity. Hugo exports preserve
+parsed activity data in JSON front matter, readable summary Markdown, and a
+server-generated `homestead-activity.html` bundle resource rendered by the shared
+Fitness partial. Pending imports stay in draft working bundles. Original GPX bytes
+are included in database backups and excluded from public and Hugo output; backups
+restore the original draft bytes and the committed public snapshot independently.
+No FIT/TCX import, account synchronization, or external fitness API is required.
 
 ## CSS and JavaScript
 

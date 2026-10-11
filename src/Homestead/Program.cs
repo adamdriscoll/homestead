@@ -153,11 +153,13 @@ app.Use(async (context, next) =>
     var locationMap = context.Request.Path.Equals("/map", StringComparison.OrdinalIgnoreCase) ||
         context.Request.Path.Equals("/map/", StringComparison.OrdinalIgnoreCase) ||
         context.Request.Path.Equals("/map/index.html", StringComparison.OrdinalIgnoreCase);
-    context.Response.Headers["Referrer-Policy"] = locationMap ? "strict-origin-when-cross-origin" : "same-origin";
+    var activityMaps = context.Request.Path.StartsWithSegments("/admin/posts") ||
+        (!context.Request.Path.StartsWithSegments("/admin") && context.RequestServices.GetRequiredService<ActiveSite>().Current?.Articles.Any(x => x.Type == PostType.Fitness && x.Activity is not null) == true);
+    context.Response.Headers["Referrer-Policy"] = locationMap || activityMaps ? "strict-origin-when-cross-origin" : "same-origin";
     var preview = context.Request.Path.StartsWithSegments("/admin/posts") && context.Request.Path.Value!.EndsWith("/preview", StringComparison.OrdinalIgnoreCase);
     var frameAncestors = preview ? "'self'" : "'none'";
     var scripts = preview ? "'none'" : "'self'";
-    var mapImages = locationMap ? " https://tile.openstreetmap.org" : "";
+    var mapImages = locationMap || activityMaps ? " https://tile.openstreetmap.org" : "";
     context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src {scripts}; style-src 'self'; img-src 'self' data:{mapImages}; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
     if (context.Request.Path.StartsWithSegments("/admin") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/setup") || context.Request.Path.StartsWithSegments("/newsletter"))
         context.Response.Headers.CacheControl = "no-store";
@@ -167,6 +169,14 @@ app.Use(async (context, next) =>
 app.UseStaticFiles(); // Only compiled admin assets in wwwroot; /data is never registered.
 app.UseRouting(); app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
 app.MapRazorPages();
+app.MapGet("/admin/maps/{**file}", (string file, IWebHostEnvironment environment) =>
+{
+    // Resolve only bundled map files; never combine a request path with the content root.
+    var asset = LocationMapAssets.Files(environment.ContentRootPath).SingleOrDefault(x => x.RelativePath == "assets/map/" + file);
+    if (asset.SourcePath is null || !new Microsoft.AspNetCore.StaticFiles.FileExtensionContentTypeProvider().TryGetContentType(file, out var type))
+        return Results.NotFound();
+    return Results.File(asset.SourcePath, type);
+}).RequireAuthorization();
 app.MapGet("/admin/themes/colors.css", async (HomesteadDbContext db, ThemeService themes) =>
 {
     var settings = await db.SiteSettings.AsNoTracking().SingleAsync();

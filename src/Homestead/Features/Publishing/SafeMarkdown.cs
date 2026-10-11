@@ -10,10 +10,10 @@ public sealed class SafeMarkdown
     private static readonly MarkdownPipeline pipeline = new MarkdownPipelineBuilder().DisableHtml().Build();
 
     // Full-content surfaces share this renderer, including private preview and RSS.
-    public string RenderContent(ArticleSnapshot post, bool preview, string? canonicalBaseUrl = null)
+    public string RenderContent(ArticleSnapshot post, bool preview, string? canonicalBaseUrl = null, Data.Entities.FitnessUnitSystem fitnessUnits = Data.Entities.FitnessUnitSystem.Metric)
     {
         static string Encode(string? text) => System.Net.WebUtility.HtmlEncode(text ?? "");
-        string Photo(ArticleMedia image) => $"<figure><img src=\"{Encode(preview ? image.PrivateUrl : canonicalBaseUrl is null ? image.Url : canonicalBaseUrl.TrimEnd('/') + image.Url)}\" alt=\"{Encode(image.AltText)}\" class=\"w-full rounded-lg\" loading=\"lazy\">" +
+        string Photo(ArticleMedia image) => $"<figure class=\"block\"><img src=\"{Encode(preview ? image.PrivateUrl : canonicalBaseUrl is null ? image.Url : canonicalBaseUrl.TrimEnd('/') + image.Url)}\" alt=\"{Encode(image.AltText)}\" class=\"w-full rounded-lg\" loading=\"lazy\">" +
             (string.IsNullOrWhiteSpace(image.Caption) ? "" : $"<figcaption>{Encode(image.Caption)}</figcaption>") + "</figure>";
         var html = RenderLocation(post.Location) + (post.Summary is { Length: > 0 } ? $"<p>{Encode(post.Summary)}</p>" : "");
         if (post.Type == Data.Entities.PostType.Review && post.Review is { } review)
@@ -24,6 +24,7 @@ public sealed class SafeMarkdown
         }
         if (post.Type == Data.Entities.PostType.Article && post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover) html += Photo(cover);
         html += Render(post, preview, canonicalBaseUrl);
+        if (post.Type == Data.Entities.PostType.Fitness && post.Activity is { } activity) html += FitnessRendering.Render(activity, fitnessUnits, preview);
         if (post.Type == Data.Entities.PostType.Guide)
         {
             string Supplies(string heading, GuideSupplySnapshot[] supplies) => supplies.Length == 0 ? "" :
@@ -43,7 +44,7 @@ public sealed class SafeMarkdown
             }
             html += "</ol>";
         }
-        else if (post.Type is Data.Entities.PostType.Microblog or Data.Entities.PostType.Review or Data.Entities.PostType.Gallery or Data.Entities.PostType.Checkin)
+        else if (post.Type is Data.Entities.PostType.Microblog or Data.Entities.PostType.Review or Data.Entities.PostType.Gallery or Data.Entities.PostType.Checkin or Data.Entities.PostType.Fitness)
             html += "<div class=\"grid gap-3 sm:grid-cols-2\">" + string.Concat(PhotosOutsideBody(post).Select(Photo)) + "</div>";
         return html;
     }

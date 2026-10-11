@@ -28,7 +28,7 @@
             {
                 <h1 class="card-title">@post.DisplayTitle</h1>
             }
-            @if (!Model.IsListing || post.Type is PostType.Microblog or PostType.Gallery or PostType.Checkin)
+            @if (!Model.IsListing || post.Type is PostType.Microblog or PostType.Gallery or PostType.Checkin or PostType.Fitness)
             {
                 <div class="prose-content">@post.ContentHtml</div>
             }

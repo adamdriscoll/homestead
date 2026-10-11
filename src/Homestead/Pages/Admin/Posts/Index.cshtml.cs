@@ -18,7 +18,7 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Publish
         post.Type == PostType.Review && !string.IsNullOrWhiteSpace(post.Review?.Subject) ? post.Review.Subject :
         !string.IsNullOrWhiteSpace(post.Draft?.Title) ? post.Draft.Title :
         post.Type == PostType.Checkin && !string.IsNullOrWhiteSpace(post.Draft?.LocationName) ? $"Check-in at {post.Draft.LocationName}" :
-        $"Untitled {post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", _ => post.Type.ToString().ToLowerInvariant() }}";
+        $"Untitled {post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", PostType.Fitness => "fitness activity", _ => post.Type.ToString().ToLowerInvariant() }}";
     [TempData] public string? StatusMessage { get; set; }
     public async Task OnGetAsync(PostStatus? status)
     {

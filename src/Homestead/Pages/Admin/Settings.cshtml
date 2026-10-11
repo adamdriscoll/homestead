@@ -52,7 +52,17 @@
                             <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableGuides" class="checkbox" /> Guides</label>
                             <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableGalleries" class="checkbox" /> Galleries</label>
                             <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableCheckins" class="checkbox" /> Check-ins</label>
+                            <label class="flex items-center gap-3 min-h-11"><input asp-for="Input.EnableFitness" class="checkbox" /> Fitness activities</label>
                         </div>
+                    </fieldset>
+                    <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Fitness activities</legend>
+                        <label asp-for="Input.FitnessUnits"></label>
+                        <select asp-for="Input.FitnessUnits" class="select w-full" aria-describedby="fitness-units-help">
+                            <option value="Metric">Metric · km, km/h, min/km, meters</option>
+                            <option value="Imperial">Imperial · mi, mi/h, min/mi, feet</option>
+                        </select>
+                        <p id="fitness-units-help">Choose how activity measurements appear in the editor, public site, feeds, and exports. Saving rebuilds published activities with these units.</p>
                     </fieldset>
                     <fieldset class="fieldset gap-3">
                         <legend class="fieldset-legend">Location map</legend>

@@ -10,6 +10,29 @@ namespace Homestead.Tests;
 public sealed class UpgradeTests
 {
     [Fact]
+    public async Task Fitness_upgrade_preserves_subscriber_choices_posts_and_publication_trigger()
+    {
+        using var data = new TemporaryData(); Directory.CreateDirectory(data.Path);
+        await using var db = new HomesteadDbContext(new DbContextOptionsBuilder<HomesteadDbContext>()
+            .UseSqlite($"Data Source={Path.Combine(data.Path, "fitness-upgrade.db")}").Options);
+        await db.GetService<IMigrator>().MigrateAsync("20261009175208_Newsletter");
+        var time = new DateTime(2026, 10, 10, 12, 0, 0, DateTimeKind.Utc);
+        var old = new Post { Type = PostType.Article, Slug = "unchanged", FirstPublishedAtUtc = time, Draft = new() { BodyMarkdown = "Private draft", Version = 4 } };
+        db.Posts.Add(old);
+        db.NewsletterSubscribers.Add(new() { Email = "existing@example.test", PostTypes = 63, PendingPostTypes = 63 });
+        await db.SaveChangesAsync(); db.ChangeTracker.Clear();
+        await db.Database.MigrateAsync();
+        Assert.Equal(63, (await db.NewsletterSubscribers.SingleAsync()).PostTypes);
+        Assert.Equal(63, (await db.NewsletterSubscribers.SingleAsync()).PendingPostTypes);
+        var post = await db.Posts.Include(x => x.Draft).SingleAsync();
+        Assert.Equal(time, post.FirstPublishedAtUtc); Assert.Equal(4, post.Draft!.Version); Assert.Equal("Private draft", post.Draft.BodyMarkdown);
+        await Assert.ThrowsAsync<SqliteException>(() => db.Database.ExecuteSqlInterpolatedAsync($"UPDATE Posts SET Slug = 'changed' WHERE Id = {old.Id}"));
+        db.Posts.Add(new() { Type = PostType.Fitness, Draft = new() });
+        (await db.NewsletterSubscribers.SingleAsync()).PostTypes = 127;
+        await db.SaveChangesAsync(); Assert.False(db.Database.HasPendingModelChanges());
+    }
+
+    [Fact]
     public async Task Location_upgrade_preserves_posts_and_recreates_the_publication_trigger()
     {
         using var data = new TemporaryData(); Directory.CreateDirectory(data.Path);
