@@ -60,12 +60,12 @@ test('review validation keeps an incomplete draft private, then publishes its ra
   await page.getByRole('button', { name: 'Publish', exact: true }).click();
   await expect(page.getByRole('status').filter({ hasText: 'A review needs' })).toContainText('rating');
   expect((await page.request.get('/posts/browser-coffee/')).status()).toBe(404);
-  await page.getByLabel('Rating (1–5) (required to publish)', { exact: true }).fill('5');
+  await page.getByRole('radio', { name: '5 stars', exact: true }).check();
   const publicPath = await publish(page);
   const publicPage = await context.newPage();
   await publicPage.goto(publicPath);
   await expect(publicPage.getByRole('heading', { name: 'Browser coffee', exact: true })).toBeVisible();
-  await expect(publicPage.getByText('5/5', { exact: false })).toBeVisible();
+  await expect(publicPage.getByRole('img', { name: 'Rated 5 out of 5', exact: true })).toBeVisible();
   await expect(publicPage.locator('main strong')).toHaveText(['Browser coffee', 'warm']);
 });
 

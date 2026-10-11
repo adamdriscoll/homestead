@@ -286,7 +286,10 @@ public sealed class ThemeTests
             Assert.Contains("https://example.test" + path, html);
             Assert.Contains("Made at home with", html);
             Assert.Contains("href=\"https://github.com/PoshTools/homestead\"", html);
+            Assert.Contains("href=\"https://example.test/admin\">Admin</a>", html);
         }
+        var postId = app.Services.GetRequiredService<ActiveSite>().Current!.Articles.Single().PostId;
+        Assert.Contains("href=\"https://example.test/admin\">Admin</a>", await client.GetStringAsync($"/admin/posts/{postId}/preview"));
         Assert.Contains("--color-primary:#123456", await client.GetStringAsync("/assets/theme-colors.css"));
         var admin = await client.GetStringAsync("/admin");
         Assert.DoesNotContain("data-public-theme", admin); Assert.DoesNotContain("/assets/theme/", admin);
@@ -501,6 +504,7 @@ public sealed class ThemeTests
                 Assert.NotNull(zip.GetEntry("static/assets/theme/assets/theme.js")); Assert.NotNull(zip.GetEntry("homestead-theme/theme.json"));
                 using var layout = new StreamReader(zip.GetEntry("layouts/baseof.html")!.Open());
                 var html = await layout.ReadToEndAsync(); Assert.DoesNotContain("garden-layout", html); Assert.Contains("assets/theme/assets/theme.css", html);
+                Assert.Contains("href=\"https://example.test/admin\">Admin</a>", html);
                 Assert.NotNull(zip.GetEntry("homestead-theme/Main.razor")); Assert.Null(zip.GetEntry("static/assets/theme/Main.razor"));
                 using var colors = new StreamReader(zip.GetEntry("static/assets/theme-colors.css")!.Open()); Assert.Contains("#123456", await colors.ReadToEndAsync());
                 var hugoRoot = Path.Combine(data.Path, "hugo-theme");

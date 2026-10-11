@@ -10,7 +10,7 @@
             {
                 @((MarkupString)SafeMarkdown.RenderLocation(Post.Location))
                 @if (Post.Type == PostType.Review && Post.Review is { } review)
-                { <p><strong>@review.Subject</strong> · @review.Rating/5</p> }
+                { <div class="flex flex-wrap items-center gap-2"><strong>@review.Subject</strong>@((MarkupString)SafeMarkdown.RenderRating(review.Rating))</div> }
                 @if (Post.Type == PostType.Guide) { <p>@Post.Steps.Length steps</p> }
                 @if (Post.Type == PostType.Gallery) { <p>@Post.Media.Length photos</p> }
                 @if ((Post.Media.SingleOrDefault(x => x.Id == Post.CoverMediaId) ?? (Post.Type == PostType.Article ? null : Post.Media.FirstOrDefault())) is { } cover)

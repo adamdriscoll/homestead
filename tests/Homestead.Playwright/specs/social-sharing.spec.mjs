@@ -24,6 +24,7 @@ for (const javaScriptEnabled of [true, false]) {
       await expect(page.locator('[data-social-sharing]')).toHaveCount(0);
 
       await page.goto('/admin/settings');
+      await page.getByLabel('Canonical URL').fill(new URL(page.url()).origin);
       await page.locator('#tab-about').click();
       await page.getByLabel('Author display name', { exact: true }).fill('Ada');
       await page.locator('#tab-social').click();
@@ -77,11 +78,20 @@ for (const javaScriptEnabled of [true, false]) {
             }
             expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
             await expect(page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+            const admin = page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Admin', exact: true });
+            await expect(admin).toBeVisible();
+            await expect(admin).toHaveAttribute('href', new URL('/admin', page.url()).href);
+            expect(await admin.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+            await admin.focus();
+            await expect(admin).toBeFocused();
           }
         }
         await page.goto(editorPath.replace(/\/edit$/, '/preview'));
         await expect(page.getByRole('heading', { name: 'PRIVATE sharing title', exact: true })).toBeVisible();
         await expect(page.locator('[data-social-sharing]')).toHaveCount(0);
+        await page.getByRole('navigation', { name: 'Main navigation' }).getByRole('link', { name: 'Admin', exact: true }).click();
+        await expect(page).toHaveURL(/\/admin$/);
+        await expect(page.getByRole('heading', { name: 'Homestead', level: 1, exact: true })).toBeVisible();
       }
 
       await page.goto('/admin/settings#social');

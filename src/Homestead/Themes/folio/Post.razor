@@ -12,7 +12,7 @@
                 }
                 @if (post.Type == PostType.Review && post.Review is { } review)
                 {
-                    <p data-folio-review><strong>@review.Subject</strong> · @review.Rating/5</p>
+                    <div data-folio-review class="flex flex-wrap items-center gap-2"><strong>@review.Subject</strong>@((MarkupString)Homestead.Features.Publishing.SafeMarkdown.RenderRating(review.Rating))</div>
                 }
                 @if (post.Location is { } location)
                 {

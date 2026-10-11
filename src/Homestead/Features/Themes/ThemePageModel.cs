@@ -70,6 +70,7 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
         navigation.Add(new("About", "/about/"));
         if (settings.EnableLocationMap) navigation.Add(new("Map", "/map/"));
         if (settings.EnableNewsletter) navigation.Add(new("Newsletter", DiscoveryFiles.Absolute(settings, "/newsletter/")));
+        navigation.Add(new("Admin", DiscoveryFiles.Absolute(settings, "/admin")));
         return new(new(settings.Title, settings.Description, settings.CanonicalBaseUrl, settings.DisplayAuthor,
             settings.AuthorBio, settings.FooterText, settings.HideHomesteadCredit, settings.TimeZone, settings.AccentColor,
             settings.EnableLocationMap, settings.EnabledPostTypes.ToImmutableArray(), settings.ProfileLinks.Select(x => new ThemeLinkModel(x.Label ?? "", x.Url ?? "")).ToImmutableArray(),

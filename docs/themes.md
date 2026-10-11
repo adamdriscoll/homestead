@@ -33,6 +33,15 @@ automatically for contrast. A custom theme can decline color overrides.
 Administration has a separate **Appearance** selector for System, Light, or Dark.
 That preference is stored in the current browser and does not change public pages.
 
+Every built-in theme includes an **Admin** link at the end of its main navigation,
+including on listings, post pages, and private previews. Porch, Journal, and
+Ledger use the shared header; Folio and Town Square render `Model.Navigation`.
+The ordinary link works without JavaScript and points to the saved canonical
+site's `/admin` dashboard, which requires sign-in. Static and Hugo exports keep
+this absolute link to the original Homestead instance; remove it from exported
+pages if that instance is retired. Custom Header or Main templates should preserve
+the Admin entry in `Model.Navigation`, or include the shared header.
+
 Settings are saved before building. A successful build atomically activates all
 theme changes. If it fails, the previous complete site stays public; Settings
 shows the active theme and the rebuild failure. Use **Rebuild site** to retry.
@@ -97,6 +106,25 @@ the forms. `Model.IsListing` is false there. No credentials or reader records ar
 exposed as theme model members. `DefaultContent` contains request-specific form
 markup and its antiforgery token on these dynamic pages. Disabling stops subscriptions and sending
 immediately; a failed rebuild can temporarily retain the old navigation link.
+
+## Review ratings
+
+All built-in themes display review ratings with read-only daisyUI stars on home,
+type, and tag listings, post pages, and private previews. The selected star uses
+`aria-current="true"`; the group has an accessible “Rated N out of 5” label and
+screen-reader text retains the numeric rating. Incomplete preview drafts show
+“Not rated” when their rating is null. Stars inherit the theme's text color in
+light and dark appearance and require no JavaScript. Static exports retain them.
+
+`Model.Post.Review.Rating` remains a nullable integer from 1 to 5. Shared
+`Model.Post.ContentHtml` and `Model.DefaultContent` include the rating display.
+Post or listing overrides rendering review details themselves can use
+`@((MarkupString)Homestead.Features.Publishing.SafeMarkdown.RenderRating(review.Rating))`
+inside a wrapping container alongside the encoded subject. This uses the shared
+CSS and handles null ratings; no additional model members or theme assets are
+required. The editor uses five radio stars. New drafts can remain unrated; once
+selected, a rating can be changed to another value from 1 to 5. Ordinary forms
+preserve nullable drafts and the required 1–5 publication rating.
 
 ## Install a custom theme
 
@@ -231,7 +259,7 @@ public requests read only generated static files.
 | `Preview` | True only for an authenticated draft preview. |
 | `IsListing` | True for home/type/tag listings; false for post details, About, and map pages. |
 | `ThemeId`, `CanonicalUrl` | Installation ID and canonical page URL derived from saved settings. |
-| `Navigation` | Ordered `ThemeLinkModel` entries (`Label`, `Url`) for enabled types, Home, About, and optional Map. |
+| `Navigation` | Ordered `ThemeLinkModel` entries (`Label`, `Url`) for Home, enabled types, About, optional Map and Newsletter, and Admin. Newsletter and Admin use absolute URLs to the saved canonical site. |
 | `Post` | Current `ThemePostModel` in a post detail/type/Post template; otherwise null. |
 | `Posts` | Ordered snapshots for the current listing, or map's posts; empty on details/About. |
 | `Head` | Shared encoded metadata, stylesheet links, and public-only script links as a `MarkupString`. Available to region/Main templates. |

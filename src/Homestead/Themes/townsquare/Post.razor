@@ -36,9 +36,7 @@
             {
                 @if (post.Type == PostType.Review && post.Review is { } review)
                 {
-                    <p data-town-review><strong>@review.Subject</strong>
-                        @if (review.Rating is { } rating) { <span aria-label="@($"Rated {rating} out of 5")"> · @rating/5</span> }
-                    </p>
+                    <div data-town-review class="flex flex-wrap items-center gap-2"><strong>@review.Subject</strong>@((MarkupString)Homestead.Features.Publishing.SafeMarkdown.RenderRating(review.Rating))</div>
                 }
                 @if (post.Location is { } location)
                 {

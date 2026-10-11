@@ -18,7 +18,7 @@ public sealed class SafeMarkdown
         var html = RenderLocation(post.Location) + (post.Summary is { Length: > 0 } ? $"<p>{Encode(post.Summary)}</p>" : "");
         if (post.Type == Data.Entities.PostType.Review && post.Review is { } review)
         {
-            html += $"<p><strong>{Encode(review.Subject)}</strong> · {review.Rating}/5</p>";
+            html += $"<div class=\"flex flex-wrap items-center gap-2\"><strong>{Encode(review.Subject)}</strong>{RenderRating(review.Rating)}</div>";
             if (!string.IsNullOrWhiteSpace(review.ExternalUrl) && PostValidation.IsExternalUrl(review.ExternalUrl))
                 html += $"<p><a href=\"{Encode(review.ExternalUrl)}\" rel=\"noopener noreferrer\">Visit reviewed subject</a></p>";
         }
@@ -69,6 +69,14 @@ public sealed class SafeMarkdown
 
     public static HashSet<string?> ImageUrls(IEnumerable<string> bodies) => bodies
         .SelectMany(text => Markdown.Parse(text, pipeline).Descendants<LinkInline>().Where(x => x.IsImage).Select(x => x.Url)).ToHashSet(StringComparer.Ordinal);
+
+    public static string RenderRating(int? rating)
+    {
+        if (rating is null) return "<span>Not rated</span>";
+        var stars = string.Concat(Enumerable.Range(1, 5).Select(star =>
+            $"<div class=\"mask mask-star\" aria-hidden=\"true\"{(star == rating ? " aria-current=\"true\"" : "")}></div>"));
+        return $"<div class=\"rating\" role=\"img\" aria-label=\"Rated {rating} out of 5\">{stars}</div><span class=\"sr-only\">{rating}/5</span>";
+    }
 
     public ArticleMedia[] PhotosOutsideBody(ArticleSnapshot article)
     {
