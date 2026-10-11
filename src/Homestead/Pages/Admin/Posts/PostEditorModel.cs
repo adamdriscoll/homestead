@@ -31,6 +31,7 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
     protected HomesteadDbContext Database => db;
     public bool IsNew { get; private set; }
     public bool IsTypeEnabled { get; private set; }
+    public PostType[] EnabledPostTypes { get; protected set; } = [];
     public ArticleSnapshot? Live => active.Current?.Articles.SingleOrDefault(x => x.PostId == Post.Id);
     public string TypeLabel => Post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", PostType.Fitness => "fitness activity", _ => Post.Type.ToString().ToLowerInvariant() };
     public FitnessSnapshot? Activity => Post.Activity is { } activity ? System.Text.Json.JsonSerializer.Deserialize<FitnessSnapshot>(activity.TrackJson) : null;
@@ -223,6 +224,7 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
         if (post is null) return false;
         Post = post;
         var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
+        EnabledPostTypes = settings.EnabledPostTypes;
         IsTypeEnabled = settings.IsPostTypeEnabled(post.Type);
         ScheduleTimeZone = settings.TimeZone;
         FitnessUnits = settings.FitnessUnits;

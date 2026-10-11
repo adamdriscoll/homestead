@@ -14,16 +14,19 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Article
 {
     public string SiteTitle { get; private set; } = "";
     public string TimeZone { get; private set; } = "UTC";
-    public PostType[] EnabledPostTypes { get; private set; } = [];
     public List<Post> RecentPosts { get; private set; } = [];
     public SiteGeneration? LatestBuild { get; private set; }
     public override string EditorPage => "/Admin/Index";
     public override async Task<IActionResult> OnGetAsync(Guid id)
     {
         await LoadDashboardAsync();
+        if (!ModelState.IsValid || NewPostType is { } type && !Enum.IsDefined(type)) return BadRequest();
+        if (NewPostType is { } requestedType && requestedType != PostType.Microblog)
+            return RedirectToPage("/Admin/Posts/Edit", new { id = id == Guid.Empty ? Guid.NewGuid() : id, newPostType = requestedType });
+        if (id != Guid.Empty && await Database.Posts.AsNoTracking().AnyAsync(x => x.Id == id && x.Type != PostType.Microblog && x.Status != PostStatus.Deleted))
+            return RedirectToPage("/Admin/Posts/Edit", new { id });
         if (!EnabledPostTypes.Contains(PostType.Microblog)) return Page();
         if (id == Guid.Empty) { id = Guid.NewGuid(); NewPostType = PostType.Microblog; }
-        if (NewPostType is not null && NewPostType != PostType.Microblog) return BadRequest();
         return await base.OnGetAsync(id);
     }
     protected override async Task<bool> LoadEditorAsync(Guid id)

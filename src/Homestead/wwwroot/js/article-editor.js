@@ -143,6 +143,25 @@
     });
     return pending;
   }
+  const postTypeNavigation = document.querySelector('#post-type-navigation');
+  if (postTypeNavigation) {
+    let switchingType = false;
+    postTypeNavigation.querySelectorAll('[data-post-type-link]').forEach(link => {
+      link.addEventListener('click', async event => {
+        if (event.button !== 0 || event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        if (submitting || switchingType || link.getAttribute('aria-current') === 'page') return;
+        switchingType = true;
+        postTypeNavigation.setAttribute('aria-busy', 'true');
+        await locationTask;
+        await uploadTask;
+        do {
+          if (!await save()) { switchingType = false; postTypeNavigation.removeAttribute('aria-busy'); return; }
+        } while (saved !== revision);
+        submitting = true; window.location.assign(link.href);
+      });
+    });
+  }
   function insert(text) {
     body.setRangeText(text, body.selectionStart, body.selectionEnd, 'end');
     body.focus(); changed();

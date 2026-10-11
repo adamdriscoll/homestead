@@ -3,6 +3,7 @@
 @{ ViewData["Title"] = $"Edit {Model.TypeLabel}"; }
 <div class="space-y-6">
     <h1 class="text-3xl font-semibold">Your @Model.TypeLabel</h1>
+    <partial name="_PostTypeNavigation" model="Model" />
     <partial name="_PostEditor" model="Model" />
 </div>
 @section Head {

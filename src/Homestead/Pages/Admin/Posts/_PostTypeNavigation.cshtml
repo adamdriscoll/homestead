@@ -1,0 +1,16 @@
+@model Homestead.Pages.Admin.Posts.PostEditorModel
+@using Homestead.Data.Entities
+<nav id="post-type-navigation" aria-label="Post types" class="tabs tabs-border flex-wrap">
+    @foreach (var type in Model.EnabledPostTypes)
+    {
+        var selected = Model.Post?.Type == type;
+        var label = type switch { PostType.Microblog => "Note", PostType.Checkin => "Check-in", PostType.Fitness => "Fitness activity", _ => type.ToString() };
+        var icon = type switch { PostType.Microblog => "pen", PostType.Article => "file-lines", PostType.Review => "star", PostType.Guide => "screwdriver-wrench", PostType.Gallery => "images", PostType.Checkin => "location-dot", _ => "dumbbell" };
+        var editorPage = selected ? Model.EditorPage : type == PostType.Microblog ? "/Admin/Index" : "/Admin/Posts/Edit";
+        var id = selected ? Model.Post!.Id : type == PostType.Microblog ? (Guid?)null : Guid.NewGuid();
+        var newPostType = selected && !Model.IsNew || type == PostType.Microblog && !selected ? (PostType?)null : type;
+        <a asp-page="@editorPage" asp-route-id="@id" asp-route-newPostType="@newPostType" aria-current="@(selected ? "page" : null)" data-post-type-link="@type" class="tab min-h-11 gap-2 @(selected ? "tab-active" : "")">
+            <svg class="size-4 shrink-0 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#@icon"></use></svg>@label
+        </a>
+    }
+</nav>

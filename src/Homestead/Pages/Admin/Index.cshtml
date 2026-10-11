@@ -4,15 +4,10 @@
 @{ ViewData["Title"] = "Dashboard"; }
 <div class="space-y-6">
     <div class="space-y-2"><p class="text-sm">YOUR HOMESTEAD</p><h1 class="text-3xl font-semibold">@Model.SiteTitle</h1></div>
-    <div class="flex flex-wrap gap-2" aria-label="Create a post">
-        @foreach (var type in Model.EnabledPostTypes.Where(x => x != PostType.Microblog))
-        {
-            <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New">
-                <input type="hidden" name="type" value="@type" />
-                <button class="btn">New @(type == PostType.Checkin ? "check-in" : type == PostType.Fitness ? "fitness activity" : type.ToString().ToLowerInvariant())</button>
-            </form>
-        }
-    </div>
+    @if (Model.EnabledPostTypes.Length > 0)
+    {
+        <partial name="Posts/_PostTypeNavigation" model="Model" />
+    }
     @if (Model.EnabledPostTypes.Contains(PostType.Microblog))
     {
         <partial name="Posts/_PostEditor" model="Model" />
