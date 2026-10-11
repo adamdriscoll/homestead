@@ -5,4 +5,12 @@
     <h1 class="text-3xl font-semibold">Your @Model.TypeLabel</h1>
     <partial name="_PostEditor" model="Model" />
 </div>
+@section Head {
+    @if (Model.Post.Activity is not null) {
+        <meta name="referrer" content="strict-origin-when-cross-origin" />
+        <link rel="stylesheet" href="/admin/maps/leaflet/leaflet.css" />
+        <script src="/admin/maps/leaflet/leaflet.js" defer></script>
+        <script src="/admin/maps/fitness-map.js" defer></script>
+    }
+}
 @section Scripts { <script src="/js/article-editor.js" defer></script> }

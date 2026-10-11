@@ -9,7 +9,7 @@
         {
             <form method="post" asp-page="/Admin/Posts/Index" asp-page-handler="New">
                 <input type="hidden" name="type" value="@type" />
-                <button class="btn">New @(type == PostType.Checkin ? "check-in" : type.ToString().ToLowerInvariant())</button>
+                <button class="btn">New @(type == PostType.Checkin ? "check-in" : type == PostType.Fitness ? "fitness activity" : type.ToString().ToLowerInvariant())</button>
             </form>
         }
     </div>
@@ -32,7 +32,7 @@
             <article class="card border border-base-300 min-w-0">
                 <div class="card-body">
                     <div class="flex flex-wrap items-center justify-between gap-2">
-                        <span class="text-sm">@(note ? "Note" : post.Type == PostType.Checkin ? "Check-in" : post.Type.ToString())</span>
+                        <span class="text-sm">@(note ? "Note" : post.Type == PostType.Checkin ? "Check-in" : post.Type == PostType.Fitness ? "Fitness activity" : post.Type.ToString())</span>
                         <span class="badge">@post.Status</span>
                     </div>
                     <h2 class="card-title break-words"><a class="link" href="/admin/posts/@post.Id/edit">@(note && !string.IsNullOrWhiteSpace(body) ? body[..Math.Min(body.Length, 120)] + (body.Length > 120 ? "…" : "") : title)</a></h2>

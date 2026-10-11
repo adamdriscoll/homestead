@@ -2,7 +2,7 @@
   const form = document.querySelector('#article-editor');
   if (!form) return;
   let body = form.querySelector('[name="Input.BodyMarkdown"]');
-  const structured = ['Review', 'Guide', 'Gallery'].includes(form.dataset.postType);
+  const structured = ['Review', 'Guide', 'Gallery', 'Fitness'].includes(form.dataset.postType);
   const version = form.querySelector('[name="Input.Version"]');
   const status = document.querySelector('#save-status');
   const statusText = document.querySelector('#save-status-text');
@@ -335,6 +335,36 @@
     } finally { uploading = false; }
   }
   uploader.addEventListener('submit', e => { e.preventDefault(); startUpload([...filePicker.files]); });
+  const gpxUploader = document.querySelector('#gpx-upload');
+  gpxUploader?.addEventListener('submit', event => {
+    event.preventDefault();
+    const gpxStatus = document.querySelector('#gpx-status');
+    if (uploading || submitting) { gpxStatus.textContent = 'Wait for the current operation to finish.'; return; }
+    const remove = event.submitter?.name === 'remove';
+    if (!remove && !document.querySelector('[name="GpxUpload"]').files.length) { gpxStatus.textContent = 'Choose a GPX file.'; return; }
+    uploading = true; clearTimeout(timer);
+    uploadTask = (async () => {
+      let controls = [];
+      try {
+        await locationTask;
+        if (!await save()) return;
+        // Include edits made during the initial save, then freeze fields until the reload.
+        while (saved !== revision) if (!await save()) return;
+        const data = new FormData(gpxUploader); data.set('Input.Version', version.value);
+        if (remove) data.set('remove', 'true');
+        controls = [...form.querySelectorAll('input, textarea, select, button')].map(control => [control, control.disabled]);
+        controls.forEach(([control]) => { control.disabled = true; });
+        gpxStatus.textContent = remove ? 'Removing GPX…' : 'Importing GPX…';
+        const response = await fetch(gpxUploader.action, { method: 'POST', body: data, headers: { Accept: 'application/json' } });
+        if (response.redirected) throw new Error('Sign in again before importing.');
+        const result = await response.json();
+        if (!response.ok) { conflict = response.status === 409; throw new Error(result.message || 'GPX import failed.'); }
+        submitting = true;
+        window.location.assign(result.editorUrl);
+      } catch (error) { gpxStatus.textContent = error.message || 'GPX import failed. Check your connection and try again.'; }
+      finally { controls.forEach(([control, disabled]) => { control.disabled = disabled; }); uploading = false; }
+    })();
+  });
   form.addEventListener('paste', e => {
     if (!isMarkdown(e.target)) return;
     const files = [...e.clipboardData.files].filter(x => x.type.startsWith('image/'));

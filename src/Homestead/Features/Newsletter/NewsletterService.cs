@@ -239,10 +239,10 @@ public sealed class NewsletterService(HomesteadDbContext db, PublicationLock wri
         var site = active.Current.Settings;
         var manage = DiscoveryFiles.Absolute(site, "/newsletter/?manage=" + Uri.EscapeDataString(ManagementToken(subscriber)));
         var title = delivery.Key.StartsWith("week:", StringComparison.Ordinal) ? $"{site.Title}: weekly summary" : $"{site.Title}: {posts[0].DisplayTitle}";
-        var text = title + "\n\n" + string.Join("\n\n", posts.Select(post => $"{post.DisplayTitle}\n{DiscoveryFiles.Description(post)}\n{DiscoveryFiles.Absolute(site, $"/posts/{post.Slug}/")}")) +
+        var text = title + "\n\n" + string.Join("\n\n", posts.Select(post => $"{post.DisplayTitle}\n{DiscoveryFiles.Description(post, site.FitnessUnits)}\n{DiscoveryFiles.Absolute(site, $"/posts/{post.Slug}/")}")) +
             "\n\nPreferences or unsubscribe:\n" + manage;
         var html = "<html><body><h1>" + Encode(title) + "</h1>" + string.Join("", posts.Select(post =>
-            $"<h2><a href=\"{Encode(DiscoveryFiles.Absolute(site, $"/posts/{post.Slug}/"))}\">{Encode(post.DisplayTitle)}</a></h2><p>{Encode(DiscoveryFiles.Description(post))}</p>")) +
+            $"<h2><a href=\"{Encode(DiscoveryFiles.Absolute(site, $"/posts/{post.Slug}/"))}\">{Encode(post.DisplayTitle)}</a></h2><p>{Encode(DiscoveryFiles.Description(post, site.FitnessUnits))}</p>")) +
             $"<p><a href=\"{Encode(manage)}\">Preferences or unsubscribe</a></p></body></html>";
         // Freeze the exact request content before the first attempt, including its management link.
         delivery.Subject ??= title.Replace('\r', ' ').Replace('\n', ' '); delivery.Html ??= html; delivery.Text ??= text;

@@ -27,7 +27,7 @@ internal static class HugoTemplates
         return html.Append("</nav>{{ end }}").ToString();
     }
 
-    public static string ThemedLayout(SiteSettings settings, ThemePackage theme)
+    public static string ThemedLayout(SiteSettings settings, ThemePackage theme, bool activityMaps = false)
     {
         var head = new StringBuilder($"<!doctype html>\n<html lang=\"en\" data-public-theme=\"{HtmlEncoder.Default.Encode(theme.Id)}\" data-accent=\"{HtmlEncoder.Default.Encode(settings.AccentColor.ToLowerInvariant())}\"><head>" +
             "<meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">" +
@@ -36,11 +36,16 @@ internal static class HugoTemplates
         foreach (var file in theme.Manifest.Styles)
             head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme/" + file + "\" | relURL }}\">");
         head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme-colors.css\" | relURL }}\">");
-        if (settings.EnableLocationMap)
-            head.Append("{{ if eq .Layout \"location-map\" }}<meta name=\"referrer\" content=\"strict-origin-when-cross-origin\">" +
+        if (settings.EnableLocationMap || activityMaps)
+        {
+            if (!activityMaps) head.Append("{{ if eq .Layout \"location-map\" }}");
+            head.Append("<meta name=\"referrer\" content=\"strict-origin-when-cross-origin\">" +
                 "<link rel=\"stylesheet\" href=\"{{ \"assets/map/leaflet/leaflet.css\" | relURL }}\">" +
-                "<script defer src=\"{{ \"assets/map/leaflet/leaflet.js\" | relURL }}\"></script>" +
-                "<script defer src=\"{{ \"assets/map/location-map.js\" | relURL }}\"></script>{{ end }}");
+                "<script defer src=\"{{ \"assets/map/leaflet/leaflet.js\" | relURL }}\"></script>");
+            if (!activityMaps) head.Append("{{ end }}");
+            if (activityMaps) head.Append("<script defer src=\"{{ \"assets/map/fitness-map.js\" | relURL }}\"></script>");
+            if (settings.EnableLocationMap) head.Append("{{ if eq .Layout \"location-map\" }}<script defer src=\"{{ \"assets/map/location-map.js\" | relURL }}\"></script>{{ end }}");
+        }
         foreach (var file in theme.Manifest.Scripts)
             head.Append("<script defer src=\"{{ \"assets/theme/" + file + "\" | relURL }}\"></script>");
         head.Append("{{ with .OutputFormats.Get \"rss\" }}<link rel=\"alternate\" type=\"application/rss+xml\" href=\"{{ .Permalink }}\">{{ end }}</head><body>" +
@@ -107,7 +112,7 @@ internal static class HugoTemplates
         <main class="max-w-5xl mx-auto p-4">{{ block "main" . }}{{ end }}</main></body></html>
         """),
         ("layouts/page.html", """
-        {{ define "main" }}<article class="prose-content"><h1>{{ .Title }}</h1><p>{{ .Date.Format "2006-01-02" }} · {{ .Type }}</p>{{ .Content }}
+        {{ define "main" }}<article class="prose-content"><h1>{{ .Title }}</h1><p>{{ .Date.Format "2006-01-02" }} · {{ .Type }}</p>{{ .Content }}{{ partial "fitness.html" . }}
         <p>{{ range .GetTerms "tags" }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a> {{ end }}</p>{{ partial "social-sharing.html" . }}</article>{{ end }}
         """),
         ("layouts/list.html", """
@@ -116,7 +121,10 @@ internal static class HugoTemplates
         """),
         ("layouts/home.html", """
         {{ define "main" }}<h1 class="text-3xl font-bold">{{ .Site.Title }}</h1>
-        {{ range (where .Site.RegularPages "Section" "posts").ByDate.Reverse }}<article class="card card-border my-4"><div class="card-body"><h2 class="card-title"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2><p>{{ .Type }} · {{ .Date.Format "2006-01-02" }}</p><div class="prose-content">{{ .Content }}</div>{{ partial "social-sharing.html" . }}</div></article>{{ end }}{{ end }}
+        {{ range (where .Site.RegularPages "Section" "posts").ByDate.Reverse }}<article class="card card-border my-4"><div class="card-body"><h2 class="card-title"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2><p>{{ .Type }} · {{ .Date.Format "2006-01-02" }}</p><div class="prose-content">{{ .Content }}{{ partial "fitness.html" . }}</div>{{ partial "social-sharing.html" . }}</div></article>{{ end }}{{ end }}
+        """),
+        ("layouts/partials/fitness.html", """
+        {{ if eq .Type "fitness" }}{{ with .Resources.Get "homestead-activity.html" }}{{ .Content | safeHTML }}{{ end }}{{ end }}
         """)
     ];
 }

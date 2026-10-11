@@ -5,7 +5,7 @@
         <div class="card-body">
             <p class="text-sm">@Post.TypeLabel · <time datetime="@Post.PublishedAtUtc.ToString("O")">@Date</time></p>
             <h2 class="card-title break-words"><a href="@($"/posts/{Post.Slug}/")">@Post.DisplayTitle</a></h2>
-            @if (Post.Type is PostType.Microblog or PostType.Checkin) { <PostContent Post="Post" Preview="Page.Preview" /> }
+            @if (Post.Type is PostType.Microblog or PostType.Checkin) { <PostContent Post="Post" Preview="Page.Preview" FitnessUnits="Page.Settings.FitnessUnits" /> }
             else
             {
                 @((MarkupString)SafeMarkdown.RenderLocation(Post.Location))
@@ -13,9 +13,10 @@
                 { <div class="flex flex-wrap items-center gap-2"><strong>@review.Subject</strong>@((MarkupString)SafeMarkdown.RenderRating(review.Rating))</div> }
                 @if (Post.Type == PostType.Guide) { <p>@Post.Steps.Length steps</p> }
                 @if (Post.Type == PostType.Gallery) { <p>@Post.Media.Length photos</p> }
+                @if (Post.Activity is { } activity) { @((MarkupString)FitnessRendering.Summary(activity, Page.Settings.FitnessUnits)) }
                 @if ((Post.Media.SingleOrDefault(x => x.Id == Post.CoverMediaId) ?? (Post.Type == PostType.Article ? null : Post.Media.FirstOrDefault())) is { } cover)
                 { <img src="@(Page.Preview ? cover.PrivateUrl : cover.Url)" alt="@cover.AltText" class="w-full max-h-80 object-cover rounded-lg" loading="lazy" /> }
-                <p>@DiscoveryFiles.Description(Post)</p>
+                <p>@DiscoveryFiles.Description(Post, Page.Settings.FitnessUnits)</p>
             }
             @Tags
             <ShareButtons Links="SharingLinks" />
@@ -27,7 +28,7 @@ else
     <article class="space-y-6">
         <h1 class="text-4xl font-semibold break-words">@Post.DisplayTitle</h1>
         <p>@Page.Settings.DisplayAuthor · @Post.TypeLabel · <time datetime="@Post.PublishedAtUtc.ToString("O")">@Date</time></p>
-        <PostContent Post="Post" Preview="Page.Preview" />
+        <PostContent Post="Post" Preview="Page.Preview" FitnessUnits="Page.Settings.FitnessUnits" />
         @Tags
         <ShareButtons Links="SharingLinks" />
     </article>

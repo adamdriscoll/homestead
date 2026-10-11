@@ -16,8 +16,17 @@ public sealed class TemporaryData : IDisposable
     public string Path { get; } = System.IO.Path.Combine(System.IO.Path.GetTempPath(), "homestead-tests", Guid.NewGuid().ToString("N"));
     public void Dispose()
     {
-        SqliteConnection.ClearAllPools();
-        if (Directory.Exists(Path)) Directory.Delete(Path, recursive: true);
+        if (!Directory.Exists(Path)) return;
+        // Other test classes may still be opening their own databases in parallel.
+        // Release only this fixture's pools before deleting its temporary files.
+        foreach (var file in Directory.EnumerateFiles(Path, "*.db", SearchOption.AllDirectories))
+        {
+            using var connection = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = file }.ToString());
+            SqliteConnection.ClearPool(connection);
+            using var foreignKeys = new SqliteConnection(new SqliteConnectionStringBuilder { DataSource = file, ForeignKeys = true }.ToString());
+            SqliteConnection.ClearPool(foreignKeys);
+        }
+        Directory.Delete(Path, recursive: true);
     }
 }
 

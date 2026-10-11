@@ -10,7 +10,7 @@ namespace Homestead.Features.Themes;
 // Templates are trusted server code. Compilation validates syntax; it is not a sandbox.
 public sealed class RazorThemeCompiler : IDisposable
 {
-    public static readonly string[] TemplateNames = ["Main", "Header", "Content", "Footer", "Post", "Note", "Article", "Review", "Guide", "Gallery", "Checkin"];
+    public static readonly string[] TemplateNames = ["Main", "Header", "Content", "Footer", "Post", "Note", "Article", "Review", "Guide", "Gallery", "Checkin", "Fitness"];
     private readonly object gate = new();
     private string? cachedId;
     private CompiledTheme? cached;

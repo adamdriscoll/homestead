@@ -1,6 +1,6 @@
 @model Homestead.Pages.Admin.Posts.PostEditorModel
 @using Homestead.Data.Entities
-@{ var note = Model.Post.Type == PostType.Microblog; var gallery = Model.Post.Type == PostType.Gallery; var guide = Model.Post.Type == PostType.Guide; var review = Model.Post.Type == PostType.Review; var checkin = Model.Post.Type == PostType.Checkin; var newPostType = Model.IsNew ? Model.NewPostType : null; }
+@{ var note = Model.Post.Type == PostType.Microblog; var gallery = Model.Post.Type == PostType.Gallery; var guide = Model.Post.Type == PostType.Guide; var review = Model.Post.Type == PostType.Review; var checkin = Model.Post.Type == PostType.Checkin; var fitness = Model.Post.Type == PostType.Fitness; var newPostType = Model.IsNew ? Model.NewPostType : null; }
 <div class="space-y-6">
     @if (Model.StatusMessage is not null) { <p class="alert" role="status">@Model.StatusMessage</p> }
     @if (!ViewData.ModelState.IsValid) { <div asp-validation-summary="All" class="text-error" role="alert"></div> }
@@ -75,7 +75,7 @@
             <label class="block space-y-2"><span>Summary</span><textarea asp-for="Input.Summary" class="textarea w-full" maxlength="1000" rows="2"></textarea></label>
         }
         <div class="space-y-2">
-        <label for="Input_BodyMarkdown" class="inline-flex items-center gap-1">@(note ? "Note" : review ? "Review" : checkin ? "Visit" : guide || gallery ? "Introduction" : "Body")
+        <label for="Input_BodyMarkdown" class="inline-flex items-center gap-1">@(note ? "Note" : review ? "Review" : checkin ? "Visit" : fitness ? "Message" : guide || gallery ? "Introduction" : "Body")
             @if (Model.Post.Type == PostType.Article || review)
             {
                 <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
@@ -83,9 +83,30 @@
         </label>
         <div class="border border-base-300 rounded-lg overflow-hidden" data-markdown-editor>
         <partial name="/Pages/Admin/Posts/_MarkdownToolbar.cshtml" model='@("Markdown formatting")' />
-        <textarea asp-for="Input.BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px]" maxlength="200000" rows="@(note || gallery || guide || checkin ? 6 : 16)"></textarea>
+        <textarea asp-for="Input.BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px]" maxlength="200000" rows="@(note || gallery || guide || checkin || fitness ? 6 : 16)"></textarea>
         </div>
         </div>
+        @if (fitness)
+        {
+            <section class="space-y-3 border-t border-base-300 pt-4" aria-label="GPX activity">
+                <h2 class="text-xl font-semibold">GPX activity</h2>
+                <p>Import a recorded track from Garmin, Strava, or another GPX exporter. Routes, timestamps, and heart-rate readings become public when you publish. Review your route before publishing.</p>
+                <label class="block space-y-2"><span>GPX file</span><input asp-for="GpxUpload" form="gpx-upload" type="file" accept=".gpx,application/gpx+xml" class="file-input w-full" /></label>
+                <p class="text-sm">GPX 1.0/1.1 · up to 10 MB and 50,000 points. Heart rate is optional and uses Garmin track-point extensions.</p>
+                <p class="text-sm">Save your draft before importing or removing a track. Importing replaces the current draft track.</p>
+                <div class="flex flex-wrap gap-2">
+                    <button class="btn" type="submit" form="gpx-upload">Import GPX</button>
+                    @if (Model.Activity is not null) { <button class="btn" type="submit" form="gpx-upload" name="remove" value="true">Remove GPX</button> }
+                </div>
+                <p id="gpx-status" role="status" aria-live="polite"></p>
+                @if (Model.Activity is { } activity)
+                {
+                    <a class="link inline-flex min-h-11 items-center" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Gpx">Download original GPX</a>
+                    <div class="prose-content">@Html.Raw(Homestead.Features.Publishing.FitnessRendering.Render(activity, Model.FitnessUnits, privateMap: true))</div>
+                }
+                else { <p>A message or photo can be published without a GPX track.</p> }
+            </section>
+        }
         @if (guide)
         {
             <section class="space-y-4" aria-labelledby="steps-title">
@@ -178,7 +199,7 @@
                     <input type="hidden" name="Input.MediaOrder" value="@image.MediaAssetId" />
                     <img src="/admin/media/@image.MediaAssetId" alt="@(image.AltText ?? "")" class="max-h-40 max-w-full" />
                     <label class="block">Image description (alt text)<input name="Input.AltText[@image.MediaAssetId]" value="@(Model.Input.AltText.GetValueOrDefault(image.MediaAssetId) ?? image.AltText)" class="input w-full" maxlength="1000" /></label>
-                    @if (gallery || guide || review || checkin)
+                    @if (gallery || guide || review || checkin || fitness)
                     { <label class="block">Caption<input name="Input.Captions[@image.MediaAssetId]" value="@(Model.Input.Captions.GetValueOrDefault(image.MediaAssetId) ?? image.Caption)" class="input w-full" maxlength="1000" /></label> }
                     @if (guide)
                     {
@@ -284,6 +305,13 @@
     <form method="post" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Upload" asp-route-newPostType="@newPostType" enctype="multipart/form-data" id="image-upload">
         @if (Model.IsNew) { <input type="hidden" name="NewPostType" value="@Model.NewPostType" /> }
     </form>
+    @if (fitness)
+    {
+        <form method="post" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Gpx" asp-route-newPostType="@newPostType" enctype="multipart/form-data" id="gpx-upload">
+            <input type="hidden" name="Input.Version" value="@Model.Post.Draft!.Version" />
+            @if (Model.IsNew) { <input type="hidden" name="NewPostType" value="@Model.NewPostType" /> }
+        </form>
+    }
     <dialog id="delete-post-dialog" class="modal" aria-labelledby="delete-post-title" aria-describedby="delete-post-description">
         <div class="modal-box">
             <h2 id="delete-post-title" class="text-xl font-semibold">Delete this post?</h2>

@@ -24,12 +24,13 @@
     @foreach (var style in Page.Theme!.Manifest.Styles)
     { <link rel="stylesheet" href="@Page.Theme.AssetUrl(style, Page.Preview)" /> }
     <link rel="stylesheet" href="@(Page.Preview ? "/admin/themes/colors.css" : "/assets/theme-colors.css")" />
-    @if (Page.Path == "/map/" && !Page.Preview)
+    @if (RouteMaps || Page.Path == "/map/" && !Page.Preview)
     {
         <meta name="referrer" content="strict-origin-when-cross-origin" />
-        <link rel="stylesheet" href="/assets/map/leaflet/leaflet.css" />
-        <script src="/assets/map/leaflet/leaflet.js" defer></script>
-        <script src="/assets/map/location-map.js" defer></script>
+        <link rel="stylesheet" href="@(MapAssets + "leaflet/leaflet.css")" />
+        <script src="@(MapAssets + "leaflet/leaflet.js")" defer></script>
+        @if (RouteMaps) { <script src="@(MapAssets + "fitness-map.js")" defer></script> }
+        @if (Page.Path == "/map/" && !Page.Preview) { <script src="/assets/map/location-map.js" defer></script> }
     }
     @if (!Page.Preview)
     {
@@ -115,11 +116,13 @@
 @code {
     [Parameter] public string Region { get; set; } = "main";
     [Parameter, EditorRequired] public PublicPage Page { get; set; } = null!;
+    private bool RouteMaps => Page.Article is { Type: PostType.Fitness, Activity: not null } || Page.Articles.Any(x => x.Type == PostType.Fitness && x.Activity is not null);
+    private string MapAssets => Page.Preview ? "/admin/maps/" : "/assets/map/";
     private static readonly (string Path, string Label, PostType? Type)[] Navigation = [("/", "Home", null), ("/notes/", "Notes", PostType.Microblog), ("/articles/", "Articles", PostType.Article),
-        ("/reviews/", "Reviews", PostType.Review), ("/guides/", "Guides", PostType.Guide), ("/galleries/", "Galleries", PostType.Gallery), ("/checkins/", "Check-ins", PostType.Checkin), ("/about/", "About", null)];
+        ("/reviews/", "Reviews", PostType.Review), ("/guides/", "Guides", PostType.Guide), ("/galleries/", "Galleries", PostType.Gallery), ("/checkins/", "Check-ins", PostType.Checkin), ("/fitness/", "Fitness", PostType.Fitness), ("/about/", "About", null)];
     private string Title => Page.Article is { } post ? $"{post.DisplayTitle} · {Page.Settings.Title}"
         : Page.Path == "/" ? Page.Settings.Title : $"{Page.Heading} · {Page.Settings.Title}";
-    private string Description => Page.Article is { } post ? DiscoveryFiles.Description(post)
+    private string Description => Page.Article is { } post ? DiscoveryFiles.Description(post, Page.Settings.FitnessUnits)
         : Page.Path == "/about/" && !string.IsNullOrWhiteSpace(Page.Settings.AuthorBio) ? Page.Settings.AuthorBio : DiscoveryFiles.SiteDescription(Page.Settings);
     private string Absolute(string path) => DiscoveryFiles.Absolute(Page.Settings, path);
     private string Canonical => Absolute(Page.Article is { } post ? $"/posts/{post.Slug}/" : Page.Path);

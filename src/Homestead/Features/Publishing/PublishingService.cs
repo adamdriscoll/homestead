@@ -123,7 +123,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             foreach (var (type, path, heading) in new[] { (PostType.Article, "/articles/", "Articles"),
                 (PostType.Microblog, "/notes/", "Notes"), (PostType.Review, "/reviews/", "Reviews"),
                 (PostType.Guide, "/guides/", "Guides"), (PostType.Gallery, "/galleries/", "Galleries"),
-                (PostType.Checkin, "/checkins/", "Check-ins") })
+                (PostType.Checkin, "/checkins/", "Check-ins"), (PostType.Fitness, "/fitness/", "Fitness activities") })
                 if (settings.IsPostTypeEnabled(type)) await Page(path, heading, posts.Where(x => x.Type == type).ToArray());
             await Page("/about/", "About", []);
             if (settings.EnableLocationMap)
@@ -147,7 +147,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             Directory.CreateDirectory(Path.Combine(root, "assets"));
             File.Copy(Path.Combine(environment.WebRootPath, "css", "site.css"), Path.Combine(root, "assets", "site.css"));
             files.Add("assets/site.css");
-            if (settings.EnableLocationMap)
+            if (settings.EnableLocationMap || posts.Any(x => x.Type == PostType.Fitness && x.Activity is not null))
             {
                 foreach (var (relative, source) in LocationMapAssets.Files(environment.ContentRootPath))
                 {

@@ -23,16 +23,19 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
         await ArchiveFiles.TextAsync(zip, "hugo.toml", $"baseURL = {TomlString(settings.CanonicalBaseUrl.TrimEnd('/') + "/")}\n" +
             $"title = {TomlString(settings.Title)}\nlanguageCode = 'en-us'\nenableRobotsTXT = true\n" +
             "[markup.goldmark.renderer]\nunsafe = false\n", ct);
+        var activityMaps = await db.Posts.AnyAsync(x => x.Status != PostStatus.Deleted && x.Type == PostType.Fitness, ct) ||
+            active.Current?.Articles.Any(x => x.Type == PostType.Fitness && x.Activity is not null) == true;
         foreach (var (path, text) in HugoTemplates.Files)
-            await ArchiveFiles.TextAsync(zip, path, path == "layouts/baseof.html" ? HugoTemplates.ThemedLayout(settings, theme) : text, ct);
+            await ArchiveFiles.TextAsync(zip, path, path == "layouts/baseof.html" ? HugoTemplates.ThemedLayout(settings, theme, activityMaps) : text, ct);
         await ArchiveFiles.TextAsync(zip, "layouts/partials/social-sharing.html", HugoTemplates.SharingPartial(settings), ct);
         if (settings.EnableLocationMap)
         {
             await ArchiveFiles.TextAsync(zip, "content/map/index.md", "---\ntitle: \"Location map\"\nlayout: \"location-map\"\nurl: \"/map/\"\n---\n", ct);
             await ArchiveFiles.TextAsync(zip, "layouts/location-map.html", HugoTemplates.LocationMap, ct);
+        }
+        if (settings.EnableLocationMap || activityMaps)
             foreach (var (relative, source) in LocationMapAssets.Files(environment.ContentRootPath))
                 await ArchiveFiles.CopyAsync(zip, "static/" + relative, source, ct);
-        }
         await ArchiveFiles.CopyAsync(zip, "static/assets/site.css", Path.Combine(environment.WebRootPath, "css", "site.css"), ct);
         foreach (var (file, bytes) in theme.Files)
         {
@@ -74,7 +77,7 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
         await ArchiveFiles.TextAsync(zip, "README.md", $"# Homestead Hugo export\n\nTested with Hugo {SupportedHugoVersion} (standard or extended). Run `hugo` in this directory; serve `public/`.\n\n" +
             "All nondeleted posts are included. Active published snapshots build by default. Drafts, unpublished posts, hidden post types, pending publications, and separate working bundles containing unpublished edits use `draft: true`. Hidden types retain their saved published snapshot alongside any working edits; `homestead_type_disabled` records the saved setting. If a settings rebuild failed, actually public snapshots still build by default. Use `hugo --buildDrafts` only to preview private work.\n\n" +
             "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), `location` (name/address/latitude/longitude), `tools` (name/url) and `materials` (name/url/quantity), and ordered `steps` (id/body_markdown/duration_seconds/images). Locations, supplies, steps, durations, and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
-            "Raw HTML is disabled. This minimal layout renders all six types and carries the selected theme assets, HTML layout, and colors. Razor templates are preserved in homestead-theme/ for migration; Hugo uses the shared layouts and does not execute Razor. When enabled, /map/ shows coordinates from nondraft post bundles using bundled Leaflet and online OpenStreetMap tiles. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
+            "Raw Markdown HTML is disabled. This minimal layout renders all seven types, including fitness route/sensor diagrams in a generated homestead-activity.html resource, and carries the selected theme assets, HTML layout, and colors. Activity front matter retains parsed segments and measurements in SI units, with fitness_units recording the saved display preference. Diagrams and readable summaries use that preference. Original GPX bytes are private database backup data and are not exported publicly. Razor templates are preserved in homestead-theme/ for migration; Hugo uses the shared layouts and does not execute Razor. When enabled, /map/ shows coordinates from nondraft post bundles using bundled Leaflet and online OpenStreetMap tiles. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
 
         async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug, bool disabled = false)
         {
@@ -105,6 +108,8 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
                 summary = snapshot.Summary,
                 cover = snapshot.Media.SingleOrDefault(x => x.Id == snapshot.CoverMediaId)?.Filename,
                 images,
+                activity = snapshot.Activity,
+                fitness_units = settings.FitnessUnits.ToString().ToLowerInvariant(),
                 location = snapshot.Location is { } location ? new { name = location.Name, address = location.Address, latitude = location.Latitude, longitude = location.Longitude } : null,
                 review = snapshot.Review is { } review ? new { subject = review.Subject, rating = review.Rating, external_url = review.ExternalUrl } : null,
                 tools = snapshot.Tools.Select(x => new { name = x.Name, url = x.Url }).ToArray(),
@@ -120,6 +125,14 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             };
             // JSON front matter is supported by Hugo and avoids YAML injection/Unicode ambiguity.
             var body = Rewrite(snapshot.BodyMarkdown);
+            if (snapshot.Activity is { } activity)
+            {
+                body += $"\n\nActivity distance: {activity.FormatDistance(settings.FitnessUnits)}\n\n" +
+                    (activity.DurationText is { } duration ? $"Recorded duration: {duration}\n\n" : "") +
+                    (activity.FormatPace(settings.FitnessUnits) is { } pace ? $"Average pace: {pace}\n\n" : "") +
+                    (activity.AverageHeartRate is { } heart ? $"Average heart rate: {heart.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture)} bpm\n\n" : "");
+                await ArchiveFiles.TextAsync(zip, directory + "homestead-activity.html", FitnessRendering.Render(activity, settings.FitnessUnits), ct);
+            }
             static string Escape(string? text) => (text ?? "").Replace("\\", "\\\\").Replace("[", "\\[").Replace("]", "\\]")
                 .Replace("*", "\\*").Replace("_", "\\_").Replace("<", "&lt;").Replace(">", "&gt;").Replace("{{", "&#123;&#123;");
             static string Plain(string? text) => Escape(text).Replace("`", "\\`").Replace("#", "\\#").Replace("!", "\\!")

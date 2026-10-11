@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx xmlns="http://www.topografix.com/GPX/1/1" xmlns:gpxtpx="http://www.garmin.com/xmlschemas/TrackPointExtension/v1" version="1.1" creator="Homestead browser fixture">
+  <metadata><name>PRIVATE GPX METADATA</name></metadata>
+  <trk><trkseg>
+    <trkpt lat="41.88" lon="-87.63"><ele>180</ele><time>2026-10-11T12:00:00Z</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>120</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
+    <trkpt lat="41.881" lon="-87.631"><ele>185</ele><time>2026-10-11T12:01:00Z</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>140</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
+    <trkpt lat="41.882" lon="-87.63"><ele>182</ele><time>2026-10-11T12:02:00Z</time></trkpt>
+    <trkpt lat="41.883" lon="-87.632"><ele>187</ele><time>2026-10-11T12:03:00Z</time><extensions><gpxtpx:TrackPointExtension><gpxtpx:hr>150</gpxtpx:hr></gpxtpx:TrackPointExtension></extensions></trkpt>
+  </trkseg><trkseg>
+    <trkpt lat="41.884" lon="-87.633"><time>2026-10-11T12:10:00Z</time></trkpt>
+    <trkpt lat="41.885" lon="-87.632"><time>2026-10-11T12:11:00Z</time></trkpt>
+  </trkseg></trk>
+</gpx>
