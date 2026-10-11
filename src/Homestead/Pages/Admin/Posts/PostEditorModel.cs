@@ -22,6 +22,9 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
     [BindProperty] public string? UploadAlt { get; set; }
     [BindProperty] public bool InlineUpload { get; set; }
     [BindProperty] public bool ConfirmDelete { get; set; }
+    [BindProperty] public DateTime? ScheduleLocal { get; set; }
+    [BindProperty] public string? ScheduleOffset { get; set; }
+    public string ScheduleTimeZone { get; private set; } = "UTC";
     [TempData] public string? StatusMessage { get; set; }
     public Post Post { get; private set; } = null!;
     public ActiveSite Site => active;
@@ -59,7 +62,14 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
     {
         if (!ModelState.IsValid || NewPostType is { } type && !Enum.IsDefined(type)) return BadRequest();
         if (!await LoadEditorAsync(id)) return NotFound();
-        Input = ArticleInput.From(Post); return Page();
+        Input = ArticleInput.From(Post);
+        if (Post.Schedule is { } schedule)
+        {
+            var local = TimeZoneInfo.ConvertTime(new DateTimeOffset(schedule.PublishAtUtc), TimeZoneInfo.FindSystemTimeZoneById(ScheduleTimeZone));
+            ScheduleLocal = local.DateTime;
+            ScheduleOffset = local.ToString("zzz", System.Globalization.CultureInfo.InvariantCulture);
+        }
+        return Page();
     }
     public async Task<IActionResult> OnPostSaveAsync(Guid id)
     {
@@ -163,6 +173,9 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
         catch (KeyNotFoundException) { return NotFound(); }
     }
     public Task<IActionResult> OnPostPublishAsync(Guid id) => Transition(id, "publish", save: true);
+    public Task<IActionResult> OnPostScheduleAsync(Guid id) => ScheduleLocal is null
+        ? InvalidAsync(id, "Choose a publication date and time.", 400) : Transition(id, "schedule", save: true);
+    public Task<IActionResult> OnPostCancelScheduleAsync(Guid id) => Transition(id, "cancel-schedule", save: false);
     public Task<IActionResult> OnPostUnpublishAsync(Guid id) => Transition(id, "unpublish", save: false);
     public Task<IActionResult> OnPostDeleteAsync(Guid id) => ConfirmDelete ? Transition(id, "delete", save: false) : InvalidAsync(id, "Confirm deletion first.", 400);
     private async Task<IActionResult> Transition(Guid id, string action, bool save)
@@ -185,7 +198,12 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
                 if (!await LoadEditorAsync(id)) return NotFound();
                 return RedirectToPage("Index");
             }
-            var result = await publishing.TransitionAsync(id, action, Input.Version);
+            var result = action switch
+            {
+                "schedule" => await publishing.ScheduleAsync(id, Input.Version, ScheduleLocal!.Value, ScheduleOffset),
+                "cancel-schedule" => await publishing.CancelScheduleAsync(id, Input.Version),
+                _ => await publishing.TransitionAsync(id, action, Input.Version)
+            };
             StatusMessage = result.Message;
             if (action == "delete") return RedirectToPage("Index");
             return AfterTransition(id, action, result);
@@ -206,6 +224,7 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
         Post = post;
         var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
         IsTypeEnabled = settings.IsPostTypeEnabled(post.Type);
+        ScheduleTimeZone = settings.TimeZone;
         FitnessUnits = settings.FitnessUnits;
         return true;
     }

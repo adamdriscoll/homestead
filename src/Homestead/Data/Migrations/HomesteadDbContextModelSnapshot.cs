@@ -609,6 +609,37 @@ namespace Homestead.Data.Migrations
                     b.ToTable("PublishedSnapshots");
                 });
 
+            modelBuilder.Entity("Homestead.Data.Entities.PostSchedule", b =>
+                {
+                    b.Property<Guid>("PostId")
+                        .HasColumnType("TEXT");
+
+                    b.Property<bool>("Committed")
+                        .HasColumnType("INTEGER");
+
+                    b.Property<string>("Error")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime?>("LastAttemptAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("NextAttemptAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<DateTime>("PublishAtUtc")
+                        .HasColumnType("TEXT");
+
+                    b.Property<string>("SnapshotJson")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.HasKey("PostId");
+
+                    b.HasIndex("NextAttemptAtUtc");
+
+                    b.ToTable("PostSchedules");
+                });
+
             modelBuilder.Entity("Homestead.Data.Entities.PostTag", b =>
                 {
                     b.Property<Guid>("PostId")
@@ -1021,6 +1052,17 @@ namespace Homestead.Data.Migrations
                     b.Navigation("Post");
                 });
 
+            modelBuilder.Entity("Homestead.Data.Entities.PostSchedule", b =>
+                {
+                    b.HasOne("Homestead.Data.Entities.Post", "Post")
+                        .WithOne("Schedule")
+                        .HasForeignKey("Homestead.Data.Entities.PostSchedule", "PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Post");
+                });
+
             modelBuilder.Entity("Homestead.Data.Entities.PostTag", b =>
                 {
                     b.HasOne("Homestead.Data.Entities.Post", "Post")
@@ -1112,6 +1154,8 @@ namespace Homestead.Data.Migrations
                     b.Navigation("PublishedSnapshot");
 
                     b.Navigation("Review");
+
+                    b.Navigation("Schedule");
 
                     b.Navigation("Steps");
 

@@ -236,6 +236,25 @@
         </div>
         </div>
         <div id="editor-details" class="p-4 space-y-5" aria-label="Post settings">
+            <section class="space-y-3 border-b border-base-300 pb-5" aria-label="Scheduled publication">
+                <h2 class="text-xl font-semibold">Scheduled publication</h2>
+                @if (Model.Post.Schedule is { } schedule)
+                {
+                    <p role="status">Scheduled for <time datetime="@schedule.PublishAtUtc.ToString("O")">@DateDisplay.Timestamp(schedule.PublishAtUtc, Model.ScheduleTimeZone)</time>.</p>
+                    @if (schedule.Error is not null) { <p role="alert">@schedule.Error Next check: @DateDisplay.Timestamp(schedule.NextAttemptAtUtc, Model.ScheduleTimeZone)</p> }
+                }
+                @if (Model.Post.Schedule is not { Committed: true })
+                {
+                    <label class="block space-y-2"><span>Publication date and time (@Model.ScheduleTimeZone)</span><input asp-for="ScheduleLocal" type="datetime-local" asp-format="{0:yyyy-MM-ddTHH:mm}" class="input w-full" /></label>
+                    <label class="block space-y-2"><span>UTC offset (optional, required when clocks move back)</span><input asp-for="ScheduleOffset" class="input w-full" placeholder="-05:00" maxlength="6" /></label>
+                    <p class="text-sm">Scheduling saves a copy of this draft. Later edits stay private unless you replace the schedule. Publish now, unpublish, or delete clears the schedule.</p>
+                    <div class="flex flex-wrap gap-2">
+                        <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Schedule" asp-route-newPostType="@newPostType" disabled="@(!Model.IsTypeEnabled)">@(Model.Post.Schedule is null ? "Schedule post" : "Replace schedule")</button>
+                        @if (Model.Post.Schedule is not null) { <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="CancelSchedule">Cancel schedule</button> }
+                    </div>
+                }
+                else { <p>Publication has been committed. Use Publish to replace it, Unpublish to withdraw it, or Rebuild site to retry.</p> }
+            </section>
             <fieldset class="fieldset border-b border-base-300 pb-5">
                 <legend class="fieldset-legend">Location</legend>
                 <p>These details become public when you publish.</p>
@@ -324,4 +343,3 @@
         <form method="dialog" class="modal-backdrop"><button>Cancel</button></form>
     </dialog>
 </div>
-

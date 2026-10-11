@@ -13,10 +13,10 @@ namespace Homestead.Features.Publishing;
 
 public sealed record PublicationResult(bool Succeeded, string Message, string? Url = null);
 
-public sealed class PublishingService(HomesteadDbContext db, ArticleService articles, PublicationLock writer,
+public sealed partial class PublishingService(HomesteadDbContext db, ArticleService articles, PublicationLock writer,
     IStaticPageRenderer renderer, SafeMarkdown markdown, MediaService media, StoragePaths paths,
     ActiveSite active, IGenerationActivation activation, ThemeService themes, IWebHostEnvironment environment, ILogger<PublishingService> logger,
-    AutomatedBackupService automatedBackups, NewsletterService newsletters)
+    AutomatedBackupService automatedBackups, NewsletterService newsletters, TimeProvider clock)
 {
     public async Task<PublicationResult> TransitionAsync(Guid id, string action, long version)
     {
@@ -31,19 +31,10 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 if (!(await db.SiteSettings.AsNoTracking().SingleAsync()).IsPostTypeEnabled(post.Type))
                     return new(false, "This post type is disabled. Enable it in Settings before publishing.");
                 if (PostValidation.PublicationError(post) is { } error) return new(false, error);
-                var now = DateTime.UtcNow;
-                var title = post.Type == PostType.Review ? post.Review!.Subject : post.Type == PostType.Checkin && string.IsNullOrWhiteSpace(post.Draft.Title) ? $"checkin-{post.Draft.LocationName}" : post.Draft.Title;
-                var slug = post.Slug ?? (string.IsNullOrWhiteSpace(title)
-                    ? $"{(post.Type == PostType.Microblog ? "note" : "gallery")}-{now:yyyy-MM-dd}-{post.Id.ToString("N")[..8]}" : Slugs.Create(title)); var root = slug; var suffix = 2;
-                while (await db.Posts.AnyAsync(x => x.Slug == slug && x.Id != id)) slug = $"{root}-{suffix++}";
-                var snapshot = ArticleService.Snapshot(post, slug, now);
-                try { snapshot = snapshot with { Media = markdown.ReferencedMedia(snapshot) }; }
+                ArticleSnapshot snapshot;
+                try { snapshot = await PrepareSnapshotAsync(post, clock.GetUtcNow().UtcDateTime); }
                 catch (InvalidOperationException ex) { return new(false, ex.Message); }
-                post.Slug = slug; post.FirstPublishedAtUtc ??= now; post.LastPublishedAtUtc = now;
-                post.Status = PostStatus.Published;
-                post.PublishedSnapshot ??= new PostPublishedSnapshot();
-                post.PublishedSnapshot.SnapshotJson = JsonSerializer.Serialize(snapshot);
-                post.PublishedSnapshot.PublishedAtUtc = now; post.PublishedSnapshot.IsActive = true;
+                CommitSnapshot(post, snapshot);
             }
             else if (action is "unpublish" or "delete")
             {
@@ -51,6 +42,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
                 if (post.PublishedSnapshot is { } snapshot) snapshot.IsActive = false;
             }
             else throw new InvalidOperationException("Unknown publication action.");
+            if (post.Schedule is { } schedule) { db.PostSchedules.Remove(schedule); post.Schedule = null; }
             await db.SaveChangesAsync();
             var result = await BuildLockedAsync();
             var stillLive = active.Current?.Articles.Any(x => x.PostId == id) == true;
@@ -180,6 +172,7 @@ public sealed class PublishingService(HomesteadDbContext db, ArticleService arti
             await activation.ActivateAsync(manifest); activated = true;
             try { await newsletters.CaptureLockedAsync(manifest); }
             catch (Exception ex) { logger.LogWarning("Newsletter activation recording failed ({FailureType}); the worker will retry.", ex.GetType().Name); }
+            await CompleteActiveSchedulesLockedAsync();
             generation.Status = GenerationStatus.Succeeded; generation.ActivatedAtUtc = manifest.ActivatedAtUtc;
             await db.SaveChangesAsync();
             await PruneAsync();

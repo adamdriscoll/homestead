@@ -20,18 +20,19 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Publish
         post.Type == PostType.Checkin && !string.IsNullOrWhiteSpace(post.Draft?.LocationName) ? $"Check-in at {post.Draft.LocationName}" :
         $"Untitled {post.Type switch { PostType.Microblog => "note", PostType.Checkin => "check-in", PostType.Fitness => "fitness activity", _ => post.Type.ToString().ToLowerInvariant() }}";
     [TempData] public string? StatusMessage { get; set; }
-    public async Task OnGetAsync(PostStatus? status)
+    public async Task OnGetAsync(PostStatus? status, bool scheduled = false)
     {
         var settings = await db.SiteSettings.AsNoTracking().SingleAsync();
         EnabledPostTypes = settings.EnabledPostTypes;
         TimeZone = settings.TimeZone;
         var liveIds = active.Current?.Articles.Select(x => x.PostId).ToArray() ?? [];
-        var query = db.Posts.AsSplitQuery().Include(x => x.Draft).Include(x => x.PublishedSnapshot)
+        var query = db.Posts.AsSplitQuery().Include(x => x.Draft).Include(x => x.PublishedSnapshot).Include(x => x.Schedule)
             .Include(x => x.Tags).ThenInclude(x => x.Tag).Include(x => x.Media)
             .Include(x => x.Review).Include(x => x.Steps).Include(x => x.Supplies)
             .Where(x => x.Status != PostStatus.Deleted || liveIds.Contains(x.Id));
-        query = query.Where(x => EnabledPostTypes.Contains(x.Type));
+        query = query.Where(x => EnabledPostTypes.Contains(x.Type) || scheduled && x.Schedule != null);
         if (status is not null) query = query.Where(x => x.Status == status);
+        if (scheduled) query = query.Where(x => x.Schedule != null);
         Posts = await query.OrderByDescending(x => x.UpdatedAtUtc).ToListAsync();
     }
     public async Task<IActionResult> OnPostNewAsync(PostType type = PostType.Article)

@@ -69,6 +69,18 @@ Settings are saved before building. A successful build atomically activates all
 theme changes. If it fails, the previous complete site stays public; Settings
 shows the active theme and the rebuild failure. Use **Rebuild site** to retry.
 
+Scheduled posts and updates use the same renderer and atomic activation as an
+immediate publication. The schedule's frozen content stays private until its due
+time; ordinary rebuilds cannot include it early. All five built-in themes render
+the resulting snapshot through their existing listings and post templates.
+Scheduled updates retain the original permalink and first-publication date;
+new posts use the scheduled UTC instant as their publication date, including
+after downtime. Private previews continue to show the current draft, which may
+differ from the scheduled copy. Scheduling adds no public model members, manifest
+fields, CSS, or theme authoring requirements. Custom themes need no scheduling
+logic. Static exports include only the active generation, and Hugo exports keep
+scheduled copies in separate `draft: true` bundles with `homestead_scheduled_at`.
+
 If **Settings → Backup** is configured to back up before publication, the engine
 uploads a complete private backup before rendering any theme. A failed upload
 keeps the active generation and theme unchanged, with saved changes pending.

@@ -18,12 +18,25 @@ public sealed class Post
     public DateTime? LastPublishedAtUtc { get; set; }
     public PostDraft? Draft { get; set; }
     public PostPublishedSnapshot? PublishedSnapshot { get; set; }
+    public PostSchedule? Schedule { get; set; }
     public ReviewDetails? Review { get; set; }
     public FitnessActivity? Activity { get; set; }
     public List<GuideStep> Steps { get; set; } = [];
     public List<GuideSupply> Supplies { get; set; } = [];
     public List<PostMedia> Media { get; set; } = [];
     public List<PostTag> Tags { get; set; } = [];
+}
+
+public sealed class PostSchedule
+{
+    public Guid PostId { get; set; }
+    public Post Post { get; set; } = null!;
+    public DateTime PublishAtUtc { get; set; }
+    public string SnapshotJson { get; set; } = "{}";
+    public bool Committed { get; set; }
+    public DateTime? LastAttemptAtUtc { get; set; }
+    public DateTime NextAttemptAtUtc { get; set; }
+    public string? Error { get; set; }
 }
 
 public sealed class PostDraft

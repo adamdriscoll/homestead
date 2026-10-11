@@ -80,13 +80,18 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
                     await Bundle(working, true, false, PrivateSlug($"{slug}-working-{id:N}"), disabled);
             }
             else await Bundle(working, true, post.Status == PostStatus.Unpublished, slug, disabled);
+            if (post.Schedule is { } schedule)
+            {
+                var scheduled = JsonSerializer.Deserialize<ArticleSnapshot>(schedule.SnapshotJson) ?? throw new InvalidDataException("Invalid scheduled snapshot.");
+                await Bundle(scheduled, true, false, PrivateSlug($"{slug}-scheduled-{id:N}"), disabled, schedule.PublishAtUtc);
+            }
         }
         await ArchiveFiles.TextAsync(zip, "README.md", $"# Homestead Hugo export\n\nTested with Hugo {SupportedHugoVersion} (standard or extended). Run `hugo` in this directory; serve `public/`.\n\n" +
             "All nondeleted posts are included. Active published snapshots build by default. Drafts, unpublished posts, hidden post types, pending publications, and separate working bundles containing unpublished edits use `draft: true`. Hidden types retain their saved published snapshot alongside any working edits; `homestead_type_disabled` records the saved setting. If a settings rebuild failed, actually public snapshots still build by default. Use `hugo --buildDrafts` only to preview private work.\n\n" +
-            "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), `location` (name/address/latitude/longitude), `tools` (name/url) and `materials` (name/url/quantity), and ordered `steps` (id/body_markdown/duration_seconds/images). Locations, supplies, steps, durations, and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
+            "Each bundle includes `homestead_id`, `type`, `date`, `lastmod`, `url`, `tags`, `summary`, `cover`, ordered `images` (file/alt/caption/step_id), `review` (subject/rating/external_url), `location` (name/address/latitude/longitude), `tools` (name/url) and `materials` (name/url/quantity), and ordered `steps` (id/body_markdown/duration_seconds/images). Locations, supplies, steps, durations, and captions also appear in readable Markdown. `homestead_unpublished` records unpublished status. Scheduled copies use separate draft bundles with `homestead_scheduled_at` retaining the UTC due time; Hugo does not execute Homestead schedules. Working bundles use a private preview URL. Media uses local bundle filenames.\n\n" +
             "Raw Markdown HTML is disabled. This minimal layout renders all seven types, including fitness route/sensor diagrams in a generated homestead-activity.html resource, and carries the selected theme assets, HTML layout, and colors. Activity front matter retains parsed segments and measurements in SI units, with fitness_units recording the saved display preference. Diagrams and readable summaries use that preference. Original GPX bytes are private database backup data and are not exported publicly. Razor templates are preserved in homestead-theme/ for migration; Hugo uses the shared layouts and does not execute Razor. When enabled, /map/ shows coordinates from nondraft post bundles using bundled Leaflet and online OpenStreetMap tiles. It is a migration starting point. Keep this archive private: it includes drafts and original photos.\n", ct);
 
-        async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug, bool disabled = false)
+        async Task Bundle(ArticleSnapshot snapshot, bool draft, bool unpublished, string bundleSlug, bool disabled = false, DateTime? scheduledAt = null)
         {
             if (string.IsNullOrEmpty(bundleSlug) || bundleSlug.Any(c => c is not (>= 'a' and <= 'z' or >= '0' and <= '9' or '-')))
                 throw new InvalidDataException("Invalid export slug.");
@@ -112,6 +117,7 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
                 homestead_id = snapshot.PostId,
                 homestead_unpublished = unpublished,
                 homestead_type_disabled = disabled,
+                homestead_scheduled_at = scheduledAt,
                 summary = snapshot.Summary,
                 cover = snapshot.Media.SingleOrDefault(x => x.Id == snapshot.CoverMediaId)?.Filename,
                 images,

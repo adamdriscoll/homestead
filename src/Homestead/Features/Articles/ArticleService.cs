@@ -11,7 +11,7 @@ public sealed class DraftConflictException : Exception;
 public sealed class ArticleService(HomesteadDbContext db, PublicationLock writer)
 {
     public Task<Post?> FindAsync(Guid id) => db.Posts.AsSplitQuery().Include(x => x.Draft)
-        .Include(x => x.PublishedSnapshot).Include(x => x.Tags).ThenInclude(x => x.Tag)
+        .Include(x => x.PublishedSnapshot).Include(x => x.Schedule).Include(x => x.Tags).ThenInclude(x => x.Tag)
         .Include(x => x.Media).ThenInclude(x => x.MediaAsset)
         .Include(x => x.Review).Include(x => x.Activity).Include(x => x.Steps).Include(x => x.Supplies)
         .SingleOrDefaultAsync(x => x.Id == id && x.Status != PostStatus.Deleted);

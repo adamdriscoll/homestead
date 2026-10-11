@@ -13,6 +13,7 @@
     </div>
     <nav class="flex flex-wrap gap-2" aria-label="Post filters">
         <a class="btn" href="/admin/posts">All</a>
+        <a class="btn" href="/admin/posts?scheduled=true">Scheduled</a>
         @foreach (var status in new[] { "Draft", "Published", "Unpublished" })
         { <a class="btn" href="/admin/posts?status=@status">@status</a> }
     </nav>
@@ -25,6 +26,11 @@
         <article class="border border-base-300 rounded-lg p-4 space-y-2">
             <h2 class="text-xl font-semibold"><a href="/admin/posts/@post.Id/edit">@Homestead.Pages.Admin.Posts.IndexModel.DraftTitle(post)</a></h2>
             <p>@(post.Type == Homestead.Data.Entities.PostType.Checkin ? "Check-in" : post.Type == Homestead.Data.Entities.PostType.Fitness ? "Fitness activity" : post.Type.ToString()) · @post.Status · @(live is null ? "Not currently public" : "Currently public")</p>
+            @if (post.Schedule is { } schedule)
+            {
+                <p>Scheduled for <time datetime="@schedule.PublishAtUtc.ToString("O")">@DateDisplay.Timestamp(schedule.PublishAtUtc, Model.TimeZone)</time></p>
+                @if (schedule.Error is not null) { <p role="status">@schedule.Error Next check: @DateDisplay.Timestamp(schedule.NextAttemptAtUtc, Model.TimeZone)</p> }
+            }
             <p class="text-sm">Updated <time datetime="@post.UpdatedAtUtc.ToString("O")" title="@DateDisplay.Timestamp(post.UpdatedAtUtc, Model.TimeZone)" aria-label="@DateDisplay.Timestamp(post.UpdatedAtUtc, Model.TimeZone)">@DateDisplay.Relative(post.UpdatedAtUtc)</time></p>
             @if (live is not null && Homestead.Features.Articles.ArticleService.HasDraftChanges(post, live)) { <p>Unpublished edits</p> }
             @if (pending) { <p role="status">Publication pending. @(live is not null ? "The previous post is still public." : "This post is not public.") Rebuild to apply saved changes.</p> }

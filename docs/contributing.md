@@ -50,6 +50,17 @@ For backup and rollback operations, follow the repository's
 
 ## Quality checks
 
+`ScheduledPublicationTests` uses migrated SQLite, a fake clock, and activation
+faults to cover all seven types, private frozen copies and photos, stale versions,
+replacement/cancellation, manual publication actions, DST ambiguity and skipped
+times, overdue restart/restore, retry timing, Hugo draft bundles, authenticated and
+antiforgery forms, and updates/listings/previews in all five built-in themes.
+Browser schedule tests cover ordinary and enhanced forms, autosave before
+scheduling, replace/cancel, mobile/light/dark layouts, and real worker activation
+without exposing later edits. The scheduled-posts migration creates a private
+`PostSchedules` table without rebuilding `Posts` or changing its publication
+trigger. No environment configuration or external service is added.
+
 `AutomatedBackupTests` covers persisted schedules, concurrent checks, retry timing,
 private protected credentials, authenticated/antiforgery settings forms, disabled
 backups, pre-build failure with pending desired state, archive cleanup, and full

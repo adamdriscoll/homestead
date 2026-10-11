@@ -5,6 +5,41 @@ The supplied Compose configuration adds Caddy for HTTPS. It serves administratio
 article authoring/uploads/preview, and a generated public site. Ordinary public requests
 read the active generation's HTML, CSS, and selected media without querying SQLite.
 
+## Scheduled publication
+
+In a post editor, open **Details → Scheduled publication**, choose a future date
+and time in the saved site timezone, and select **Schedule post**. Scheduling saves
+outstanding edits and freezes a validated copy. Later draft edits remain private;
+**Replace schedule** saves a new copy and time. A published post keeps its current
+public copy until the scheduled update activates. **Posts → Scheduled** lists
+pending schedules and their retry status.
+
+Dates are converted to UTC when saved. Changing the site timezone afterwards
+does not move a schedule. A time skipped by daylight saving is rejected. For a
+time that occurs twice when clocks move back, enter the matching UTC offset to
+choose which occurrence, for example `-05:00` or `-06:00` for America/Chicago.
+
+An in-process worker checks at startup and every 30 seconds while Homestead is
+running. It processes overdue schedules after downtime through the shared
+publication lock, commits desired snapshots, then builds and atomically activates
+the entire site. Several due posts share one build. New posts use the scheduled
+instant as their first-publication date; updates retain the existing first date
+and URL. Publication can occur later than the selected time because of downtime,
+another mutation, a backup, or a build failure. No new environment settings,
+external scheduler, or runtime service is needed; run only one instance.
+
+**Cancel schedule** removes an uncommitted schedule without changing the draft or
+current public post. Once the worker has committed the desired publication, use
+**Unpublish** to withdraw it, **Publish** to replace it, or **Rebuild site** to retry.
+Immediate publish, unpublish, and delete clear the schedule. Scheduling and
+cancellation enforce draft versions, so stale tabs cannot replace newer choices.
+
+Build failures preserve the previous complete site and disclose pending publication
+in the editor and Posts list. The worker retries every five minutes and never reads
+later draft edits into a retry. Any successful rebuild can activate already committed
+changes. Disabled post types wait and retry until enabled, or can be cancelled
+before commitment. Saved schedules survive restart and full backup/restore.
+
 ## Optional Brevo newsletter
 
 Open **Settings → Newsletter**, enter a Brevo API key, verified sender email, and

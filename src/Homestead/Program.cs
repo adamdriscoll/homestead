@@ -69,6 +69,7 @@ builder.Services.AddSingleton<SafeMarkdown>();
 builder.Services.AddScoped<ArticleService>();
 builder.Services.AddScoped<MediaService>();
 builder.Services.AddScoped<PublishingService>();
+builder.Services.AddHostedService<ScheduledPublicationWorker>();
 builder.Services.AddSingleton<ThemeService>();
 builder.Services.AddSingleton<RazorThemeCompiler>();
 builder.Services.AddScoped<StaticExportService>();

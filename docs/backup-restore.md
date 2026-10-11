@@ -17,6 +17,12 @@ Caddy certificates, reverse-proxy configuration, and the application image are
 not included; preserve those separately. Saved canonical URL and branding are
 included in SQLite.
 
+Scheduled posts include their frozen snapshots, UTC due times, and retry state in
+SQLite. Restoring resumes pending schedules; overdue copies publish on the next
+worker check. Later draft edits remain separate. Static ZIPs contain only currently
+active posts. Hugo ZIPs retain scheduled copies as separate private `draft: true`
+bundles with `homestead_scheduled_at`; Hugo does not execute Homestead's scheduler.
+
 Fitness activity drafts retain their current original GPX bytes and parsed tracks
 in private SQLite, alongside the committed public snapshots. Backups preserve both
 so pending track replacements remain private after restoration. Replacing/removing

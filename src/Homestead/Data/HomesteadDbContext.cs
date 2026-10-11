@@ -11,6 +11,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     public DbSet<Post> Posts => Set<Post>();
     public DbSet<PostDraft> PostDrafts => Set<PostDraft>();
     public DbSet<PostPublishedSnapshot> PublishedSnapshots => Set<PostPublishedSnapshot>();
+    public DbSet<PostSchedule> PostSchedules => Set<PostSchedule>();
     public DbSet<MediaAsset> MediaAssets => Set<MediaAsset>();
     public DbSet<PostMedia> PostMedia => Set<PostMedia>();
     public DbSet<ReviewDetails> Reviews => Set<ReviewDetails>();
@@ -33,6 +34,12 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<PostSchedule>(e =>
+        {
+            e.HasKey(x => x.PostId);
+            e.HasOne(x => x.Post).WithOne(x => x.Schedule).HasForeignKey<PostSchedule>(x => x.PostId);
+            e.HasIndex(x => x.NextAttemptAtUtc);
+        });
         builder.Entity<NewsletterSettings>().ToTable("NewsletterSettings", t => t.HasCheckConstraint("CK_NewsletterSettings_Id", "Id = 1"));
         builder.Entity<NewsletterSubscriber>(e =>
         {
