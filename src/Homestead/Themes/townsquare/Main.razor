@@ -38,20 +38,6 @@
             </section>
         }
         <div data-town-layout>
-            <aside aria-labelledby="town-intro-title">
-                <section class="card">
-                    <div class="card-body">
-                        <h2 class="card-title" id="town-intro-title">A little about me</h2>
-                        <p>@Model.Site.DisplayAuthor</p>
-                        @if (!string.IsNullOrWhiteSpace(Model.Site.AuthorBio))
-                        {
-                            <p>@Model.Site.AuthorBio</p>
-                        }
-                        <a class="link" href="/about/">More about me</a>
-                    </div>
-                </section>
-                <p data-town-subscribe>Keep up with the latest <a class="link" href="/rss.xml">via RSS</a>.</p>
-            </aside>
             @Model.Content
         </div>
         @Model.Footer

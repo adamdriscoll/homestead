@@ -5,9 +5,10 @@ single-column feed, Journal uses a narrower serif reading layout, Ledger uses
 a wider masthead and two-column feed on larger screens, and Folio pairs a bold
 accent-colored cover with spacious typography and serif reading text. Town Square
 uses a Facebook-inspired social feed with author avatars, rounded post cards,
-a profile cover, and a desktop introduction sidebar. Each supports every post
-type, ordinary navigation without JavaScript, system light/dark appearance, the
-four accent presets, and optional primary, background, and text colors.
+a profile cover, and a full-width content column without an introduction sidebar.
+Each supports every post type, ordinary navigation without JavaScript, system
+light/dark appearance, the four accent presets, and optional primary, background,
+and text colors.
 
 Folio uses Razor templates for the document, navigation, footer, and
 post layouts, including a distinct note layout and structured review details in
@@ -17,7 +18,9 @@ No purchased assets or external fonts are required. The sources in
 `src/Homestead/Themes/folio` also serve as a built-in Razor authoring example.
 
 Town Square is included as a built-in option under **Settings → Public theme**.
-Its Razor sources live in `src/Homestead/Themes/townsquare`. Notes,
+Its Razor sources live in `src/Homestead/Themes/townsquare`. Feeds, post pages,
+and private previews use the full content width within the centered page layout;
+the About page remains accessible from the navigation and home profile cover. Notes,
 galleries, and check-ins show their full content in the feed; articles, reviews,
 and guides link from previews to their complete post. All navigation works without
 JavaScript. Styling is original, with no Facebook assets or external fonts.
