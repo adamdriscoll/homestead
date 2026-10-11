@@ -51,25 +51,26 @@
                     </figure>
                 }
             }
+            @if (post.Tags.Length > 0)
+            {
+                <nav aria-label="Post tags">
+                    @foreach (var tag in post.Tags) { <a class="link" href="@tag.Url">#@tag.Name</a> }
+                </nav>
+            }
             <div class="card-actions" data-town-actions>
-                <a class="link" href="@post.Url">@(Model.IsListing ? "Open post" : "Permalink") <span aria-hidden="true">↗</span></a>
-                @if (post.Tags.Length > 0)
+                <a class="btn btn-ghost btn-square border-0 shadow-none min-h-11 min-w-11 shrink-0" href="@post.Url" title="@(Model.IsListing ? "Open post" : "Permalink")" aria-label="@(Model.IsListing ? "Open post" : "Permalink")">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M7 17 17 7M7 7h10v10" /></svg>
+                </a>
+                @if (post.ShareLinks.Length > 0)
                 {
-                    <nav aria-label="Post tags">
-                        @foreach (var tag in post.Tags) { <a class="link" href="@tag.Url">#@tag.Name</a> }
+                    <nav aria-label="Share post" class="flex flex-wrap items-center gap-2 flex-1 min-w-0" data-social-sharing>
+                        @foreach (var link in post.ShareLinks)
+                        {
+                            <a class="btn btn-ghost btn-square border-0 shadow-none min-h-11 min-w-11" href="@link.Url" rel="noreferrer" title="@($"Share via {link.Label}")" aria-label="@($"Share via {link.Label}")">@((MarkupString)Homestead.Features.Publishing.SocialSharing.RenderIcon(link.Label))</a>
+                        }
                     </nav>
                 }
             </div>
-            @if (post.ShareLinks.Length > 0)
-            {
-                <nav aria-label="Share post" class="flex flex-wrap items-center gap-2" data-social-sharing>
-                    <span class="text-sm">Share:</span>
-                    @foreach (var link in post.ShareLinks)
-                    {
-                        <a class="btn btn-outline min-h-11" href="@link.Url" rel="noreferrer" aria-label="@($"Share via {link.Label}")">@link.Label</a>
-                    }
-                </nav>
-            }
         </div>
     </article>
 }

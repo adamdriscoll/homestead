@@ -22,8 +22,13 @@ Its Razor sources live in `src/Homestead/Themes/townsquare`. Feeds, post pages,
 and private previews use the full content width within the centered page layout;
 the About page remains accessible from the navigation and home profile cover. Notes,
 galleries, and check-ins show their full content in the feed; articles, reviews,
-and guides link from previews to their complete post. All navigation works without
-JavaScript. Styling is original, with no Facebook assets or external fonts.
+and guides link from previews to their complete post. The post-opening arrow is
+an icon-only borderless button to the left of the social sharing buttons. Its hover
+title and accessible name are “Open post” in listings and “Permalink” on post
+pages and private previews. It remains available when sharing is disabled;
+tags appear above the action row. Share buttons wrap on narrow screens.
+All navigation works without JavaScript. Styling is original, with no Facebook
+assets or external fonts.
 
 Colors use six-digit hex values such as `#25613e`. Empty fields restore theme
 defaults. Overrides apply in both light and dark mode, so check that your text and
@@ -63,7 +68,13 @@ active footer. Razor themes replacing the footer or entire document must honor
 Enable optional sharing buttons in **Settings → Social**. Bluesky, Facebook, X,
 LinkedIn, Reddit, and email can each be selected independently; all start disabled.
 Every built-in theme shows enabled buttons on post details and home/type/tag feed
-cards for all six post types. Buttons are ordinary links using the published
+cards for all six post types. Buttons show only 16-pixel service icons, with no
+border or shadow. The post-opening arrow uses the same size and styling.
+Invisible padding retains at least 44-pixel touch targets, and keyboard focus
+remains visible. Buttons have no visible “Share:” prefix or service text.
+Each link has a native hover title and an
+accessible name such as “Share via Bluesky”; decorative SVGs are hidden from
+assistive technology. Buttons are ordinary links using the published
 display title and the saved canonical URL, with no third-party scripts or requests
 until a reader follows a link. Private previews omit sharing, including previews
 of posts that are already published. Saving rebuilds the site; a failed build
@@ -74,8 +85,13 @@ so changing Hugo's base URL also changes the shared URLs.
 Post templates replacing shared rendering should iterate `Model.Post.ShareLinks`
 to honor these choices, including in listings. Each entry has an encoded sharing
 destination in `Url` and a service name in `Label`; render `Url` as a normal Razor
-attribute and `Label` as text. The array is empty when sharing is disabled or the
-page is a private preview. Use accessible link labels, wrap buttons on narrow
+attribute. Use `Homestead.Features.Publishing.SocialSharing.RenderIcon(link.Label)`
+as a `MarkupString` for the shared server-owned inline SVG. Keep `Label` in the
+link's `title` and `aria-label` attributes (for example, “Share via Email”),
+and use borderless ghost buttons with 16-pixel icons and at least 44-pixel touch
+targets. No new model members or external icon assets are required.
+The array is empty when sharing is disabled or the page is a private preview.
+Use accessible link labels, wrap buttons on narrow
 screens, and preserve keyboard focus, touch targets, and light/dark colors.
 
 ## Newsletter navigation and forms

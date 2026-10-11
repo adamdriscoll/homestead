@@ -121,8 +121,7 @@ html[data-public-theme="townsquare"] [data-town-location] { font-size: 0.9rem; }
 html[data-public-theme="townsquare"] [data-town-post] figure { display: block; margin-block: 1rem; }
 html[data-public-theme="townsquare"] [data-town-post] figure img { width: 100%; height: auto; max-height: 38rem; object-fit: contain; border-radius: 0.5rem; }
 html[data-public-theme="townsquare"] [data-town-post] figcaption { padding-top: 0.5rem; font-size: 0.85rem; }
-html[data-public-theme="townsquare"] [data-town-actions] { border-top: 1px solid var(--color-base-300); padding-top: 0.5rem; align-items: center; justify-content: space-between; gap: 0.25rem 1rem; font-size: 0.85rem; }
-html[data-public-theme="townsquare"] [data-town-actions] > a { display: inline-flex; align-items: center; gap: 0.25rem; min-height: 2.75rem; }
+html[data-public-theme="townsquare"] [data-town-actions] { border-top: 1px solid var(--color-base-300); padding-top: 0.5rem; align-items: flex-start; justify-content: flex-start; gap: 0.5rem; }
 html[data-public-theme="townsquare"] body > footer { max-width: 64rem; margin: auto; padding: 1.5rem; border-color: var(--color-base-300); font-size: 0.85rem; }
 @media (max-width: 72rem) {
   html[data-public-theme="townsquare"] [data-town-profile] { margin-inline: 1.5rem; }

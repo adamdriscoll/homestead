@@ -60,11 +60,38 @@ for (const javaScriptEnabled of [true, false]) {
             const sharing = page.locator('[data-social-sharing]').first();
             await expect(sharing).toBeVisible();
             await expect(sharing.getByRole('link')).toHaveCount(6);
+            await expect(sharing).toHaveText('');
+            if (theme === 'townsquare') {
+              const actions = page.locator('[data-town-actions]').first();
+              const label = path === articlePath || path === notePath ? 'Permalink' : 'Open post';
+              const open = actions.getByRole('link', { name: label, exact: true });
+              await expect(open).toHaveText('');
+              await expect(open).toHaveAttribute('title', label);
+              await expect(open.locator('svg')).toHaveAttribute('aria-hidden', 'true');
+              await expect(open.locator('svg')).toHaveAttribute('width', '16');
+              await expect(open.locator('svg')).toHaveAttribute('height', '16');
+              expect(await open.evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('0px');
+              const openBounds = await open.boundingBox();
+              const shareBounds = await sharing.getByRole('link').first().boundingBox();
+              expect(openBounds.width).toBeGreaterThanOrEqual(44);
+              expect(openBounds.height).toBeGreaterThanOrEqual(44);
+              expect(openBounds.x + openBounds.width).toBeLessThanOrEqual(shareBounds.x);
+              expect(openBounds.y).toBe(shareBounds.y);
+              await open.focus();
+              await expect(open).toBeFocused();
+            }
             for (const service of services) {
               const link = sharing.getByRole('link', { name: `Share via ${service}`, exact: true });
               await expect(link).toBeVisible();
+              await expect(link).toHaveAttribute('title', `Share via ${service}`);
+              await expect(link.locator('svg')).toHaveAttribute('aria-hidden', 'true');
+              await expect(link.locator('svg')).toHaveAttribute('focusable', 'false');
+              await expect(link.locator('svg')).toHaveAttribute('width', '16');
+              await expect(link.locator('svg')).toHaveAttribute('height', '16');
+              expect(await link.evaluate(el => getComputedStyle(el).borderTopWidth)).toBe('0px');
               expect(await link.getAttribute('href')).not.toContain('PRIVATE');
               expect(await link.evaluate(el => el.getBoundingClientRect().height)).toBeGreaterThanOrEqual(44);
+              expect(await link.evaluate(el => el.getBoundingClientRect().width)).toBeGreaterThanOrEqual(44);
             }
             const email = sharing.getByRole('link', { name: 'Share via Email', exact: true });
             const query = new URLSearchParams((await email.getAttribute('href')).split('?')[1]);

@@ -33,10 +33,9 @@
             @if (post.ShareLinks.Length > 0)
             {
                 <nav aria-label="Share post" class="flex flex-wrap items-center gap-2" data-social-sharing>
-                    <span class="text-sm">Share:</span>
                     @foreach (var link in post.ShareLinks)
                     {
-                        <a class="btn btn-outline min-h-11" href="@link.Url" rel="noreferrer" aria-label="@($"Share via {link.Label}")">@link.Label</a>
+                        <a class="btn btn-ghost btn-square border-0 shadow-none min-h-11 min-w-11" href="@link.Url" rel="noreferrer" title="@($"Share via {link.Label}")" aria-label="@($"Share via {link.Label}")">@((MarkupString)Homestead.Features.Publishing.SocialSharing.RenderIcon(link.Label))</a>
                     }
                 </nav>
             }

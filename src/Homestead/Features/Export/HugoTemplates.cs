@@ -16,13 +16,13 @@ internal static class HugoTemplates
             "{{ $title := replaceRE \"[[:cntrl:]]\" \"\" .Title }}" +
             "{{ $url := .Permalink | urlquery }}{{ $subject := $title | urlquery }}" +
             "{{ $text := printf \"%s %s\" $title .Permalink | urlquery }}" +
-            "<nav aria-label=\"Share post\" class=\"flex flex-wrap items-center gap-2\" data-social-sharing><span class=\"text-sm\">Share:</span>");
+            "<nav aria-label=\"Share post\" class=\"flex flex-wrap items-center gap-2\" data-social-sharing>");
         foreach (var (label, format) in templates)
         {
             var urlFormat = format.Replace("{0}", "%[1]s", StringComparison.Ordinal)
                 .Replace("{1}", "%[2]s", StringComparison.Ordinal).Replace("{2}", "%[3]s", StringComparison.Ordinal);
             // safeURL permits only these server-owned HTTPS/mailto templates after escaping their parameters.
-            html.Append($"<a class=\"btn btn-outline min-h-11\" href=\"{{{{ printf {System.Text.Json.JsonSerializer.Serialize(urlFormat)} $url $subject $text | safeURL }}}}\" rel=\"noreferrer\" aria-label=\"Share via {label}\">{label}</a>");
+            html.Append($"<a class=\"btn btn-ghost btn-square border-0 shadow-none min-h-11 min-w-11\" href=\"{{{{ printf {System.Text.Json.JsonSerializer.Serialize(urlFormat)} $url $subject $text | safeURL }}}}\" rel=\"noreferrer\" title=\"Share via {label}\" aria-label=\"Share via {label}\">{SocialSharing.RenderIcon(label)}</a>");
         }
         return html.Append("</nav>{{ end }}").ToString();
     }
