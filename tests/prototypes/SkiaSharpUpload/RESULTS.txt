@@ -1,0 +1,27 @@
+PNG: 3 x 4; image/png
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 8
+JPEG: 3 x 4; image/jpeg
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 9
+noninterleaved JPEG: 3 x 4; image/jpeg
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 12
+interlaced PNG: 16 x 16; image/png
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 8
+invalid small interlaced PNG: EXPECTED REJECTION This image is damaged or unsupported: ErrorInInput.; unfiltered Skia result: ErrorInInput
+palette PNG: 3 x 4; image/png
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 8
+16bit PNG: 3 x 4; image/png
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 8
+animated PNG: 3 x 4; image/png
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 83
+animated WebP: 3 x 4; image/webp
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 52
+lossy WebP: 3 x 4; image/webp
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 40
+lossless WebP: 3 x 4; image/webp
+  accepted truncated prefixes: Skia prototype 0, current ImageSharp 2
+Pillow-CMYK.jpg: 3 x 4
+Pillow-progressive.jpg: 3 x 4
+image/png with malformed ICC/EXIF/text: 3 x 4; metadata reached decoder: False
+image/jpeg with malformed ICC/EXIF/text: 3 x 4; metadata reached decoder: False
+image/webp with malformed ICC/EXIF/text: 3 x 4; metadata reached decoder: False
+Verdict: PASS; 0 requirement failures.
