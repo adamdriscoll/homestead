@@ -202,6 +202,10 @@ review validation, step/photo ordering, captions and alt text, foreign-media/ste
 rejection, safe Markdown, conflict detection, batch uploads, and failed build retry.
 The Compose smoke publishes all seven types and checks locations and gallery batch uploads.
 The CI workflow also builds and tests the Linux container with Caddy.
+`node tests/smoke/storage-permissions.mjs` uses the `homestead-smoke` image and
+isolated Docker volumes to check writable platform-owned mounts, owner-only
+private directories, restart retention, and rejection of inaccessible storage.
+Set `HOMESTEAD_SMOKE_IMAGE` to test another locally available image.
 Portability tests build the exported Hugo project with the real CLI and restore
 checksum-verified backups. Reliability tests inject activation and database
 failures, including upload cleanup and post-activation reconciliation. The Docker

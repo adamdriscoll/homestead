@@ -58,4 +58,5 @@ jobs:
       - run: dotnet tool restore
       - run: dotnet ef migrations has-pending-model-changes --project src/Homestead --no-build --configuration Release
       - run: docker build -f deploy/Dockerfile -t homestead-smoke --build-arg HOMESTEAD_VERSION .
+      - run: node tests/smoke/storage-permissions.mjs
       - run: node tests/smoke/docker-smoke.mjs

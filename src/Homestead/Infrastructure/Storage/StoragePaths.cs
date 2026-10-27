@@ -14,7 +14,7 @@ public sealed class StoragePaths
     public string CurrentPath => Path.Combine(SitePath, "current.json");
     public string InitialBaseUrl { get; }
 
-    public StoragePaths(IConfiguration configuration, IWebHostEnvironment environment)
+    public StoragePaths(IConfiguration configuration, IWebHostEnvironment environment, ILogger<StoragePaths> logger)
     {
         InitialBaseUrl = configuration["HOMESTEAD_BASE_URL"] ?? "";
         if (!SettingsInput.IsCanonicalUrl(InitialBaseUrl))
@@ -29,7 +29,18 @@ public sealed class StoragePaths
         {
             Directory.CreateDirectory(path);
             if (!OperatingSystem.IsWindows())
-                File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+            {
+                try
+                {
+                    File.SetUnixFileMode(path, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+                }
+                catch (UnauthorizedAccessException) when (path == DataRoot)
+                {
+                    // Managed disk mounts can be writable without granting the app ownership or chmod rights.
+                    // Private subdirectories still require owner-only permissions; SQLite verifies database access.
+                    logger.LogWarning("Cannot restrict permissions on data root {DataRoot}. Ensure the host restricts disk access, or use an app-owned subdirectory. Private subdirectory permission checks remain required.", DataRoot);
+                }
+            }
         }
     }
 }

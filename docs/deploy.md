@@ -180,6 +180,30 @@ docker compose restart
 Ordinary `docker compose down` preserves volumes. `down --volumes` deletes your
 content and administrator; use it only for a disposable installation.
 
+## Managed persistent disks (Render)
+
+Attach a persistent disk and set `HOMESTEAD_DATA_PATH` to a directory beneath its
+mount path. For a fresh installation with a disk mounted at `/var/data`, use
+`/var/data/homestead`. The non-root image user must be able to create this
+directory. Only files beneath the disk mount survive redeploys; see Render's
+[persistent disk documentation](https://render.com/docs/disks).
+
+Some managed mounts are writable by the app but owned by the platform, which
+prevents the app from changing their Unix permissions. Homestead attempts to set
+owner-only permissions on its data root. If the host denies that operation, it
+logs a warning and continues; private subdirectories still require owner-only
+permissions, and storage must remain writable. Prefer an app-owned subdirectory
+so Homestead can also restrict access to the root-level database files. Restrict
+access to the disk through the hosting platform.
+
+Older images fail at `File.SetUnixFileMode` with `Operation not permitted` when
+the configured data path is a platform-owned mount. Deploy an image containing
+the managed-mount fix. Keep an existing installation's data path unchanged:
+switching `/var/data` to `/var/data/homestead` does not move the database, originals,
+or keys and would start a separate installation. A deliberate move requires the
+app to be stopped and all data retained together. Never delete the persistent
+disk to resolve this permission error.
+
 ## Configuration
 
 | Variable | Behavior |
