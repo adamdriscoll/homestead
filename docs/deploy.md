@@ -92,6 +92,32 @@ exactly-once remote delivery. Restoring an older backup can also replay sends
 accepted after that backup; disable newsletters before resuming a restored copy
 if needed. Test with your own subscription before inviting readers.
 
+## Production image releases
+
+The **Production image** GitHub Actions workflow runs when a `v*` tag is pushed
+or a GitHub release is published, including prereleases. The tag must equal `v`
+plus `Version` in `Directory.Build.props`, for example `v0.1.0-rc.1`. It runs the
+existing CI workflow, including .NET tests, formatting/model checks, and the
+isolated Docker smoke test, before building `deploy/Dockerfile` and publishing a
+Linux AMD64 image to GitHub Container Registry (GitHub Packages):
+
+```sh
+docker pull ghcr.io/poshtools/homestead:v0.1.0-rc.1
+```
+
+The image preserves the complete release tag, including the `v` prefix and any
+prerelease suffix. Only that version tag is published. Publishing a release for
+an already pushed tag runs the workflow again; runs for the same tag are
+serialized. Repository, source commit, and version are recorded as OCI labels.
+
+Publishing uses the workflow's `GITHUB_TOKEN` with `contents: read` and
+`packages: write`; no separate registry secret is required. Organization policy
+must allow package publication. New packages are private by default; set the
+package visibility to public in GitHub if anonymous pulls are intended, or
+authenticate Docker to pull a private package. See GitHub's
+[Container registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+The Compose instructions below continue to build from the checked-out source.
+
 ## Production on Linux
 
 For a fresh Ubuntu LTS Droplet, create an ordinary sudo-capable operator account,
