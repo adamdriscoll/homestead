@@ -95,8 +95,9 @@ if needed. Test with your own subscription before inviting readers.
 ## Production image releases
 
 The **Production image** GitHub Actions workflow runs when a `v*` tag is pushed
-or a GitHub release is published, including prereleases. The tag must equal `v`
-plus `Version` in `Directory.Build.props`, for example `v0.1.0-rc.1`. It runs the
+or a GitHub release is published, including prereleases. Tags use
+`vMAJOR.MINOR.PATCH` with an optional prerelease suffix, for example `v0.0.1` or
+`v0.1.0-rc.1`, at most 128 characters and without `+` build metadata. It runs the
 existing CI workflow, including .NET tests, formatting/model checks, and the
 isolated Docker smoke test, before building `deploy/Dockerfile` and publishing a
 Linux AMD64 image to GitHub Container Registry (GitHub Packages):
@@ -106,7 +107,14 @@ docker pull ghcr.io/poshtools/homestead:v0.1.0-rc.1
 ```
 
 The image preserves the complete release tag, including the `v` prefix and any
-prerelease suffix. Only that version tag is published. Publishing a release for
+prerelease suffix. The application version comes from the tag with its `v` prefix
+removed, so `v0.0.1` builds application version `0.0.1` regardless of the default
+in `Directory.Build.props`. CI builds/tests and the smoke-test image use that same
+version. Backups record this application version and require the matching release
+image to restore. Local/source Docker builds retain the source default unless
+`--build-arg HOMESTEAD_VERSION=0.0.1` is supplied.
+
+Only that version tag is published. Publishing a release for
 an already pushed tag runs the workflow again; runs for the same tag are
 serialized. Repository, source commit, and version are recorded as OCI labels.
 

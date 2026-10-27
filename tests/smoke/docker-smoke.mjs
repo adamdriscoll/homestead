@@ -263,6 +263,10 @@ try {
   docker(['run', '-d', '--name', staticContainer, '-p', '127.0.0.1::8080', '-v', `${temp}:/archives:ro`,
     '--entrypoint', 'sh', 'caddy:2.10.2-alpine', '-c', 'mkdir /site && unzip -q /archives/Static.zip -d /site && caddy file-server --root /site --listen :8080']);
   staticCreated = true;
+  if (process.env.HOMESTEAD_VERSION) {
+    const manifest = JSON.parse(docker(['exec', staticContainer, 'unzip', '-p', '/archives/Backup.zip', 'manifest.json']));
+    assert.equal(manifest.ApplicationVersion, process.env.HOMESTEAD_VERSION, 'Backup records the release application version');
+  }
   const staticPort = Number(docker(['port', staticContainer, '8080']).split(':').at(-1));
   docker([...base, 'stop', 'homestead']);
   async function staticHttp(path) {

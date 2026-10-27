@@ -128,11 +128,16 @@ public sealed class AutomatedBackupTests
     [Fact]
     public async Task Backup_form_is_authenticated_validated_and_keeps_saved_credentials_private()
     {
-        using var data = new TemporaryData(); var uploads = new Uploads(); var clock = new Clock();
+        // HttpClient's cookie container checks persistent-cookie expiry against wall-clock time.
+        using var data = new TemporaryData(); var uploads = new Uploads(); var clock = new Clock { Now = DateTimeOffset.UtcNow };
         using var app = Application(data, uploads, clock); using var client = app.Client();
         Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync("/admin/settings")).StatusCode);
-        _ = await TestApplication.Setup(client); _ = await TestApplication.Login(client);
-        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/admin/settings?handler=Backup", new FormUrlEncodedContent(new Dictionary<string, string>()))).StatusCode);
+        var setup = await TestApplication.Setup(client); var login = await TestApplication.Login(client);
+        Assert.Equal(HttpStatusCode.Redirect, setup.StatusCode); Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Equal("/admin", login.Headers.Location!.ToString());
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/admin/settings")).StatusCode);
+        var invalid = await client.PostAsync("/admin/settings?handler=Backup", new FormUrlEncodedContent(new Dictionary<string, string>()));
+        Assert.Equal(HttpStatusCode.BadRequest, invalid.StatusCode);
         var fields = new Dictionary<string, string>
         {
             ["Backup.Enabled"] = "true",

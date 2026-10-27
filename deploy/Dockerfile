@@ -26,7 +26,10 @@ COPY src/Homestead/ src/Homestead/
 COPY --from=styles /work/wwwroot/css/site.css src/Homestead/wwwroot/css/site.css
 COPY --from=styles /work/wwwroot/icons/ src/Homestead/wwwroot/icons/
 COPY --from=styles /work/Maps/leaflet/ src/Homestead/Maps/leaflet/
-RUN dotnet publish src/Homestead/Homestead.csproj -c Release --no-restore -p:BuildFrontend=false -o /app
+ARG HOMESTEAD_VERSION
+RUN set --; \
+    if [ -n "$HOMESTEAD_VERSION" ]; then set -- "-p:Version=$HOMESTEAD_VERSION"; fi; \
+    dotnet publish src/Homestead/Homestead.csproj -c Release --no-restore -p:BuildFrontend=false -o /app "$@"
 
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS runtime
 USER root
