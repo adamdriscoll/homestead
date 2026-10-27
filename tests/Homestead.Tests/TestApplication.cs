@@ -30,7 +30,7 @@ public sealed class TemporaryData : IDisposable
     }
 }
 
-public sealed class TestApplication(string dataPath, string environment = "Development", string? setupToken = TestApplication.SetupToken, Action<IServiceCollection>? configureServices = null)
+public sealed class TestApplication(string dataPath, string environment = "Development", string? setupToken = TestApplication.SetupToken, Action<IServiceCollection>? configureServices = null, bool httpsAtEdge = false)
     : WebApplicationFactory<Program>
 {
     public const string SetupToken = "test-only-bootstrap-secret-32-characters";
@@ -49,7 +49,8 @@ public sealed class TestApplication(string dataPath, string environment = "Devel
             ["HOMESTEAD_DATA_PATH"] = dataPath,
             ["HOMESTEAD_BASE_URL"] = "https://example.test",
             ["HOMESTEAD_SETUP_TOKEN"] = setupToken,
-            ["HOMESTEAD_TRUSTED_PROXIES"] = "192.0.2.10"
+            ["HOMESTEAD_TRUSTED_PROXIES"] = "192.0.2.10",
+            ["HOMESTEAD_HTTPS_AT_EDGE"] = httpsAtEdge.ToString()
         }));
     }
 

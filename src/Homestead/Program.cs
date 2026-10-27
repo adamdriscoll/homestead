@@ -137,13 +137,23 @@ await using (var scope = app.Services.CreateAsyncScope())
 app.UseForwardedHeaders();
 if (!app.Environment.IsDevelopment())
 {
+    if (app.Configuration.GetValue<bool>("HOMESTEAD_HTTPS_AT_EDGE"))
+    {
+        // The operator guarantees public HTTPS; the private edge-to-app connection may use HTTP.
+        // Set the scheme before HSTS, secure antiforgery cookies, and authentication redirects.
+        app.Use((context, next) =>
+        {
+            context.Request.Scheme = "https";
+            return next(context);
+        });
+    }
     app.UseExceptionHandler("/Error"); app.UseHsts();
     app.Use(async (context, next) =>
     {
         if (!context.Request.IsHttps && !context.Request.Path.StartsWithSegments("/health"))
         {
             context.Response.StatusCode = StatusCodes.Status400BadRequest;
-            await context.Response.WriteAsync("HTTPS is required. Configure the trusted reverse proxy."); return;
+            await context.Response.WriteAsync("HTTPS is required. Configure the trusted reverse proxy or set HOMESTEAD_HTTPS_AT_EDGE=true when HTTPS is enforced at the edge."); return;
         }
         await next(context);
     });

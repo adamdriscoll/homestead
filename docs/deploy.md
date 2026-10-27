@@ -212,19 +212,31 @@ disk to resolve this permission error.
 | `HOMESTEAD_DATA_PATH` | Defaults to `/data`; must be outside `wwwroot` and writable by the app user. |
 | `HOMESTEAD_SETUP_TOKEN` | Required until the administrator exists, 32–1024 characters. Remove after setup. |
 | `HOMESTEAD_TRUSTED_PROXIES` | Comma-separated proxy IP addresses. Only these peers may supply forwarded scheme/client-IP headers; loopback is the default. The sample trusts Caddy at `172.30.0.3`. |
+| `HOMESTEAD_HTTPS_AT_EDGE` | Defaults to `false`. Set to `true` when the hosting edge enforces public HTTPS but delivers HTTP to Homestead without a trusted forwarded scheme. In production, treats incoming requests as HTTPS, bypassing the backend HTTPS check while retaining secure cookies. Restart after changing. |
 | `AllowedHosts` | ASP.NET host allowlist. Compose permits the configured domain and `localhost`. |
 | `ASPNETCORE_ENVIRONMENT` | Production in the container; Development is for local work. |
 
 The sample private subnet is `172.30.0.0/24`. If it conflicts with an existing
 network, change the subnet, both fixed service addresses, and the trusted proxy
 address together. The application port is not published on the host. Caddy
-terminates TLS and supplies the forwarded HTTPS scheme. Production rejects HTTP
-requests except internal health probes. The broad
+terminates TLS and supplies the forwarded HTTPS scheme. By default, production
+rejects HTTP requests except internal health probes. The broad
 `ASPNETCORE_FORWARDEDHEADERS_ENABLED` switch is intentionally disabled by the app.
 
 For another reverse proxy, allowlist its IP, forward `X-Forwarded-Proto` and
 `X-Forwarded-For`, limit backend network access to that proxy, and serve HTTPS.
 This follows [ASP.NET Core's trusted proxy guidance](https://learn.microsoft.com/en-us/aspnet/core/host-and-deploy/proxy-load-balancer?view=aspnetcore-10.0).
+
+For managed edge TLS hosting such as Render, where you cannot configure a stable
+trusted proxy IP, set `HOMESTEAD_HTTPS_AT_EDGE=true` in the service environment and
+redeploy. Keep `HOMESTEAD_BASE_URL` and the saved canonical URL on `https://`.
+This setting declares that all public traffic reaches Homestead through an edge
+that enforces HTTPS; restrict direct access to the backend accordingly. It treats
+the request scheme as HTTPS before antiforgery, authentication, and HSTS run, so
+setup and login work over the internal HTTP connection with secure browser cookies
+and HTTPS login redirects. Forwarded client-IP and host handling stay unchanged;
+secure cookies still require HTTPS in the browser. The default Caddy deployment
+does not need this setting.
 
 ## Storage, upgrades, and health
 
@@ -358,7 +370,7 @@ backups, key files, setup secrets, or private content when sharing diagnostics.
 | Symptom | Check/action |
 |---|---|
 | Caddy cannot issue TLS | Verify DNS reaches this host, firewall ports 80/443, domain spelling, and Caddy logs. |
-| HTTPS required / unexpected login cookie behavior | Verify forwarded scheme and the exact trusted proxy IP; do not blanket-trust forwarded headers. |
+| HTTPS required / unexpected login cookie behavior | Verify forwarded scheme and the exact trusted proxy IP. For managed edge TLS without a stable proxy IP, set `HOMESTEAD_HTTPS_AT_EDGE=true` and redeploy, with public HTTPS enforced by the edge. |
 | Container exits before setup | Inspect required base URL, setup secret length, volume ownership, SQLite migration errors, and free disk. |
 | Readiness 503 while liveness succeeds | Inspect damaged active generation/SQLite; sign in and use Maintenance rebuild. |
 | Old content remains after publish/unpublish | Read the build failure notice/logs; fix disk/media issues and rebuild to apply pending public state. |

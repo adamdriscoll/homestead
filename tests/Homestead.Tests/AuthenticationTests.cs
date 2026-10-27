@@ -1,6 +1,8 @@
 using System.Net;
 using Homestead.Data.Entities;
 using Homestead.Features.Authentication;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -135,5 +137,54 @@ public sealed class AuthenticationTests
         request.Headers.Add("X-Forwarded-Proto", "https");
         Assert.Equal(HttpStatusCode.BadRequest, (await client.SendAsync(request)).StatusCode);
         Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("http://localhost/health/live")).StatusCode);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Production_can_explicitly_trust_edge_https_for_http_backend_requests(bool httpsAtEdge)
+    {
+        using var data = new TemporaryData();
+        using var app = new TestApplication(data.Path, "Production",
+            configureServices: services => services.AddSingleton<IStartupFilter, HttpBackendFilter>(), httpsAtEdge: httpsAtEdge);
+        // The browser uses HTTPS and secure cookies; the edge delivers HTTP without forwarded headers.
+        using var client = app.Client();
+        var page = await client.GetAsync("/setup");
+        if (!httpsAtEdge)
+        {
+            Assert.Equal(HttpStatusCode.BadRequest, page.StatusCode);
+            Assert.Contains("HTTPS is required", await page.Content.ReadAsStringAsync());
+            return;
+        }
+
+        Assert.Equal(HttpStatusCode.OK, page.StatusCode);
+        Assert.Contains("secure", Assert.Single(page.Headers.GetValues("Set-Cookie"), x => x.StartsWith(".AspNetCore.Antiforgery.")));
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/setup", new FormUrlEncodedContent([]))).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Setup(client)).StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, (await client.GetAsync("/setup")).StatusCode);
+        var anonymous = await client.GetAsync("/admin");
+        Assert.Equal(HttpStatusCode.Redirect, anonymous.StatusCode);
+        Assert.StartsWith("https://localhost/account/login", anonymous.Headers.Location!.ToString());
+        var login = await TestApplication.Login(client);
+        Assert.Equal(HttpStatusCode.Redirect, login.StatusCode);
+        Assert.Contains("secure", Assert.Single(login.Headers.GetValues("Set-Cookie"), x => x.StartsWith("Homestead.Auth=")));
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/admin")).StatusCode);
+        Assert.Equal(HttpStatusCode.BadRequest, (await client.PostAsync("/account/logout", new FormUrlEncodedContent([]))).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await TestApplication.Submit(client, "/admin", [], "/account/logout")).StatusCode);
+        Assert.Equal(HttpStatusCode.Redirect, (await client.GetAsync("/admin")).StatusCode);
+        Assert.Equal(HttpStatusCode.OK, (await client.GetAsync("/health/ready")).StatusCode);
+    }
+
+    private sealed class HttpBackendFilter : IStartupFilter
+    {
+        public Action<IApplicationBuilder> Configure(Action<IApplicationBuilder> next) => app =>
+        {
+            app.Use((context, continuation) =>
+            {
+                context.Request.Scheme = "http";
+                return continuation(context);
+            });
+            next(app);
+        };
     }
 }
