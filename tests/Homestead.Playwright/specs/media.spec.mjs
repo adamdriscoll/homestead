@@ -2,6 +2,43 @@ import { resolve } from 'node:path';
 import { repoRoot } from '../support/docker.mjs';
 import { test, expect, newPost, saved, publish } from '../support/fixtures.mjs';
 
+for (const javaScriptEnabled of [true, false]) {
+  test.describe(`50-photo upload with JavaScript ${javaScriptEnabled}`, () => {
+    test.use({ javaScriptEnabled });
+    test('optimizes photos, retains originals on request, and edits alt text after upload', async ({ owner: page, browser }) => {
+      test.setTimeout(180_000);
+      await newPost(page, 'gallery');
+      if (javaScriptEnabled) await page.getByRole('tab', { name: 'Images', exact: true }).click();
+      await expect(page.getByLabel('Image description (alt text)')).toHaveCount(0);
+      const retain = page.getByLabel('Retain original images privately');
+      await expect(retain).not.toBeChecked();
+      await retain.check();
+      const photo = resolve(repoRoot, 'src/Homestead/wwwroot/icon-192.png');
+      await page.getByLabel('Photos', { exact: false }).setInputFiles(Array(50).fill(photo));
+      await page.getByRole('button', { name: 'Upload photo', exact: true }).click();
+      const images = page.locator('#article-images > [data-media]');
+      await expect(images).toHaveCount(50, { timeout: 120_000 });
+      await expect(page.getByLabel('Image description (alt text)')).toHaveCount(50);
+      const original = images.first().getByRole('link', { name: 'Download original', exact: true });
+      await expect(original).toBeVisible();
+      const url = await original.getAttribute('href');
+      const response = await page.request.get(url);
+      expect(response.status()).toBe(200);
+      expect(response.headers()['cache-control']).toBe('no-store');
+      expect(response.headers()['content-disposition']).toContain('attachment');
+      const anonymous = await browser.newContext({ ignoreHTTPSErrors: true });
+      try {
+        expect((await anonymous.request.get(new URL(url, page.url()).href, { maxRedirects: 0 })).status()).toBe(302);
+      } finally { await anonymous.close(); }
+      if (javaScriptEnabled) await saved(page);
+      await page.reload();
+      await expect(retain).not.toBeChecked();
+      if (javaScriptEnabled) await page.getByRole('tab', { name: 'Images', exact: true }).click();
+      await expect(images.first().getByRole('link', { name: 'Download original', exact: true })).toBeVisible();
+    });
+  });
+}
+
 test('inline image upload and formatting appear in preview and become public only on publish', async ({ owner: page, browser, site }) => {
   await newPost(page);
   await page.getByLabel('Title', { exact: false }).fill('Browser image article');

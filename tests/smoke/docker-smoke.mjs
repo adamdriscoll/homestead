@@ -132,7 +132,7 @@ try {
   const validationToken = validationPage.text.match(/name="__RequestVerificationToken"[^>]*value="([^"]+)"/)[1];
   async function uploadFixture(filename, bytes, mime) {
     const body = Buffer.concat([
-      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n${validationToken}\r\n--${boundary}\r\nContent-Disposition: form-data; name="Upload"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`),
+      Buffer.from(`--${boundary}\r\nContent-Disposition: form-data; name="__RequestVerificationToken"\r\n\r\n${validationToken}\r\n--${boundary}\r\nContent-Disposition: form-data; name="RetainOriginal"\r\n\r\ntrue\r\n--${boundary}\r\nContent-Disposition: form-data; name="Upload"; filename="${filename}"\r\nContent-Type: ${mime}\r\n\r\n`),
       bytes, Buffer.from(`\r\n--${boundary}--\r\n`)
     ]);
     return http(editorHandler(validationEditor, 'Upload'), 'POST', body, `multipart/form-data; boundary=${boundary}`);
@@ -146,7 +146,7 @@ try {
     const uploaded = await http(validationEditor);
     const images = [...uploaded.text.matchAll(/data-insert-image="([^"]+)"/g)];
     const privateId = images.at(-1)[1].split('/')[2];
-    const original = await http(`/admin/media/${privateId}`, 'GET', undefined, undefined, true);
+    const original = await http(`/admin/media/${privateId}?original=true`, 'GET', undefined, undefined, true);
     assert.equal(original.status, 200); assert.deepEqual(original.text, bytes, filename);
     assert.equal((await http(images.at(-1)[1])).status, 404);
     assert.equal((await uploadFixture(filename, bytes.subarray(0, 32), mime)).status, 400, `truncated ${filename}`);

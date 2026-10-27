@@ -71,6 +71,7 @@ public sealed class PublishingTests
             using var metadata = JsonDocument.Parse(await uploaded.Content.ReadAsStringAsync());
             publicPhoto = metadata.RootElement.GetProperty("url").GetString()!;
             var privatePhoto = metadata.RootElement.GetProperty("privateUrl").GetString()!;
+            photo = await author.GetByteArrayAsync(privatePhoto);
             var mediaId = metadata.RootElement.GetProperty("id").GetString()!;
             Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync(privatePhoto)).StatusCode);
             Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(publicPhoto)).StatusCode);
@@ -193,10 +194,11 @@ public sealed class PublishingTests
         using var metadata = JsonDocument.Parse(await uploaded.Content.ReadAsStringAsync()); var url = metadata.RootElement.GetProperty("url").GetString()!;
         _ = await Action(client, id, "Publish", Fields(0, body: $"Original photo\n\n![Garden]({url})"));
         var pointer = File.ReadAllText(Path.Combine(data.Path, "site", "current.json"));
+        var expectedPhoto = await client.GetByteArrayAsync(url);
         File.Delete(Directory.GetFiles(Path.Combine(data.Path, "media", "originals"), "*", SearchOption.AllDirectories).Single());
         _ = await TestApplication.Submit(client, "/admin/posts", [], "/admin/posts?handler=Rebuild");
         Assert.Equal(pointer, File.ReadAllText(Path.Combine(data.Path, "site", "current.json")));
-        Assert.Equal(Photo(), await client.GetByteArrayAsync(url));
+        Assert.Equal(expectedPhoto, await client.GetByteArrayAsync(url));
         Assert.Contains("generation failed", await client.GetStringAsync("/admin/posts"));
     }
 
@@ -212,7 +214,8 @@ public sealed class PublishingTests
         Assert.Equal(HttpStatusCode.OK, (await Upload(client, id, "phone." + extension, bytes, mime)).StatusCode);
         await app.WithDatabase(async db =>
         {
-            var asset = await db.MediaAssets.SingleAsync(); Assert.Equal(3, asset.Width); Assert.Equal(4, asset.Height); Assert.Equal(mime, asset.MimeType);
+            var asset = await db.MediaAssets.SingleAsync(); Assert.Equal(3, asset.Width); Assert.Equal(4, asset.Height);
+            Assert.Contains(asset.MimeType, new[] { "image/webp", "image/png" });
         });
     }
 

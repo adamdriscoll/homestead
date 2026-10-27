@@ -545,6 +545,26 @@ preserve keyboard, touch, narrow-screen, and reduced-motion usability.
 
 ## Storage, exports, and backups
 
+New post photos are optimized on upload: their longest edge is at most 2,560
+pixels without upscaling, with aspect ratio and transparency preserved. Homestead
+chooses quality-82 WebP or lossless PNG, whichever is smaller. Only the first
+frame of animated input is used. A bounded reader applies EXIF orientation;
+other optional metadata is removed before decoding and encoding. Images can
+change extension and MIME type. Use the supplied media URLs and MIME types in
+templates; avoid constructing filenames or assuming JPEG/PNG. Theme model members
+are unchanged. Porch, Journal, Ledger, Folio, and Town Square, including their
+listing overrides, already use these URLs in listings, details, and previews.
+
+The Images tab accepts up to 50 photos per selection, at 20 MiB/40 MP per photo.
+Enhanced uploads process each file sequentially; ordinary forms accept the same
+batch. Add alt text and captions to each uploaded photo. **Retain original images
+privately** is unchecked by default. When checked, the original bytes are saved
+separately for an authenticated, no-store **Download original** link and full
+backup/restore. Public output, private previews, static ZIPs, and Hugo bundles use
+the optimized copy; retained originals never enter those exports. Original bytes
+can contain private metadata. Branding uploads and previously saved photos keep
+their existing bytes. Rebuilding does not optimize existing photos.
+
 Installed custom ZIPs have immutable content-hash IDs under private `data/themes`.
 Built-ins are application files outside `wwwroot`. Each build copies theme assets
 to its own `assets/theme/`, writes `assets/theme-colors.css`, and records the theme

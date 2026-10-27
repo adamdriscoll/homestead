@@ -126,7 +126,13 @@ Screenshots, videos, traces, and container logs are retained on failure under
 including progressive/CMYK JPEG, palette/16-bit/Adam7 PNG, and PNG/WebP animation.
 It checks all truncated prefixes, damaged pixels and containers, skipped malformed
 ICC/EXIF/text, exact 20 MiB/40 MP boundaries, integer-overflow headers, one decoded
-frame, byte-for-byte post/branding originals, and rejection without records/files.
+frame, byte-for-byte retained post/branding originals, and rejection without records/files.
+`ImageOptimizationTests` covers resizing, compression, transparency, all eight
+EXIF orientations, 50/51-photo batch boundaries, private original downloads,
+all five themes, export privacy, and backup restoration. Optimized post photos
+use quality-82 WebP or lossless PNG and a maximum 2,560-pixel edge. Existing media
+and branding uploads retain their bytes. The additive OptimizedPostImages migration
+adds nullable retained-original metadata to MediaAssets without rebuilding Posts.
 The Docker smoke runs the same supported corpus through Linux uploads and private
 downloads, then checks publication, static export, restart, and backup restore.
 SkiaSharp and `SkiaSharp.NativeAssets.Linux.NoDependencies` use paired exact

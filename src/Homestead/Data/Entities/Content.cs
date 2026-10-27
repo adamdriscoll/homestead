@@ -109,6 +109,8 @@ public sealed class MediaAsset
     public Guid Id { get; set; } = Guid.NewGuid();
     public string StoredFilename { get; set; } = "";
     public string OriginalFilename { get; set; } = "";
+    public string? RetainedOriginalFilename { get; set; }
+    public long? RetainedOriginalSize { get; set; }
     public string MimeType { get; set; } = "";
     public long Size { get; set; }
     public int Width { get; set; }

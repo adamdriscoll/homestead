@@ -170,7 +170,7 @@ public sealed class PortabilityTests
         Assert.DoesNotContain("PRIVATE", allPublic);
         var privateBundle = Directory.GetFiles(Path.Combine(output.Path, "content", "posts"), "index.md", SearchOption.AllDirectories)
             .Single(path => File.ReadAllText(path).Contains("PRIVATE DRAFT"));
-        Assert.NotEmpty(Directory.GetFiles(Path.GetDirectoryName(privateBundle)!, "*.png"));
+        Assert.Contains(Directory.GetFiles(Path.GetDirectoryName(privateBundle)!), path => Path.GetExtension(path) is ".png" or ".webp");
         Assert.False(Directory.Exists(Path.Combine(output.Path, "public", "posts", Path.GetFileName(Path.GetDirectoryName(privateBundle)!))));
         Assert.Contains("Gallery caption 日本語", allPublic);
         Assert.Contains("Second instruction", allPublic);

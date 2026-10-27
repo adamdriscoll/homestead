@@ -190,16 +190,18 @@ public sealed class ImageUploadValidationTests
         var post = await articles.CreateAsync();
         using var input = new MemoryStream(bytes);
         var file = new FormFile(input, 0, bytes.Length, "Upload", name) { Headers = new HeaderDictionary(), ContentType = mime };
-        var photo = await media.UploadAsync(post.Id, file, "Original photo");
-        Assert.Equal(bytes, await File.ReadAllBytesAsync(media.OriginalPath(photo)));
+        var photo = await media.UploadAsync(post.Id, file, "Original photo", retainOriginal: true);
         input.Position = 0;
         var branding = await media.UploadBrandingAsync("Favicon", file);
         Assert.Equal(bytes, await File.ReadAllBytesAsync(media.OriginalPath(branding)));
         await app.WithDatabase(async db =>
         {
             Assert.Equal(2, await db.MediaAssets.CountAsync());
-            foreach (var asset in await db.MediaAssets.ToArrayAsync())
-            { Assert.Equal(3, asset.Width); Assert.Equal(4, asset.Height); Assert.Equal(mime, asset.MimeType); Assert.Equal(bytes.Length, asset.Size); }
+            var asset = await db.MediaAssets.SingleAsync(x => x.Id == photo.Id);
+            Assert.Equal(bytes, await File.ReadAllBytesAsync(Path.Combine(data.Path, "media", "originals", asset.Id.ToString("D"), asset.RetainedOriginalFilename!)));
+            Assert.Equal(bytes.Length, asset.RetainedOriginalSize);
+            foreach (var item in await db.MediaAssets.ToArrayAsync())
+            { Assert.Equal(3, item.Width); Assert.Equal(4, item.Height); }
         });
     }
 

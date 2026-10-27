@@ -8,10 +8,18 @@ read the active generation's HTML, CSS, and selected media without querying SQLi
 Image uploads use bundled SkiaSharp native libraries. The Linux container includes
 the matching `Linux.NoDependencies` assets; operators need no image tool or extra
 runtime service. JPEG/PNG/WebP files retain the 20 MB/40 MP limits. Validation skips
-optional metadata in a temporary copy, decodes the first frame, and preserves the
-original file bytes. Incomplete containers and damaged pixel data detected by the
+optional metadata in a temporary copy and decodes the first frame. New post photos
+are resized to a maximum 2,560-pixel edge and encoded as WebP or PNG. Originals are
+discarded unless the author checks **Retain original images privately**. Branding
+keeps its original bytes. Incomplete containers and damaged pixel data detected by the
 decoder are rejected; some damaged files tolerated by the previous decoder now
 need re-exporting. Existing saved photos are not revalidated or rewritten on upgrade.
+The additive OptimizedPostImages migration adds nullable original-filename/size
+columns to MediaAssets; it does not rebuild Posts or change existing media paths.
+Post editors accept 50 images per batch. Ordinary multipart forms can reach
+1,001 MiB including overhead, so any additional reverse proxy must allow that body
+size and sufficient upload/processing time. Enhanced uploads send one image per
+request. No new configuration or external image service is required.
 
 ## Scheduled publication
 

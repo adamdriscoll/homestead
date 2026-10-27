@@ -210,10 +210,17 @@ app.MapGet("/health/live", () => Results.Text("Healthy"));
 app.MapGet("/health/ready", async (HomesteadDbContext db, ActiveSite active, CancellationToken ct) =>
     active.RecoveryError is null && await db.Database.CanConnectAsync(ct) && (active.IsHealthy || !await db.Users.AnyAsync(ct))
         ? Results.Text("Ready") : Results.StatusCode(503));
-app.MapGet("/admin/media/{id:guid}", async (Guid id, HomesteadDbContext db, StoragePaths storage) =>
+app.MapGet("/admin/media/{id:guid}", async (Guid id, bool? original, HttpContext context, HomesteadDbContext db, StoragePaths storage) =>
 {
     var asset = await db.MediaAssets.AsNoTracking().SingleOrDefaultAsync(x => x.Id == id);
     if (asset is null) return Results.NotFound();
+    context.Response.Headers.CacheControl = "no-store";
+    if (original == true)
+    {
+        if (asset.RetainedOriginalFilename is not { } retained) return Results.NotFound();
+        var originalFile = Path.Combine(storage.OriginalsPath, asset.Id.ToString("D"), retained);
+        return File.Exists(originalFile) ? Results.File(originalFile, "application/octet-stream", asset.OriginalFilename) : Results.NotFound();
+    }
     var file = Path.Combine(storage.OriginalsPath, asset.Id.ToString("D"), asset.StoredFilename);
     return File.Exists(file) ? Results.File(file, asset.MimeType) : Results.NotFound();
 }).RequireAuthorization();

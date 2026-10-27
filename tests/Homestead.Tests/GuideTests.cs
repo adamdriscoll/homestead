@@ -261,12 +261,16 @@ public sealed class GuideTests
         await db.GetService<IMigrator>().MigrateAsync("20261008214025_LocationMap");
         var post = new Post { Type = PostType.Guide, Slug = "old-guide", FirstPublishedAtUtc = DateTime.UtcNow, Draft = new() { Title = "Old guide" } };
         var media = new MediaAsset { StoredFilename = "old.png" };
-        db.Posts.Add(post); db.MediaAssets.Add(media); await db.SaveChangesAsync();
+        db.Posts.Add(post); await db.SaveChangesAsync();
+        // Seed the historical schema without current MediaAsset columns.
+        await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO MediaAssets (Id, StoredFilename, OriginalFilename, MimeType, Size, Width, Height, UploadedAtUtc) VALUES ({media.Id}, {media.StoredFilename}, '', '', 0, 0, 0, {media.UploadedAtUtc})");
         var stepId = Guid.NewGuid();
         await db.Database.ExecuteSqlInterpolatedAsync($"INSERT INTO GuideSteps (Id, PostId, \"Order\", BodyMarkdown) VALUES ({stepId}, {post.Id}, 0, 'Existing instructions')");
         db.PostMedia.Add(new() { PostId = post.Id, MediaAssetId = media.Id, GuideStepId = stepId }); await db.SaveChangesAsync();
         db.ChangeTracker.Clear(); await db.Database.MigrateAsync();
         var step = await db.GuideSteps.SingleAsync();
+        var upgradedMedia = await db.MediaAssets.SingleAsync();
+        Assert.Equal("old.png", upgradedMedia.StoredFilename); Assert.Null(upgradedMedia.RetainedOriginalFilename); Assert.Null(upgradedMedia.RetainedOriginalSize);
         Assert.Equal(stepId, step.Id); Assert.Equal("Existing instructions", step.BodyMarkdown); Assert.Null(step.DurationSeconds); Assert.Null(step.Title);
         Assert.Equal(stepId, (await db.PostMedia.SingleAsync()).GuideStepId); Assert.Empty(await db.GuideSupplies.ToArrayAsync());
         Assert.Empty(await db.Database.GetPendingMigrationsAsync());

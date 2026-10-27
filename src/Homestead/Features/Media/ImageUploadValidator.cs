@@ -3,7 +3,7 @@ using SkiaSharp;
 
 namespace Homestead.Features.Media;
 
-// Isolate optional metadata from the native decoder; never rewrite stored uploads.
+// Isolate optional metadata from the native decoder.
 public static class ImageUploadValidator
 {
     public const int MaximumBytes = 20 * 1024 * 1024;
@@ -11,6 +11,12 @@ public static class ImageUploadValidator
     private static readonly uint[] CrcTable = CreateCrcTable();
 
     public static (int Width, int Height, string MimeType) Validate(byte[] original, string extension, string? contentType)
+    {
+        using var bitmap = Decode(original, extension, contentType);
+        return (bitmap.Width, bitmap.Height, Detect(original));
+    }
+
+    internal static SKBitmap Decode(byte[] original, string extension, string? contentType)
     {
         if (original.Length is <= 0 or > MaximumBytes)
             throw new InvalidOperationException("Images must be between 1 byte and 20 MB.");
@@ -28,12 +34,15 @@ public static class ImageUploadValidator
         var info = codec.Info;
         CheckDimensions(info.Width, info.Height);
         // Use a predictable four-byte pixel format. Info is checked before allocation.
-        using var bitmap = new SKBitmap(new SKImageInfo(info.Width, info.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
-        if (bitmap.GetPixels() == IntPtr.Zero) throw Damaged();
-        var result = codec.GetPixels(bitmap.Info, bitmap.GetPixels(), bitmap.RowBytes, new SKCodecOptions(0));
-        if (result != SKCodecResult.Success)
-            throw Damaged();
-        return (info.Width, info.Height, mime);
+        var bitmap = new SKBitmap(new SKImageInfo(info.Width, info.Height, SKColorType.Rgba8888, SKAlphaType.Premul));
+        try
+        {
+            if (bitmap.GetPixels() == IntPtr.Zero) throw Damaged();
+            var result = codec.GetPixels(bitmap.Info, bitmap.GetPixels(), bitmap.RowBytes, new SKCodecOptions(0));
+            if (result != SKCodecResult.Success) throw Damaged();
+            return bitmap;
+        }
+        catch { bitmap.Dispose(); throw; }
     }
 
     private static string Detect(ReadOnlySpan<byte> bytes)

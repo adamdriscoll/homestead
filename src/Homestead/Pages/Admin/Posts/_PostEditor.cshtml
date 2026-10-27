@@ -210,6 +210,8 @@
                         </select></label>
                     }
                     <div class="flex flex-wrap gap-2">
+                        @if (image.MediaAsset.RetainedOriginalFilename is not null)
+                        { <a class="btn" href="/admin/media/@image.MediaAssetId?original=true">Download original</a> }
                         <button type="button" class="btn" data-insert-image="@url">Insert image</button>
                         <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="photo-up:@image.MediaAssetId">Move photo up</button>
                         <button class="btn" asp-page="@Model.EditorPage" asp-route-id="@Model.Post.Id" asp-page-handler="Arrange" asp-route-newPostType="@newPostType" name="command" value="photo-down:@image.MediaAssetId">Move photo down</button>
@@ -227,8 +229,10 @@
                     <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
                 }
             </span><input asp-for="Uploads" form="image-upload" class="file-input w-full" type="file" multiple accept="image/jpeg,image/png,image/webp,.heic,.heif" /></label>
-            <p class="text-sm">JPEG, PNG, WebP · up to 20 MB each · five per upload</p>
-            <label class="block space-y-2"><span>Image description (alt text)</span><input asp-for="UploadAlt" form="image-upload" class="input w-full" maxlength="1000" /></label>
+            <p class="text-sm">JPEG, PNG, WebP · up to 20 MB each · 50 per upload</p>
+            <p class="text-sm">Photos are resized to at most 2,560 pixels on the longest edge and compressed. Add descriptions after uploading.</p>
+            <label class="flex items-center gap-2"><input asp-for="RetainOriginal" form="image-upload" class="checkbox" />Retain original images privately</label>
+            <p class="text-sm">Keeps an extra full-size copy for download and backup. The blog uses the optimized image.</p>
             <p class="text-sm">HEIC/HEIF: export as JPEG or select Most Compatible in your camera settings.</p>
             <noscript><p class="text-sm">Save your draft before uploading a photo.</p></noscript>
             <button class="btn" type="submit" form="image-upload">Upload photo</button>

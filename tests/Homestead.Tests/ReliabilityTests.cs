@@ -64,8 +64,10 @@ public sealed class ReliabilityTests
         await fresh.WithDatabase(async db => Assert.Equal(GenerationStatus.Succeeded, (await db.SiteGenerations.SingleAsync(x => x.Id == generation)).Status));
     }
 
-    [Fact]
-    public async Task Upload_database_failure_removes_original_and_does_not_create_public_media()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Upload_database_failure_removes_original_and_does_not_create_public_media(bool retainOriginal)
     {
         using var data = new TemporaryData(); var fault = new SaveFault();
         using var app = new TestApplication(data.Path, configureServices: services =>
@@ -76,7 +78,7 @@ public sealed class ReliabilityTests
         fault.Media = true;
         await using var bytes = new MemoryStream(File.ReadAllBytes(Path.Combine(AppContext.BaseDirectory, "../../../../../src/Homestead/wwwroot/icon-192.png")));
         var image = new FormFile(bytes, 0, bytes.Length, "image", "photo.png") { Headers = new HeaderDictionary(), ContentType = "image/png" };
-        await Assert.ThrowsAsync<IOException>(() => scope.ServiceProvider.GetRequiredService<MediaService>().UploadAsync(post.Id, image, "photo"));
+        await Assert.ThrowsAsync<IOException>(() => scope.ServiceProvider.GetRequiredService<MediaService>().UploadAsync(post.Id, image, "photo", retainOriginal: retainOriginal));
         Assert.Empty(Directory.GetFiles(Path.Combine(data.Path, "media"), "*", SearchOption.AllDirectories));
         await app.WithDatabase(async db => Assert.Empty(await db.MediaAssets.ToArrayAsync()));
         Assert.Empty(app.Services.GetRequiredService<ActiveSite>().Current!.Articles);

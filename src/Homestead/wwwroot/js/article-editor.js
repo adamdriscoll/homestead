@@ -293,6 +293,9 @@
       label.append(select); container.append(label);
     }
     const actions = document.createElement('div'); actions.className = 'flex flex-wrap gap-2';
+    if (image.retainedOriginal) {
+      const download = document.createElement('a'); download.className = 'btn'; download.href = `${image.privateUrl}?original=true`; download.textContent = 'Download original'; actions.append(download);
+    }
     const insertButton = document.createElement('button'); insertButton.type = 'button'; insertButton.className = 'btn'; insertButton.dataset.insertImage = image.url; insertButton.textContent = 'Insert image'; actions.append(insertButton);
     for (const [command, text] of [['photo-up', 'Move photo up'], ['photo-down', 'Move photo down'], ['remove-photo', 'Remove photo']]) {
       const button = document.createElement('button'); button.type = 'submit'; button.className = 'btn'; button.name = 'command'; button.value = `${command}:${image.id}`;
@@ -337,7 +340,7 @@
   }
   function startUpload(files, target = null) {
     if (uploading || submitting) { setUploadStatus('Wait for the current upload to finish.', !!target); return; }
-    if (files.length < 1 || files.length > 5) { setUploadStatus('Choose between one and five photos per upload.', !!target); return; }
+    if (files.length < 1 || files.length > 50) { setUploadStatus('Choose between one and 50 photos per upload.', !!target); return; }
     uploading = true;
     clearTimeout(timer);
     uploadTask = uploadFiles(files, target);

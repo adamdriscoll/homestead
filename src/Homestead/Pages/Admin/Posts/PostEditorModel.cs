@@ -9,8 +9,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Homestead.Pages.Admin.Posts;
 
-[RequestSizeLimit(5 * MediaService.MaximumBytes + 1024 * 1024)]
-[RequestFormLimits(MultipartBodyLengthLimit = 5 * MediaService.MaximumBytes + 1024 * 1024)]
+[RequestSizeLimit(MediaService.MaximumFiles * MediaService.MaximumBytes + 1024 * 1024)]
+[RequestFormLimits(MultipartBodyLengthLimit = MediaService.MaximumFiles * MediaService.MaximumBytes + 1024 * 1024)]
 public abstract class PostEditorModel(ArticleService articles, MediaService media, PublishingService publishing, ActiveSite active, HomesteadDbContext db) : PageModel
 {
     [BindProperty] public ArticleInput Input { get; set; } = new();
@@ -20,6 +20,7 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
     [BindProperty] public IFormFile? GpxUpload { get; set; }
     [BindProperty] public List<IFormFile> Uploads { get; set; } = [];
     [BindProperty] public string? UploadAlt { get; set; }
+    [BindProperty] public bool RetainOriginal { get; set; }
     [BindProperty] public bool InlineUpload { get; set; }
     [BindProperty] public bool ConfirmDelete { get; set; }
     [BindProperty] public DateTime? ScheduleLocal { get; set; }
@@ -93,10 +94,10 @@ public abstract class PostEditorModel(ArticleService articles, MediaService medi
         try
         {
             var files = Upload is null ? Uploads : [Upload];
-            if (files.Count == 0 || files.Count > 5) return await InvalidUploadAsync(id, "Choose between one and five photos per upload.");
+            if (files.Count == 0 || files.Count > MediaService.MaximumFiles) return await InvalidUploadAsync(id, "Choose between one and 50 photos per upload.");
             ArticleMedia? image = null;
-            foreach (var file in files) { image = await media.UploadAsync(id, file, UploadAlt, InlineUpload, NewPostType); completed++; }
-            if (WantsJson) return new JsonResult(new { image!.Id, image.Url, image.PrivateUrl, image.AltText, editorUrl = Url.Page(EditorPage, new { id }) });
+            foreach (var file in files) { image = await media.UploadAsync(id, file, UploadAlt, InlineUpload, NewPostType, RetainOriginal); completed++; }
+            if (WantsJson) return new JsonResult(new { image!.Id, image.Url, image.PrivateUrl, image.AltText, retainedOriginal = RetainOriginal, editorUrl = Url.Page(EditorPage, new { id }) });
             StatusMessage = $"{files.Count} photo(s) uploaded. Review descriptions and photo placement before publishing.";
             return RedirectToPage(new { id });
         }

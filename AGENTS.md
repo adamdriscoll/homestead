@@ -133,8 +133,10 @@ no-store responses, writes no public files, and allows same-origin framing only.
 Disable raw Markdown HTML, restrict link protocols, encode structured text, and
 resolve server-owned media IDs/paths. Validate matching JPEG/PNG/WebP extension,
 MIME, and detected format before image identification/decoding; decode to reject
-corruption. Preserve original bytes; limits are 20 MB/40 MP, one decoded frame,
-and skipped metadata. Gallery batches allow five files. HEIC/HEIF currently needs
+corruption. Optimize new post photos to a maximum 2,560-pixel edge, choosing
+quality-82 WebP or lossless PNG by size. Retain original bytes privately only when
+requested; branding keeps original bytes. Limits are 20 MB/40 MP, one decoded frame,
+and skipped metadata. Post batches allow 50 files. HEIC/HEIF currently needs
 explicit JPEG/Most Compatible fallback guidance. Validate archive/public paths
 and uploaded filenames against traversal; uploads use server-owned filenames.
 
@@ -146,12 +148,15 @@ only from `HOMESTEAD_TRUSTED_PROXIES`; blanket framework proxy trust is disabled
 
 `ImageUploadValidator` uses SkiaSharp with matching Linux native assets. Detect and
 match JPEG/PNG/WebP before native codec creation. Filter optional metadata from a
-bounded temporary decode copy; persist the untouched original. Retain pixel,
+bounded temporary decode copy; original retention is opt-in for post photos. Retain pixel,
 palette, transparency, animation, and JPEG Adobe color-transform structure.
 Check dimensions before pixel allocation, decode only frame zero, and require
 `SKCodecResult.Success`; convenience decoders accept incomplete input. Keep NuGet
-audits enabled and managed/native versions paired. Reassess the filter and native
-codecs before adding metadata parsing, image processing, or formats. The
+audits enabled and managed/native versions paired. ImageOptimizer reads only the
+bounded TIFF orientation field before stripping metadata, applies orientation,
+and preserves transparency. Original downloads require authentication/no-store;
+backups include retained originals, while public/static/Hugo output uses optimized
+copies. Reassess the filter and native codecs before extending processing or formats. The
 ImageSharp replacement evidence is in [#8](https://github.com/PoshTools/homestead/issues/8).
 
 ## Portability and verification

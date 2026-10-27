@@ -46,6 +46,11 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
             {
                 var relative = $"media/originals/{asset.Id:D}/{asset.StoredFilename}";
                 await Add(relative, ArchiveFiles.SafePath(paths.DataRoot, relative));
+                if (asset.RetainedOriginalFilename is { } retained)
+                {
+                    var retainedRelative = $"media/originals/{asset.Id:D}/{retained}";
+                    await Add(retainedRelative, ArchiveFiles.SafePath(paths.DataRoot, retainedRelative));
+                }
             }
             foreach (var key in Directory.GetFiles(paths.KeysPath, "*.xml"))
                 await Add("keys/" + Path.GetFileName(key), key);
@@ -180,7 +185,11 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
             command.CommandText = "PRAGMA foreign_key_check";
             await using (var violations = await command.ExecuteReaderAsync(ct))
                 if (await violations.ReadAsync(ct)) throw new InvalidDataException("Backup SQLite foreign key check failed.");
-            command.CommandText = "SELECT Id, StoredFilename, Size FROM MediaAssets";
+            command.CommandText = "SELECT COUNT(*) FROM pragma_table_info('MediaAssets') WHERE name = 'RetainedOriginalFilename'";
+            var hasRetainedOriginals = (long)(await command.ExecuteScalarAsync(ct))! > 0;
+            command.CommandText = hasRetainedOriginals
+                ? "SELECT Id, StoredFilename, Size, RetainedOriginalFilename, RetainedOriginalSize FROM MediaAssets"
+                : "SELECT Id, StoredFilename, Size, NULL, NULL FROM MediaAssets";
             await using (var reader = await command.ExecuteReaderAsync(ct))
             {
                 while (await reader.ReadAsync(ct))
@@ -190,6 +199,13 @@ public sealed class BackupService(HomesteadDbContext db, StoragePaths paths, Pub
                     _ = ArchiveFiles.SafePath(staging, relative);
                     if (!manifest.Files.Any(x => x.Path == relative && x.Size == reader.GetInt64(2)))
                         throw new InvalidDataException($"Backup original media is missing or incomplete: {id}");
+                    if (!reader.IsDBNull(3))
+                    {
+                        var retainedRelative = $"media/originals/{id:D}/{reader.GetString(3)}";
+                        _ = ArchiveFiles.SafePath(staging, retainedRelative);
+                        if (reader.IsDBNull(4) || !manifest.Files.Any(x => x.Path == retainedRelative && x.Size == reader.GetInt64(4)))
+                            throw new InvalidDataException($"Backup retained original is missing or incomplete: {id}");
+                    }
                 }
             }
             // Backups from earlier versions have no theme column and default to Porch after migration.

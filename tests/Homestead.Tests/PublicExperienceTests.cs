@@ -53,11 +53,12 @@ public sealed class PublicExperienceTests
         using var data = new TemporaryData(); using var app = new TestApplication(data.Path);
         using var author = app.Client(); using var visitor = app.Client();
         _ = await TestApplication.Setup(author); _ = await TestApplication.Login(author);
-        var id = await Create(app); string? imageUrl = null;
+        var id = await Create(app); string? imageUrl = null; byte[]? storedPhoto = null;
         if (photo)
         {
             var uploaded = await Upload(author, $"/admin/posts/{id}/edit"); Assert.Equal(HttpStatusCode.OK, uploaded.StatusCode);
             using var json = JsonDocument.Parse(await uploaded.Content.ReadAsStringAsync()); imageUrl = json.RootElement.GetProperty("url").GetString();
+            storedPhoto = await author.GetByteArrayAsync(json.RootElement.GetProperty("privateUrl").GetString());
             Assert.Equal(HttpStatusCode.NotFound, (await visitor.GetAsync(imageUrl)).StatusCode);
         }
         var body = text ? "A **quiet** afternoon & a [safe link](https://example.test/)" : "";
@@ -78,7 +79,7 @@ public sealed class PublicExperienceTests
         Assert.Contains("https://example.test/rss.xml", html);
         if (photo)
         {
-            Assert.Contains(imageUrl!, html); Assert.Equal(Photo(), await visitor.GetByteArrayAsync(imageUrl));
+            Assert.Contains(imageUrl!, html); Assert.Equal(storedPhoto, await visitor.GetByteArrayAsync(imageUrl));
             Assert.Contains("https://example.test" + imageUrl, html);
         }
         else Assert.Contains("https://example.test/assets/social-default.png", html);
@@ -269,7 +270,7 @@ public sealed class PublicExperienceTests
         var noteHtml = await client.GetStringAsync($"/posts/{note.Slug}/");
         foreach (var image in note.Media)
         {
-            Assert.Equal(Photo(), await client.GetByteArrayAsync(image.Url)); Assert.Contains($"src=\"{image.Url}\"", noteHtml);
+            Assert.Equal(await client.GetByteArrayAsync(image.PrivateUrl), await client.GetByteArrayAsync(image.Url)); Assert.Contains($"src=\"{image.Url}\"", noteHtml);
         }
         XNamespace rssContent = "http://purl.org/rss/1.0/modules/content/";
         var noteContent = XDocument.Parse(await client.GetStringAsync("/rss.xml")).Descendants(rssContent + "encoded").Single().Value;

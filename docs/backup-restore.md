@@ -3,12 +3,18 @@
 ## Download a complete backup
 
 Sign in and open **Maintenance → Download full backup**. The ZIP contains a
-SQLite online backup, every recorded original photo (including unused and private
-photos), installed custom theme ZIPs, saved settings and drafts, the administrator's password hash, and the
+SQLite online backup, every recorded photo (including unused and private
+photos), optionally retained upload originals, installed custom theme ZIPs, saved settings and drafts, the administrator's password hash, and the
 Data Protection key ring. `manifest.json` records the application version, archive
 format, UTC creation time, file sizes, and SHA-256 checksums. Database capture and
 media/theme mutations share the publication lock. Authoring/publication may wait while
 the archive is assembled; public static requests continue normally.
+
+New post uploads keep an optimized image by default. **Retain original images
+privately** also saves the unchanged upload; backups include and validate both
+files, and restore rejects a missing retained original. Retained originals can
+contain EXIF/GPS metadata and are excluded from static and Hugo exports. Backups
+cannot recover original upload bytes discarded when that checkbox was off.
 
 The implementation uses [Microsoft.Data.Sqlite's online backup API](https://learn.microsoft.com/en-us/dotnet/standard/data/sqlite/backup),
 including committed WAL data. Copying a live `homestead.db` alone is unsafe.
