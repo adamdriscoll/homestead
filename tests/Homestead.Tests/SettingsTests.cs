@@ -29,7 +29,7 @@ public sealed class SettingsTests
                 {
                     var html = await client.GetStringAsync("/" + file);
                     Assert.Equal(!hide, html.Contains("Made at home with", StringComparison.Ordinal));
-                    Assert.Equal(!hide, html.Contains("href=\"https://github.com/PoshTools/homestead\"", StringComparison.Ordinal));
+                    Assert.Equal(!hide, html.Contains("href=\"https://github.com/adamdriscoll/homestead\"", StringComparison.Ordinal));
                     Assert.Contains("Welcome", html); Assert.Contains("RSS feed", html);
                 }
                 var settingsHtml = await client.GetStringAsync("/admin/settings");
