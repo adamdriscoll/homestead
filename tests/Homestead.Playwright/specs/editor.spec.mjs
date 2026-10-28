@@ -1,5 +1,80 @@
 import { test, expect, newPost, saved, publish } from '../support/fixtures.mjs';
 
+test('zen mode fills the viewport and keeps editing, tabs and keyboard exit working', async ({ owner: page }, testInfo) => {
+  await newPost(page);
+  await page.getByLabel('Title', { exact: false }).fill('Zen writing');
+  const body = page.getByLabel('Body');
+  await body.fill('A quiet place to write.');
+  const editor = page.getByRole('region', { name: 'Post editor', exact: true });
+  const normalWidth = (await editor.boundingBox()).width;
+  await page.getByRole('button', { name: 'Enter zen mode', exact: true }).click();
+  const exit = page.getByRole('button', { name: 'Exit zen mode', exact: true });
+  await expect(exit).toHaveAttribute('aria-pressed', 'true');
+  const viewport = page.viewportSize();
+  await expect.poll(() => editor.boundingBox()).toEqual({ x: 0, y: 0, width: viewport.width, height: viewport.height });
+  await expect(page.locator('body > header')).toHaveAttribute('inert');
+  const publishButton = page.getByRole('button', { name: 'Publish', exact: true });
+  await publishButton.evaluate(button => button.focus());
+  await expect(publishButton).not.toBeFocused();
+  await body.fill('Written and **saved** in zen mode.');
+  await saved(page);
+  await page.getByRole('tab', { name: 'Details', exact: true }).click();
+  await page.getByLabel('Tags (comma separated)').fill('Zen');
+  await page.getByRole('tab', { name: 'Images', exact: true }).click();
+  await expect(page.getByRole('heading', { name: 'Images', exact: true })).toBeVisible();
+  await page.getByRole('tab', { name: 'Preview', exact: true }).click();
+  await expect(page.frameLocator('#draft-preview').getByText('Written and saved in zen mode.')).toBeVisible();
+  await page.frameLocator('#draft-preview').locator('body').click();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Enter zen mode', exact: true })).toBeFocused();
+  await page.getByRole('tab', { name: 'Write', exact: true }).click();
+  await page.getByRole('button', { name: 'Enter zen mode', exact: true }).click();
+  for (const appearance of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: appearance });
+    await expect(page.locator('#editor-tabs')).toBeInViewport();
+    await expect(exit).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await page.screenshot({ path: testInfo.outputPath(`zen-${appearance}.png`) });
+  }
+  // Scrolling long content must leave the tabs and exit control available.
+  await body.fill('Long writing session.\n'.repeat(100));
+  await body.evaluate(element => { element.scrollTop = element.scrollHeight; });
+  await expect(exit).toBeInViewport();
+  await body.focus();
+  await page.keyboard.press('Escape');
+  await expect(page.getByRole('button', { name: 'Enter zen mode', exact: true })).toBeFocused();
+  await expect(page.getByRole('button', { name: 'Publish', exact: true })).toBeVisible();
+  expect((await editor.boundingBox()).width).toBeCloseTo(normalWidth, 0);
+  await page.getByRole('button', { name: 'Enter zen mode', exact: true }).click();
+  await exit.click();
+  await expect(page.getByRole('button', { name: 'Enter zen mode', exact: true })).toHaveAttribute('aria-pressed', 'false');
+  await saved(page);
+  await page.reload();
+  await expect(body).toHaveValue('Long writing session.\n'.repeat(100));
+});
+
+test('zen mode supports every post type and the guide supply tabs', async ({ owner: page }) => {
+  for (const type of ['article', 'note', 'review', 'guide', 'gallery', 'check-in', 'fitness activity']) {
+    await newPost(page, type);
+    await page.getByRole('button', { name: 'Enter zen mode', exact: true }).click();
+    await expect(page.locator('#editor-write')).toBeVisible();
+    await expect(page.locator('#editor-preview')).toBeHidden();
+    if (type === 'guide') {
+      for (const tab of ['Tools', 'Materials']) {
+        await page.getByRole('tab', { name: tab, exact: true }).click();
+        await expect(page.getByRole('heading', { name: tab, exact: true })).toBeVisible();
+      }
+    }
+    const exit = page.getByRole('button', { name: 'Exit zen mode', exact: true });
+    await expect(exit).toBeInViewport();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+    await exit.click();
+    await expect(page.locator('#post-type-navigation')).not.toHaveAttribute('inert');
+  }
+  await page.goto('/admin/posts');
+  await expect(page.getByText('No posts here yet. Choose a post type to start.')).toBeVisible();
+});
+
 test('untouched editors and empty previews leave no drafts', async ({ owner: page }) => {
   for (const type of ['article', 'note', 'review', 'guide', 'gallery', 'check-in']) {
     await newPost(page, type);

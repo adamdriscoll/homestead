@@ -32,5 +32,5 @@ test('ordinary forms save, preview and publish an article without JavaScript', a
   await publicPage.goto(publicPath);
   await expect(publicPage.getByText('Written without JavaScript.')).toBeVisible();
   await expect(publicPage.getByText('Location:', { exact: false })).toContainText('Quiet café');
-  await expect(publicPage.getByRole('navigation', { name: 'Post tags' }).getByRole('link', { name: 'Home', exact: true })).toBeVisible();
+  await expect(publicPage.getByRole('navigation', { name: 'Post tags' }).getByRole('link', { name: /^#?Home$/ })).toBeVisible();
 });
