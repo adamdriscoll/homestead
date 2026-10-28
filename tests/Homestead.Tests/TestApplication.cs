@@ -8,6 +8,8 @@ using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Hosting;
 
 namespace Homestead.Tests;
 
@@ -36,6 +38,42 @@ public sealed class TestApplication(string dataPath, string environment = "Devel
     public const string SetupToken = "test-only-bootstrap-secret-32-characters";
     public const string Password = "Test-only-password-123!";
     public const string Email = "owner@example.test";
+    private readonly HashSet<IDisposable> _fileProviders = [];
+
+    protected override IHost CreateHost(IHostBuilder builder)
+    {
+        // Apply before WebApplication.CreateBuilder loads JSON providers. Hundreds of
+        // isolated test hosts otherwise exhaust Linux's per-user inotify limit.
+        builder.ConfigureHostConfiguration(configuration => configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["hostBuilder:reloadConfigOnChange"] = "false"
+        }));
+        var host = base.CreateHost(builder);
+        TrackFileProviders(host.Services.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider);
+        return host;
+    }
+
+    private void TrackFileProviders(IFileProvider provider)
+    {
+        // Static web assets wrap the physical provider in a composite that does not
+        // dispose its children. Asset version tag helpers start watchers on them.
+        if (provider is CompositeFileProvider composite)
+            foreach (var child in composite.FileProviders) TrackFileProviders(child);
+        if (provider is IDisposable disposable) _fileProviders.Add(disposable);
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        try { base.Dispose(disposing); }
+        finally
+        {
+            if (disposing)
+            {
+                foreach (var provider in _fileProviders) provider.Dispose();
+                _fileProviders.Clear();
+            }
+        }
+    }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
