@@ -192,7 +192,10 @@ and ASP.NET Core's test host. `TestApplication` disables configuration file relo
 before host startup so the many isolated hosts do not exhaust Linux's per-user
 inotify limit. Configuration values are still loaded normally, and the application
 outside tests retains its default reload behavior. `TestApplicationTests` checks
-this in both Development and Production environments.
+this in both Development and Production environments. The fixture also disposes
+physical web-root file providers wrapped by static web assets, releasing the
+watchers started by admin asset version tag helpers on both synchronous and
+asynchronous disposal.
 Tests cover secure setup, single-account races,
 authentication, CSRF, private storage, settings, cookies, and restart behavior.
 Article tests also cover the complete publication lifecycle, autosave conflicts,

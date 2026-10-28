@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Hosting;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -18,5 +19,24 @@ public sealed class TestApplicationTests
         Assert.All(providers, provider => Assert.False(provider.Source.ReloadOnChange,
             $"Test configuration must not watch {provider.Source.Path}; many isolated hosts exhaust Linux inotify instances."));
         Assert.Equal(data.Path, configuration["HOMESTEAD_DATA_PATH"]);
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task Disposing_a_test_host_releases_asset_version_file_watchers(bool disposeAsync)
+    {
+        using var data = new TemporaryData();
+        using var app = new TestApplication(data.Path);
+        using var client = app.Client();
+        var provider = app.Services.GetRequiredService<IWebHostEnvironment>().WebRootFileProvider;
+        var html = await client.GetStringAsync("/setup");
+        Assert.Contains("/css/site.css?v=", html);
+        Assert.True(provider.GetFileInfo("css/site.css").Exists);
+
+        if (disposeAsync) await app.DisposeAsync();
+        else app.Dispose();
+
+        Assert.Throws<ObjectDisposedException>(() => provider.Watch("css/site.css"));
     }
 }
