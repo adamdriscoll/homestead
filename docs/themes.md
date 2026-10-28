@@ -127,7 +127,9 @@ are private and are absent from public theme models and generation manifests.
 Theme templates need no backup handling; private previews do not trigger backups.
 
 The shared footer shows “Made at home with Homestead”,
-with the bundled Homestead icon before the linked name. Administration also shows
+with the bundled Homestead icon before the name linked to
+`https://github.com/adamdriscoll/homestead`. Custom footer credits should use this
+repository URL as well. Administration also shows
 the icon before its Homestead title. The footer always uses the Homestead icon,
 including when a custom public favicon is selected. All five built-in themes
 support it, including Folio's footer override. Images have empty alternative text

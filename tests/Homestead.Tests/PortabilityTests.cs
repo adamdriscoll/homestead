@@ -157,7 +157,7 @@ public sealed class PortabilityTests
             Assert.DoesNotContain("<script>location", html);
             Assert.DoesNotContain("href=\"https://location.example.test\"", html);
             Assert.Equal(!hideCredit, html.Contains("Made at home with", StringComparison.Ordinal));
-            Assert.Equal(!hideCredit, html.Contains("href=\"https://github.com/PoshTools/homestead\"", StringComparison.Ordinal));
+            Assert.Equal(!hideCredit, html.Contains("href=\"https://github.com/adamdriscoll/homestead\"", StringComparison.Ordinal));
             if (post.Type == PostType.Guide)
             {
                 Assert.Contains("Mixing bowl", html); Assert.Contains("2 cups flour", html);

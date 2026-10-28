@@ -285,10 +285,11 @@ public sealed class ThemeTests
             Assert.Contains("/assets/theme/theme.css", html); Assert.Contains("id=\"main\"", html);
             Assert.Contains("https://example.test" + path, html);
             Assert.Contains("Made at home with", html);
-            Assert.Contains("href=\"https://github.com/PoshTools/homestead\"", html);
+            Assert.Contains("href=\"https://github.com/adamdriscoll/homestead\"", html);
             Assert.Contains("href=\"https://example.test/admin\">Admin</a>", html);
         }
         var postId = app.Services.GetRequiredService<ActiveSite>().Current!.Articles.Single().PostId;
+        Assert.Contains("href=\"https://github.com/adamdriscoll/homestead\"", await client.GetStringAsync($"/admin/posts/{postId}/preview"));
         Assert.Contains("href=\"https://example.test/admin\">Admin</a>", await client.GetStringAsync($"/admin/posts/{postId}/preview"));
         Assert.Contains("--color-primary:#123456", await client.GetStringAsync("/assets/theme-colors.css"));
         var admin = await client.GetStringAsync("/admin");
