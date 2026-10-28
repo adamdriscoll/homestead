@@ -85,6 +85,7 @@
         <partial name="/Pages/Admin/Posts/_MarkdownToolbar.cshtml" model='@("Markdown formatting")' />
         <textarea asp-for="Input.BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px]" maxlength="200000" rows="@(note || gallery || guide || checkin || fitness ? 6 : 16)"></textarea>
         </div>
+        <p class="text-sm">For diagrams, use a fenced code block starting with <code>```mermaid</code> and ending with <code>```</code>.</p>
         </div>
         @if (fitness)
         {

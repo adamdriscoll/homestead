@@ -4,6 +4,7 @@
 **/wwwroot/css/site.css
 **/wwwroot/icons/
 src/Homestead/Maps/leaflet/
+src/Homestead/Diagrams/vendor/
 src/Homestead/wwwroot/lib/
 src/Homestead/wwwroot/js/site.js
 src/Homestead/wwwroot/favicon.ico

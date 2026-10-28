@@ -131,7 +131,9 @@ public sealed class SafeMarkdown
         }
         using var output = new StringWriter();
         var renderer = new Markdig.Renderers.HtmlRenderer(output);
-        pipeline.Setup(renderer); renderer.Render(document);
+        pipeline.Setup(renderer);
+        renderer.ObjectRenderers.Insert(0, new MermaidCodeRenderer());
+        renderer.Render(document);
         return output.ToString();
     }
 

@@ -58,3 +58,9 @@ html[data-public-theme] main [data-gallery-image] figure img { width: auto; max-
   font: bold 14px/1 sans-serif;
 }
 [data-fitness-map] .leaflet-tile { border-radius: 0; }
+
+/* Shared diagram layout also applies inside custom post/listing templates. */
+[data-mermaid] { min-width: 0; max-width: 100%; margin-block: 1rem; }
+[data-mermaid] > img { display: block; width: 100%; height: auto; }
+[data-mermaid] summary { cursor: pointer; padding-block: .75rem; }
+[data-mermaid] pre { max-width: 100%; overflow-x: auto; }

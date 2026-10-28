@@ -157,6 +157,13 @@ public sealed partial class PublishingService(HomesteadDbContext db, ArticleServ
                     File.Copy(source, destination); files.Add(relative);
                 }
             }
+            if (posts.Any(MermaidDiagrams.Contains) || MermaidDiagrams.Contains(settings.AboutMarkdown))
+                foreach (var (relative, source) in MermaidDiagrams.Files(environment.ContentRootPath))
+                {
+                    var destination = Path.Combine(root, relative);
+                    Directory.CreateDirectory(Path.GetDirectoryName(destination)!);
+                    File.Copy(source, destination); files.Add(relative);
+                }
             foreach (var (file, contents) in theme.Files.Where(x => !ThemePackage.IsSource(x.Key)))
             {
                 var relative = "assets/theme/" + file;

@@ -24,6 +24,8 @@
     <None Remove="Themes/**/*.razor" />
     <None Include="Themes/**/*.razor" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="Maps/**" />
+    <Content Remove="Diagrams/**" />
+    <Content Include="Diagrams/**/*.mjs;Diagrams/**/*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Include="Maps/location-map.js;Maps/fitness-map.js;Maps/leaflet/leaflet.js;Maps/leaflet/leaflet.css;Maps/leaflet/LICENSE.txt;Maps/leaflet/images/marker-icon.png;Maps/leaflet/images/marker-icon-2x.png;Maps/leaflet/images/marker-shadow.png;Maps/leaflet/images/layers.png;Maps/leaflet/images/layers-2x.png" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
     <Content Remove="wwwroot/icons/**" />
     <Content Include="wwwroot/icons/toolbar.svg;wwwroot/icons/LICENSE.txt" CopyToPublishDirectory="PreserveNewest" />
@@ -44,5 +46,9 @@
   <Target Name="BuildStyles" BeforeTargets="BeforeBuild" Condition="'$(BuildFrontend)' != 'false'">
     <Exec Command="npm ci --no-audit --no-fund" WorkingDirectory="$(MSBuildProjectDirectory)" Condition="!Exists('node_modules')" />
     <Exec Command="npm run build:css" WorkingDirectory="$(MSBuildProjectDirectory)" />
+    <ItemGroup>
+      <Content Remove="Diagrams/vendor/**" />
+      <Content Include="Diagrams/vendor/**/*.mjs;Diagrams/vendor/**/*.txt" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
   </Target>
 </Project>

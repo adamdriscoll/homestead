@@ -25,6 +25,8 @@
     @foreach (var style in Page.Theme!.Manifest.Styles)
     { <link rel="stylesheet" href="@Page.Theme.AssetUrl(style, Page.Preview)" /> }
     <link rel="stylesheet" href="@(Page.Preview ? "/admin/themes/colors.css" : "/assets/theme-colors.css")" />
+    @if (HasDiagrams)
+    { <script type="module" src="@(Page.Preview ? "/admin/mermaid/diagrams.mjs" : "/assets/mermaid/diagrams.mjs")"></script> }
     @if (RouteMaps || Page.Path == "/map/" && !Page.Preview)
     {
         <meta name="referrer" content="strict-origin-when-cross-origin" />
@@ -123,6 +125,8 @@
     [Parameter, EditorRequired] public PublicPage Page { get; set; } = null!;
     private bool RouteMaps => Page.Article is { Type: PostType.Fitness, Activity: not null } || Page.Articles.Any(x => x.Type == PostType.Fitness && x.Activity is not null);
     private string MapAssets => Page.Preview ? "/admin/maps/" : "/assets/map/";
+    private bool HasDiagrams => Page.Article is { } post ? MermaidDiagrams.Contains(post)
+        : Page.Articles.Any(MermaidDiagrams.Contains) || Page.Path == "/about/" && MermaidDiagrams.Contains(Page.Settings.AboutMarkdown);
     private static readonly (string Path, string Label, PostType? Type)[] Navigation = [("/", "Home", null), ("/notes/", "Notes", PostType.Microblog), ("/articles/", "Articles", PostType.Article),
         ("/reviews/", "Reviews", PostType.Review), ("/guides/", "Guides", PostType.Guide), ("/galleries/", "Galleries", PostType.Gallery), ("/checkins/", "Check-ins", PostType.Checkin), ("/fitness/", "Fitness", PostType.Fitness), ("/about/", "About", null)];
     private ArticleMedia? GalleryImage => Page.Article?.Media.SingleOrDefault(x => x.Id == Page.GalleryImageId);

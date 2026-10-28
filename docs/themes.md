@@ -37,6 +37,41 @@ over the bottom of each photo on feeds, post pages, and private previews. Captio
 wrap and stay readable in light/dark appearance without hovering or JavaScript.
 Full-size gallery image pages keep their captions below the uncropped image.
 
+## Mermaid diagrams
+
+Use a fenced `mermaid` block in any post body or guide step:
+
+````markdown
+```mermaid
+flowchart LR
+    Draft --> Preview --> Publish
+```
+````
+
+Diagrams render in the browser using the pinned, locally bundled Mermaid runtime;
+no CDN, external fonts, or production Node.js service is required. Add `accTitle`
+and `accDescr` in Mermaid for an accessible title and description. Readers can
+expand **Diagram source** with the keyboard. Without JavaScript, if assets cannot
+load, or if the syntax is invalid, the encoded source remains readable. Invalid
+diagrams do not prevent publication. RSS retains the readable source.
+Diagrams are limited to 50,000 characters and 500 edges; larger definitions keep
+their source fallback. HTML labels, click actions, and external images are disabled.
+
+Porch, Journal, Ledger, Folio, and Town Square share responsive diagram styling and
+light/dark rendering. Their existing feed rules still apply: excerpt-only cards
+link to the complete post, where diagrams render. Private previews use the same
+renderer with authenticated, no-store assets under `/admin/mermaid/`; draft sources
+never enter the public generation. Shared diagram CSS applies to each theme's
+post and note overrides. Custom templates should preserve `Model.Head` and render
+`ContentHtml`, `BodyHtml`, or step `BodyHtml` without modifying `[data-mermaid]`
+wrappers. No theme model members, manifest fields, or database migration are added.
+
+Only generations containing diagrams copy the bundled runtime into their exact
+public allowlist at `/assets/mermaid/`. Static ZIPs retain that runtime and work
+independently of Homestead over HTTP(S). Hugo ZIPs preserve Mermaid fences, include
+a code-block render hook and the local runtime, and render diagrams after building
+with Hugo. Backups preserve the original Markdown as ordinary post content.
+
 ## Gallery image pages
 
 Each published gallery photo has a static page at
@@ -233,8 +268,9 @@ compiles templates and reports syntax/model errors before saving the package.
 Rendering errors prevent activation and leave the previous complete site public.
 
 Private previews use the same templates with authenticated media URLs. The shared
-head omits theme scripts, and Content Security Policy prohibits scripts even if a
-custom template emits one. Razor server code still runs in previews. Public
+head omits theme scripts, and Content Security Policy allows only bundled diagram
+scripts (plus bundled maps in fitness previews). Inline and theme scripts remain
+blocked. Razor server code still runs in previews. Public
 content and navigation must work without scripts.
 
 ZIPs may be at most 5 MB compressed and 20 MB expanded, with at most 128 entries.

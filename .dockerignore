@@ -2,6 +2,7 @@
 **/bin
 **/obj
 **/node_modules
+src/Homestead/Diagrams/vendor
 **/wwwroot/lib
 **/wwwroot/js/site.js
 **/wwwroot/favicon.ico
