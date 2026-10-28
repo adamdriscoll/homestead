@@ -9,6 +9,36 @@ namespace Homestead.Tests;
 public sealed class MarkdownTests
 {
     [Theory]
+    [InlineData(PostType.Microblog)]
+    [InlineData(PostType.Article)]
+    [InlineData(PostType.Review)]
+    [InlineData(PostType.Guide)]
+    [InlineData(PostType.Gallery)]
+    [InlineData(PostType.Checkin)]
+    [InlineData(PostType.Fitness)]
+    public void Every_post_type_renders_Mermaid_from_its_body(PostType type)
+    {
+        var post = Snapshot("```mermaid\nflowchart LR\nA --> B\n```") with { Type = type };
+        Assert.Contains("<figure data-mermaid>", new SafeMarkdown().RenderContent(post, false));
+    }
+
+    [Theory]
+    [InlineData("mermaid")]
+    [InlineData("Mermaid")]
+    public void Mermaid_fences_are_encoded_with_readable_source_and_other_code_stays_ordinary(string language)
+    {
+        var markdown = $"```{language}\nflowchart LR\nA[\"<script>alert(1)</script>\"] --> B\n```\n\n```csharp\nvar x = 1;\n```";
+        var html = new SafeMarkdown().Render(Snapshot(markdown), false);
+        Assert.True(MermaidDiagrams.Contains(markdown));
+        Assert.Contains("<figure data-mermaid><details open>", html);
+        Assert.Contains("&lt;script&gt;alert(1)&lt;/script&gt;", html);
+        Assert.Contains("<code class=\"language-csharp\">", html);
+        Assert.DoesNotContain("<script", html);
+        Assert.False(MermaidDiagrams.Contains("```text\nmermaid\n```"));
+        Assert.False(MermaidDiagrams.Contains("`mermaid`"));
+    }
+
+    [Theory]
     [InlineData("<script>alert(1)</script>")]
     [InlineData("[run](javascript:alert%281%29)")]
     [InlineData("[run](data:text/html,payload)")]

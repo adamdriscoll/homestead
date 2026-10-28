@@ -15,6 +15,7 @@ COPY src/Homestead/Features/Export/HugoTemplates.cs ./Features/Export/HugoTempla
 COPY src/Homestead/Styles ./Styles
 COPY src/Homestead/build-icons.mjs ./build-icons.mjs
 COPY src/Homestead/build-maps.mjs ./build-maps.mjs
+COPY src/Homestead/build-diagrams.mjs ./build-diagrams.mjs
 RUN npm run build:css
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
@@ -26,6 +27,7 @@ COPY src/Homestead/ src/Homestead/
 COPY --from=styles /work/wwwroot/css/site.css src/Homestead/wwwroot/css/site.css
 COPY --from=styles /work/wwwroot/icons/ src/Homestead/wwwroot/icons/
 COPY --from=styles /work/Maps/leaflet/ src/Homestead/Maps/leaflet/
+COPY --from=styles /work/Diagrams/vendor/ src/Homestead/Diagrams/vendor/
 ARG HOMESTEAD_VERSION
 RUN set --; \
     if [ -n "$HOMESTEAD_VERSION" ]; then set -- "-p:Version=$HOMESTEAD_VERSION"; fi; \

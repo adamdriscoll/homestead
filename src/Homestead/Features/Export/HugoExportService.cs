@@ -40,6 +40,8 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             foreach (var (relative, source) in LocationMapAssets.Files(environment.ContentRootPath))
                 await ArchiveFiles.CopyAsync(zip, "static/" + relative, source, ct);
         await ArchiveFiles.CopyAsync(zip, "static/assets/site.css", Path.Combine(environment.WebRootPath, "css", "site.css"), ct);
+        foreach (var (relative, source) in MermaidDiagrams.Files(environment.ContentRootPath))
+            await ArchiveFiles.CopyAsync(zip, "static/" + relative, source, ct);
         await ArchiveFiles.CopyAsync(zip, "static/" + (favicon?.Url.TrimStart('/') ?? "assets/favicon.png"),
             favicon is null ? Path.Combine(environment.WebRootPath, "logo.png") : media.OriginalPath(favicon), ct);
         if (favicon is not null && !settings.HideHomesteadCredit)

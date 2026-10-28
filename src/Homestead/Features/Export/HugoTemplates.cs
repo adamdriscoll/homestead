@@ -39,6 +39,7 @@ internal static class HugoTemplates
         foreach (var file in theme.Manifest.Styles)
             head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme/" + file + "\" | relURL }}\">");
         head.Append("<link rel=\"stylesheet\" href=\"{{ \"assets/theme-colors.css\" | relURL }}\">");
+        head.Append("<script type=\"module\" src=\"{{ \"assets/mermaid/diagrams.mjs\" | relURL }}\"></script>");
         if (settings.EnableLocationMap || activityMaps)
         {
             if (!activityMaps) head.Append("{{ if eq .Layout \"location-map\" }}");
@@ -100,6 +101,9 @@ internal static class HugoTemplates
 
     public static readonly (string Path, string Text)[] Files =
     [
+        ("layouts/_markup/render-codeblock-mermaid.html", """
+        <figure data-mermaid><details open><summary>Diagram source</summary><pre><code class="language-mermaid">{{ .Inner }}</code></pre></details></figure>
+        """),
         ("layouts/_markup/render-image.html", """
         {{ $alt := .PlainText }}{{ $destination := .Destination }}
         {{ range .Page.Params.images }}{{ if eq .file $destination }}{{ $alt = .alt }}{{ end }}{{ end }}

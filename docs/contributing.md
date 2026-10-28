@@ -122,6 +122,13 @@ Screenshots, videos, traces, and container logs are retained on failure under
 
 ### Application checks
 
+`MermaidTests` covers encoded diagram sources, all five built-in theme listings,
+post pages and authenticated previews, guide steps, committed snapshot privacy,
+conditional asset allowlisting and removal, and static/Hugo export assets.
+Mermaid is a pinned frontend build dependency; it adds no database migration or
+runtime service. Browser tests exercise actual rendering, malformed sources,
+light/dark appearance, narrow screens, and navigation without JavaScript.
+
 `ImageUploadValidationTests` exercises independent JPEG/PNG/WebP fixtures,
 including progressive/CMYK JPEG, palette/16-bit/Adam7 PNG, and PNG/WebP animation.
 It checks all truncated prefixes, damaged pixels and containers, skipped malformed

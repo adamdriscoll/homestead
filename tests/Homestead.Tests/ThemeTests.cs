@@ -382,7 +382,7 @@ public sealed class ThemeTests
             Assert.Contains("garden-layout", previewHtml); Assert.DoesNotContain("<script", previewHtml);
             Assert.Contains("Made at home with", previewHtml);
             Assert.Contains($"/admin/themes/{id}/assets/theme.css", previewHtml);
-            Assert.Contains("script-src 'none'", preview.Headers.GetValues("Content-Security-Policy").Single());
+            Assert.Contains("script-src https://localhost/admin/mermaid/;", preview.Headers.GetValues("Content-Security-Policy").Single());
             Assert.Equal("no-store", preview.Headers.CacheControl!.ToString());
             Assert.Equal(HttpStatusCode.OK, (await author.GetAsync($"/admin/themes/{id}/assets/theme.css")).StatusCode);
             Assert.Equal(HttpStatusCode.Redirect, (await visitor.GetAsync($"/admin/themes/{id}/assets/theme.css")).StatusCode);

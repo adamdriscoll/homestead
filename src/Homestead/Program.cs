@@ -169,7 +169,8 @@ app.Use(async (context, next) =>
     context.Response.Headers["Referrer-Policy"] = locationMap || activityMaps ? "strict-origin-when-cross-origin" : "same-origin";
     var preview = context.Request.Path.StartsWithSegments("/admin/posts") && context.Request.Path.Value!.EndsWith("/preview", StringComparison.OrdinalIgnoreCase);
     var frameAncestors = preview ? "'self'" : "'none'";
-    var scripts = preview ? "'none'" : "'self'";
+    // Private previews may run only the bundled diagram renderer, never theme scripts.
+    var scripts = preview ? $"{context.Request.Scheme}://{context.Request.Host}{context.Request.PathBase}/admin/mermaid/" : "'self'";
     var mapImages = locationMap || activityMaps ? " https://tile.openstreetmap.org" : "";
     context.Response.Headers["Content-Security-Policy"] = $"default-src 'self'; script-src {scripts}; style-src 'self'; img-src 'self' data:{mapImages}; object-src 'none'; base-uri 'self'; frame-ancestors {frameAncestors}; form-action 'self'";
     if (context.Request.Path.StartsWithSegments("/admin") || context.Request.Path.StartsWithSegments("/account") || context.Request.Path.StartsWithSegments("/setup") || context.Request.Path.StartsWithSegments("/newsletter"))
@@ -180,6 +181,12 @@ app.Use(async (context, next) =>
 app.UseStaticFiles(); // Only compiled admin assets in wwwroot; /data is never registered.
 app.UseRouting(); app.UseAuthentication(); app.UseAuthorization(); app.UseRateLimiter();
 app.MapRazorPages();
+app.MapGet("/admin/mermaid/{**file}", (string file, IWebHostEnvironment environment) =>
+{
+    var asset = MermaidDiagrams.Files(environment.ContentRootPath).SingleOrDefault(x => x.RelativePath == "assets/mermaid/" + file);
+    if (asset.SourcePath is null) return Results.NotFound();
+    return Results.File(asset.SourcePath, file.EndsWith(".mjs", StringComparison.Ordinal) ? "text/javascript" : "text/plain");
+}).RequireAuthorization();
 app.MapGet("/admin/maps/{**file}", (string file, IWebHostEnvironment environment) =>
 {
     // Resolve only bundled map files; never combine a request path with the content root.
