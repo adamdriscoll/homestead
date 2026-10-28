@@ -93,7 +93,7 @@
                         <p>Porch is a familiar feed, Journal focuses on reading, Ledger uses a wider magazine layout, and Folio pairs a bold cover with spacious reading layouts. Administration keeps its own light/dark appearance.</p>
                         <label asp-for="Input.ThemeId"></label>
                         <select asp-for="Input.ThemeId" class="select w-full">
-                            @foreach (var theme in Model.Themes) { <option value="@theme.Id">@theme.Name · @theme.Version @(theme.SupportsColors ? "· colors supported" : "")</option> }
+                            @foreach (var theme in Model.Themes) { <option value="@theme.Id">@theme.Name · @theme.Version</option> }
                         </select>
                         <p>Currently public: @(Model.ActiveTheme?.Name ?? "Porch") @(Model.ActiveTheme?.Version). Saving applies your selection after a successful rebuild.</p>
                         <label asp-for="Input.AccentColor"></label><select asp-for="Input.AccentColor" class="select w-full">@foreach (var accent in Homestead.Features.Settings.SettingsInput.Accents) { <option>@accent</option> }</select>

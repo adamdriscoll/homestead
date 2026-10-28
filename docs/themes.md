@@ -17,7 +17,9 @@ listings. Its original templates and styling take inspiration from
 No purchased assets or external fonts are required. The sources in
 `src/Homestead/Themes/folio` also serve as a built-in Razor authoring example.
 
-Town Square is included as a built-in option under **Settings → Public theme**.
+Town Square is the default for new sites under **Settings → Public theme**.
+Existing sites retain their saved theme selection. The selector shows theme names
+and versions without a color-support badge; optional color overrides still work.
 Its Razor sources live in `src/Homestead/Themes/townsquare`. Feeds, post pages,
 and private previews use the full content width within the centered page layout;
 the About page remains accessible from the navigation and home profile cover. Notes,
@@ -29,6 +31,42 @@ pages and private previews. It remains available when sharing is disabled;
 tags appear above the action row. Share buttons wrap on narrow screens.
 All navigation works without JavaScript. Styling is original, with no Facebook
 assets or external fonts.
+
+Town Square displays photo captions in an always-visible translucent dark strip
+over the bottom of each photo on feeds, post pages, and private previews. Captions
+wrap and stay readable in light/dark appearance without hovering or JavaScript.
+Full-size gallery image pages keep their captions below the uncropped image.
+
+## Gallery image pages
+
+Each published gallery photo has a static page at
+`/posts/{slug}/photos/{media-id-without-hyphens}/`. Clicking a gallery image on
+home/type/tag timelines or the post opens its page using an ordinary link. Each
+page shows the uncropped optimized image at its natural size, shrinking to fit
+the available width, its caption and alt text, a full-resolution image link,
+and Back to gallery / Previous photo / Next photo navigation in saved photo order.
+Retained originals remain private. All five built-in themes use this shared page;
+Folio and Town Square's post overrides preserve the image links. No JavaScript
+is used. Pages have their own canonical URL and social image, appear in the
+sitemap and active file allowlist, and are included in static exports. Builds
+use committed snapshots, so drafts, failed builds, and removals follow the same
+activation rules as their parent gallery.
+
+Private previews link to `/admin/posts/{id}/preview?image={media-id}`. These
+authenticated, no-store, noindex pages render the current draft and private
+media without generating public files. Unknown or foreign image IDs return 404.
+
+`ThemeMediaModel.ImagePageUrl` supplies a gallery photo's page URL (or its private
+preview URL); it is null for other media. Custom listing/post templates should
+wrap gallery images in a normal anchor using this value. Shared `ContentHtml`
+already includes these links, including inline Markdown photos. On image pages,
+`Model.GalleryImage` identifies the selected photo, `Model.IsListing` is false,
+and `Model.CanonicalUrl` points to the photo page. Post/type overrides are skipped;
+Content/Main overrides should preserve `Model.DefaultContent`/`Model.Content`
+to retain the shared image viewer. No manifest fields or database migration are
+needed. Custom CSS should preserve the uncropped `[data-gallery-image]` rendering.
+
+## Public appearance
 
 Colors use six-digit hex values such as `#25613e`. Empty fields restore theme
 defaults. Overrides apply in both light and dark mode, so check that your text and
@@ -314,7 +352,8 @@ public requests read only generated static files.
 | `Site` | `ThemeSiteModel`, the saved public settings described below. |
 | `Path`, `Heading` | Root-relative page URL and listing/page heading. |
 | `Preview` | True only for an authenticated draft preview. |
-| `IsListing` | True for home/type/tag listings; false for post details, About, and map pages. |
+| `IsListing` | True for home/type/tag listings; false for post details, gallery image pages, About, map, and newsletter pages. |
+| `GalleryImage` | Selected `ThemeMediaModel` on a gallery image page; null on other pages. Preserve the shared content on image pages. |
 | `ThemeId`, `CanonicalUrl` | Installation ID and canonical page URL derived from saved settings. |
 | `Navigation` | Ordered `ThemeLinkModel` entries (`Label`, `Url`) for Home, enabled types, About, optional Map and Newsletter, and Admin. Newsletter and Admin use absolute URLs to the saved canonical site. |
 | `Post` | Current `ThemePostModel` in a post detail/type/Post template; otherwise null. |
@@ -345,7 +384,7 @@ structured fields:
 | `PublishedAtUtc`, `ModifiedAtUtc`, `DisplayDate` | Snapshot timestamps and first-publication date formatted in the site's time zone. |
 | `BodyHtml`, `ContentHtml` | Sanitized Markdown body; full shared content including location, review, photos, and guide steps. Both are `MarkupString`s. |
 | `Tags` | Ordered `ThemeTagModel` entries (`Name`, `Url`), preserving collision-safe tag URLs. |
-| `Media`, `Cover` | Ordered media and optional selected cover. Each has `Id`, `Url`, `MimeType`, `AltText`, `Caption`, `GuideStepId`. |
+| `Media`, `Cover` | Ordered media and optional selected cover. Each has `Id`, `Url`, `MimeType`, `AltText`, `Caption`, `GuideStepId`, and nullable `ImagePageUrl` for gallery photo links. |
 | `Review` | Optional subject, nullable integer rating, and external URL. Preview ratings can be null. |
 | `Tools`, `Materials` | Ordered guide supplies with a plain-text `Name` and optional HTTP(S) `Url`. Materials also have optional text `Quantity`. Empty on older snapshots; older materials have no quantity. |
 | `ShareLinks` | Ordered `ThemeLinkModel` entries (`Label`, `Url`) for enabled sharing services, built from the published display title and canonical post URL. Empty in private previews. |

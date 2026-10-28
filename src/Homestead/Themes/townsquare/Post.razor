@@ -45,7 +45,7 @@
                 @if (!string.IsNullOrWhiteSpace(post.Description)) { <p data-town-excerpt>@post.Description</p> }
                 @if ((post.Cover ?? post.Media.FirstOrDefault()) is { } cover)
                 {
-                    <figure>
+                    <figure data-post-photo>
                         <img src="@cover.Url" alt="@cover.AltText" loading="lazy" />
                         @if (!string.IsNullOrWhiteSpace(cover.Caption)) { <figcaption>@cover.Caption</figcaption> }
                     </figure>

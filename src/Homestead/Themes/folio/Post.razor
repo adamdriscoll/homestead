@@ -8,7 +8,11 @@
                 <h2 class="card-title"><a href="@post.Url">@post.DisplayTitle</a></h2>
                 @if ((post.Cover ?? post.Media.FirstOrDefault()) is { } cover)
                 {
-                    <figure><img src="@cover.Url" alt="@cover.AltText" loading="lazy" /></figure>
+                    <figure>
+                        @if (cover.ImagePageUrl is { } imagePage)
+                        { <a class="block" href="@imagePage" aria-label="@($"View photo: {cover.Caption ?? cover.AltText}")"><img src="@cover.Url" alt="@cover.AltText" loading="lazy" /></a> }
+                        else { <img src="@cover.Url" alt="@cover.AltText" loading="lazy" /> }
+                    </figure>
                 }
                 @if (post.Type == PostType.Review && post.Review is { } review)
                 {

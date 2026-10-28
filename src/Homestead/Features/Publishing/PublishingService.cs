@@ -105,10 +105,11 @@ public sealed partial class PublishingService(HomesteadDbContext db, ArticleServ
                 var path = Path.Combine(root, relative); Directory.CreateDirectory(Path.GetDirectoryName(path)!);
                 await File.WriteAllTextAsync(path, html); files.Add(relative);
             }
-            async Task Page(string path, string heading, ArticleSnapshot[] items, ArticleSnapshot? post = null)
+            async Task Page(string path, string heading, ArticleSnapshot[] items, ArticleSnapshot? post = null, Guid? galleryImageId = null)
             {
                 await Write(path.TrimStart('/') + "index.html", await renderer.RenderAsync(new(settings, post, items,
-                    Path: path, Heading: heading, Branding: branding, Theme: theme)));
+                    Path: path, Heading: heading, Branding: branding, Theme: theme)
+                { GalleryImageId = galleryImageId }));
                 pagePaths.Add(path);
             }
             await Page("/", "Welcome home.", posts);
@@ -130,6 +131,9 @@ public sealed partial class PublishingService(HomesteadDbContext db, ArticleServ
             {
                 if (post.SchemaVersion != 1 || Slugs.Create(post.Slug) != post.Slug) throw new InvalidOperationException("Invalid article snapshot slug or schema.");
                 await Page($"/posts/{post.Slug}/", post.DisplayTitle, [], post);
+                if (post.Type == PostType.Gallery)
+                    foreach (var image in post.Media)
+                        await Page(GalleryImages.Path(post, image), GalleryImages.Title(post, image), [], post, image.Id);
             }
             async Task DataFile(string relative, string contents)
             { await File.WriteAllTextAsync(Path.Combine(root, relative), contents); files.Add(relative); }

@@ -15,7 +15,13 @@
                 @if (Post.Type == PostType.Gallery) { <p>@Post.Media.Length photos</p> }
                 @if (Post.Activity is { } activity) { @((MarkupString)FitnessRendering.Summary(activity, Page.Settings.FitnessUnits)) }
                 @if ((Post.Media.SingleOrDefault(x => x.Id == Post.CoverMediaId) ?? (Post.Type == PostType.Article ? null : Post.Media.FirstOrDefault())) is { } cover)
-                { <img src="@(Page.Preview ? cover.PrivateUrl : cover.Url)" alt="@cover.AltText" class="w-full max-h-80 object-cover rounded-lg" loading="lazy" /> }
+                {
+                    @if (Post.Type == PostType.Gallery)
+                    {
+                        <a class="block" href="@GalleryImages.Path(Post, cover, Page.Preview)" aria-label="@($"View photo: {GalleryImages.Title(Post, cover)}")"><img src="@(Page.Preview ? cover.PrivateUrl : cover.Url)" alt="@cover.AltText" class="w-full max-h-80 object-cover rounded-lg" loading="lazy" /></a>
+                    }
+                    else { <img src="@(Page.Preview ? cover.PrivateUrl : cover.Url)" alt="@cover.AltText" class="w-full max-h-80 object-cover rounded-lg" loading="lazy" /> }
+                }
                 <p>@DiscoveryFiles.Description(Post, Page.Settings.FitnessUnits)</p>
             }
             @Tags

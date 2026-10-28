@@ -48,7 +48,7 @@ public sealed class SiteSettings
         _ => false
     };
     public string AccentColor { get; set; } = "Porch";
-    public string ThemeId { get; set; } = "porch";
+    public string ThemeId { get; set; } = "townsquare";
     public string ThemePrimaryColor { get; set; } = "";
     public string ThemeBackgroundColor { get; set; } = "";
     public string ThemeTextColor { get; set; } = "";

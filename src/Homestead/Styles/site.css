@@ -43,6 +43,10 @@ html[data-accent] header > div > a { color: var(--color-primary); }
   & img { max-width: 100%; height: auto; border-radius: .5rem; }
 }
 
+/* Image pages retain the photo's aspect ratio and natural size in every theme. */
+html[data-public-theme] body main:has(> [data-gallery-image]) { max-width: none; }
+html[data-public-theme] main [data-gallery-image] figure img { width: auto; max-width: 100%; height: auto; max-height: none; object-fit: contain; }
+
 /* Leaflet supplies positioning; theme tokens keep route markers readable in both appearances. */
 .fitness-map-marker {
   display: grid;

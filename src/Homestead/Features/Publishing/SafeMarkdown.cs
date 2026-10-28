@@ -13,8 +13,17 @@ public sealed class SafeMarkdown
     public string RenderContent(ArticleSnapshot post, bool preview, string? canonicalBaseUrl = null, Data.Entities.FitnessUnitSystem fitnessUnits = Data.Entities.FitnessUnitSystem.Metric)
     {
         static string Encode(string? text) => System.Net.WebUtility.HtmlEncode(text ?? "");
-        string Photo(ArticleMedia image) => $"<figure class=\"block\"><img src=\"{Encode(preview ? image.PrivateUrl : canonicalBaseUrl is null ? image.Url : canonicalBaseUrl.TrimEnd('/') + image.Url)}\" alt=\"{Encode(image.AltText)}\" class=\"w-full rounded-lg\" loading=\"lazy\">" +
-            (string.IsNullOrWhiteSpace(image.Caption) ? "" : $"<figcaption>{Encode(image.Caption)}</figcaption>") + "</figure>";
+        string Photo(ArticleMedia image)
+        {
+            var photo = $"<img src=\"{Encode(preview ? image.PrivateUrl : canonicalBaseUrl is null ? image.Url : canonicalBaseUrl.TrimEnd('/') + image.Url)}\" alt=\"{Encode(image.AltText)}\" class=\"w-full rounded-lg\" loading=\"lazy\">";
+            if (post.Type == Data.Entities.PostType.Gallery)
+            {
+                var path = GalleryImages.Path(post, image, preview);
+                photo = $"<a class=\"block\" href=\"{Encode(canonicalBaseUrl is null || preview ? path : canonicalBaseUrl.TrimEnd('/') + path)}\" aria-label=\"{Encode("View photo: " + GalleryImages.Title(post, image))}\">{photo}</a>";
+            }
+            return "<figure class=\"block\" data-post-photo>" + photo +
+                (string.IsNullOrWhiteSpace(image.Caption) ? "" : $"<figcaption>{Encode(image.Caption)}</figcaption>") + "</figure>";
+        }
         var html = RenderLocation(post.Location) + (post.Summary is { Length: > 0 } ? $"<p>{Encode(post.Summary)}</p>" : "");
         if (post.Type == Data.Entities.PostType.Review && post.Review is { } review)
         {
@@ -88,7 +97,7 @@ public sealed class SafeMarkdown
     public string Render(ArticleSnapshot article, bool preview, string? canonicalBaseUrl = null)
     {
         var document = Markdown.Parse(article.BodyMarkdown, pipeline);
-        foreach (var link in document.Descendants<LinkInline>())
+        foreach (var link in document.Descendants<LinkInline>().ToArray())
         {
             if (link.IsImage)
             {
@@ -98,6 +107,19 @@ public sealed class SafeMarkdown
                 {
                     while (link.FirstChild is { } child) child.Remove();
                     link.AppendChild(new LiteralInline(media.AltText));
+                }
+                if (media is not null && article.Type == Data.Entities.PostType.Gallery)
+                {
+                    var path = GalleryImages.Path(article, media, preview);
+                    var destination = canonicalBaseUrl is null || preview ? path : canonicalBaseUrl.TrimEnd('/') + path;
+                    if (link.Parent is LinkInline parent && !parent.IsImage) parent.Url = destination;
+                    else
+                    {
+                        var wrapper = new LinkInline { Url = destination };
+                        link.InsertBefore(wrapper);
+                        link.Remove();
+                        wrapper.AppendChild(link);
+                    }
                 }
             }
             else if (!IsSafeLink(link.Url)) link.Url = "#";

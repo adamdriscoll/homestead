@@ -1,0 +1,22 @@
+<article class="space-y-6" data-gallery-image>
+    <h1 class="text-3xl font-semibold break-words">@GalleryImages.Title(Post, Image)</h1>
+    <nav aria-label="Gallery navigation" class="flex flex-wrap items-center gap-3">
+        <a class="btn" href="@(Preview ? $"/admin/posts/{Post.PostId}/preview" : $"/posts/{Post.Slug}/")">Back to gallery</a>
+        @if (Index > 0) { <a class="btn" rel="prev" href="@GalleryImages.Path(Post, Post.Media[Index - 1], Preview)">Previous photo</a> }
+        @if (Index + 1 < Post.Media.Length) { <a class="btn" rel="next" href="@GalleryImages.Path(Post, Post.Media[Index + 1], Preview)">Next photo</a> }
+        <span>Photo @(Index + 1) of @Post.Media.Length</span>
+    </nav>
+    <figure class="block">
+        <a href="@(Preview ? Image.PrivateUrl : Image.Url)" class="block" aria-label="View image at full resolution">
+            <img src="@(Preview ? Image.PrivateUrl : Image.Url)" alt="@Image.AltText" class="block mx-auto max-w-full h-auto" />
+        </a>
+        @if (!string.IsNullOrWhiteSpace(Image.Caption)) { <figcaption class="mt-3 break-words">@Image.Caption</figcaption> }
+    </figure>
+    <p><a class="link" href="@(Preview ? Image.PrivateUrl : Image.Url)">View image at full resolution</a></p>
+</article>
+@code {
+    [Parameter, EditorRequired] public ArticleSnapshot Post { get; set; } = null!;
+    [Parameter, EditorRequired] public ArticleMedia Image { get; set; } = null!;
+    [Parameter] public bool Preview { get; set; }
+    private int Index => Array.IndexOf(Post.Media, Image);
+}

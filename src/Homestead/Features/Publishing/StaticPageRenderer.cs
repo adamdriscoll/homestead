@@ -12,6 +12,7 @@ public sealed record PublicPage(SiteSettings Settings, ArticleSnapshot? Article,
     bool Preview = false, string Path = "/", string Heading = "Welcome home.", ArticleMedia[]? Branding = null, ThemePackage? Theme = null)
 {
     public IReadOnlyDictionary<Guid, string>? RenderedPosts { get; init; }
+    public Guid? GalleryImageId { get; init; }
     public Homestead.Features.Newsletter.NewsletterFormModel? NewsletterForm { get; init; }
 }
 
@@ -39,7 +40,7 @@ public sealed class StaticPageRenderer(IServiceProvider services, ILoggerFactory
             var posts = new Dictionary<Guid, string>();
             foreach (var post in page.Article is { } article ? [article] : page.Articles)
             {
-                if (model is null) break;
+                if (model is null || page.GalleryImageId is not null) break;
                 // Existing six-type packages retain the shared fallback for the new type.
                 if (post.Type == PostType.Fitness && !page.Theme.Manifest.PostTypes.Contains("fitness")) continue;
                 var name = post.Type switch { PostType.Microblog => "Note", PostType.Checkin => "Checkin", _ => post.Type.ToString() };

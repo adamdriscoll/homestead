@@ -70,6 +70,10 @@
         {
             <NewsletterForm Form="newsletter" />
         }
+        else if (Page.Article is { } gallery && GalleryImage is { } image)
+        {
+            <GalleryImageDocument Post="gallery" Image="image" Preview="Page.Preview" />
+        }
         else if (Page.Article is { } article)
         {
             @PostMarkup(article, false)
@@ -121,13 +125,14 @@
     private string MapAssets => Page.Preview ? "/admin/maps/" : "/assets/map/";
     private static readonly (string Path, string Label, PostType? Type)[] Navigation = [("/", "Home", null), ("/notes/", "Notes", PostType.Microblog), ("/articles/", "Articles", PostType.Article),
         ("/reviews/", "Reviews", PostType.Review), ("/guides/", "Guides", PostType.Guide), ("/galleries/", "Galleries", PostType.Gallery), ("/checkins/", "Check-ins", PostType.Checkin), ("/fitness/", "Fitness", PostType.Fitness), ("/about/", "About", null)];
-    private string Title => Page.Article is { } post ? $"{post.DisplayTitle} · {Page.Settings.Title}"
+    private ArticleMedia? GalleryImage => Page.Article?.Media.SingleOrDefault(x => x.Id == Page.GalleryImageId);
+    private string Title => GalleryImage is { } image ? $"{GalleryImages.Title(Page.Article!, image)} · {Page.Settings.Title}" : Page.Article is { } post ? $"{post.DisplayTitle} · {Page.Settings.Title}"
         : Page.Path == "/" ? Page.Settings.Title : $"{Page.Heading} · {Page.Settings.Title}";
     private string Description => Page.Article is { } post ? DiscoveryFiles.Description(post, Page.Settings.FitnessUnits)
         : Page.Path == "/about/" && !string.IsNullOrWhiteSpace(Page.Settings.AuthorBio) ? Page.Settings.AuthorBio : DiscoveryFiles.SiteDescription(Page.Settings);
     private string Absolute(string path) => DiscoveryFiles.Absolute(Page.Settings, path);
-    private string Canonical => Absolute(Page.Article is { } post ? $"/posts/{post.Slug}/" : Page.Path);
-    private string SocialImage => Absolute((Page.Article?.Media.SingleOrDefault(x => x.Id == Page.Article.CoverMediaId)
+    private string Canonical => Absolute(Page.GalleryImageId is not null ? Page.Path : Page.Article is { } post ? $"/posts/{post.Slug}/" : Page.Path);
+    private string SocialImage => Absolute((GalleryImage ?? Page.Article?.Media.SingleOrDefault(x => x.Id == Page.Article.CoverMediaId)
         ?? Page.Article?.Media.FirstOrDefault() ?? Brand(Page.Settings.HeaderMediaId) ?? Brand(Page.Settings.AvatarMediaId)
         ?? Brand(Page.Settings.LogoMediaId))?.Url ?? "/assets/social-default.png");
     private ArticleMedia? Brand(Guid? id) => Page.Branding?.SingleOrDefault(x => x.Id == id);

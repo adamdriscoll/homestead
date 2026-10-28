@@ -39,7 +39,7 @@ public sealed class SettingsInput : IValidatableObject
     [Display(Name = "Fitness activities")] public bool EnableFitness { get; set; } = true;
     [EnumDataType(typeof(FitnessUnitSystem)), Display(Name = "Fitness units")] public FitnessUnitSystem FitnessUnits { get; set; }
     [Required, Display(Name = "Accent preset")] public string AccentColor { get; set; } = "Porch";
-    [Required, StringLength(80), Display(Name = "Public theme")] public string ThemeId { get; set; } = "porch";
+    [Required, StringLength(80), Display(Name = "Public theme")] public string ThemeId { get; set; } = "townsquare";
     [StringLength(7), Display(Name = "Primary color")] public string? ThemePrimaryColor { get; set; }
     [StringLength(7), Display(Name = "Background color")] public string? ThemeBackgroundColor { get; set; }
     [StringLength(7), Display(Name = "Text color")] public string? ThemeTextColor { get; set; }

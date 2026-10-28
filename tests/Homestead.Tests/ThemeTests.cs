@@ -469,7 +469,7 @@ public sealed class ThemeTests
         Assert.False(active.Current!.Settings.HideHomesteadCredit);
         Assert.Equal(before, active.Current!.GenerationId); Assert.Equal(home, await client.GetStringAsync("/"));
         Assert.Equal(css, await client.GetStringAsync("/assets/theme/theme.css"));
-        Assert.Contains("Currently public: Porch", await client.GetStringAsync("/admin/settings"));
+        Assert.Contains("Currently public: Town Square", await client.GetStringAsync("/admin/settings"));
         await using var scope = app.Services.CreateAsyncScope();
         await using (var archive = await scope.ServiceProvider.GetRequiredService<StaticExportService>().CreateAsync())
         using (var zip = new ZipArchive(archive))

@@ -19,7 +19,10 @@ public sealed record ThemeSiteModel(string Title, string Description, string Can
     public string HomesteadIconUrl { get; init; } = "/assets/favicon.png";
 }
 public sealed record ThemeLinkModel(string Label, string Url);
-public sealed record ThemeMediaModel(Guid Id, string Url, string MimeType, string AltText, string? Caption, Guid? GuideStepId);
+public sealed record ThemeMediaModel(Guid Id, string Url, string MimeType, string AltText, string? Caption, Guid? GuideStepId)
+{
+    public string? ImagePageUrl { get; init; }
+}
 public sealed record ThemeTagModel(string Name, string Url);
 public sealed record ThemeStepModel(Guid Id, MarkupString BodyHtml, ImmutableArray<ThemeMediaModel> Media)
 {
@@ -45,17 +48,20 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
     MarkupString Footer = default, MarkupString DefaultContent = default)
 {
     public ImmutableArray<ThemeLinkModel> Navigation { get; init; } = [];
+    public ThemeMediaModel? GalleryImage { get; init; }
     public static ThemePageModel From(PublicPage page, SafeMarkdown markdown)
     {
         ThemeMediaModel Image(ArticleMedia media) => new(media.Id, page.Preview ? media.PrivateUrl : media.Url,
             media.MimeType, media.AltText, media.Caption, media.GuideStepId);
+        ThemeMediaModel PostImage(ArticleSnapshot post, ArticleMedia media) => Image(media) with
+        { ImagePageUrl = post.Type == PostType.Gallery ? GalleryImages.Path(post, media, page.Preview) : null };
         ThemeMediaModel? Brand(Guid? id) => page.Branding?.SingleOrDefault(x => x.Id == id) is { } image ? Image(image) : null;
         ThemePostModel Post(ArticleSnapshot post) => new(post.PostId, post.Type, post.TypeLabel, post.Title, post.DisplayTitle,
             $"/posts/{post.Slug}/", post.Summary, DiscoveryFiles.Description(post, page.Settings.FitnessUnits), post.PublishedAtUtc, post.ModifiedAtUtc,
             TimeZoneInfo.ConvertTimeFromUtc(post.PublishedAtUtc, TimeZoneInfo.FindSystemTimeZoneById(page.Settings.TimeZone)).ToString("MMMM d, yyyy"),
             new(markdown.Render(post, page.Preview)), new(markdown.RenderContent(post, page.Preview, fitnessUnits: page.Settings.FitnessUnits)),
             post.Tags.Select(tag => new ThemeTagModel(tag, $"/tags/{post.TagSlug(tag)}/")).ToImmutableArray(),
-            post.Media.Select(Image).ToImmutableArray(), post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover ? Image(cover) : null,
+            post.Media.Select(media => PostImage(post, media)).ToImmutableArray(), post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover ? PostImage(post, cover) : null,
             post.Review, post.Steps.Select(step => new ThemeStepModel(step.Id,
                 new(markdown.Render(post with { BodyMarkdown = step.BodyMarkdown }, page.Preview)),
                 post.Media.Where(x => x.GuideStepId == step.Id).Select(Image).ToImmutableArray())
@@ -91,8 +97,11 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             HomesteadIconUrl = page.Preview ? "/logo.png" : "/assets/favicon.png"
         },
             page.Path, page.Heading, page.Preview, page.Article is null && page.Path is not ("/about/" or "/map/" or "/newsletter/"), page.Theme!.Id,
-            DiscoveryFiles.Absolute(settings, page.Article is { } article ? $"/posts/{article.Slug}/" : page.Path),
+            DiscoveryFiles.Absolute(settings, page.GalleryImageId is not null ? page.Path : page.Article is { } article ? $"/posts/{article.Slug}/" : page.Path),
             page.Article is { } current ? Post(current) : null, page.Articles.Select(Post).ToImmutableArray())
-        { Navigation = navigation.ToImmutableArray() };
+        {
+            Navigation = navigation.ToImmutableArray(),
+            GalleryImage = page.Article?.Media.SingleOrDefault(x => x.Id == page.GalleryImageId) is { } selected ? PostImage(page.Article, selected) : null
+        };
     }
 }

@@ -126,6 +126,7 @@ html[data-public-theme="folio"] [data-folio-reading] .card-title { display: bloc
 html[data-public-theme="folio"] [data-folio-reading] .card-title a { text-decoration: none; }
 html[data-public-theme="folio"] [data-folio-reading] .card-title a:hover { text-decoration: underline; }
 html[data-public-theme="folio"] [data-folio-reading] figure img:not(.leaflet-tile):not(.leaflet-marker-icon) { width: 100%; max-height: 32rem; object-fit: contain; border-radius: 0; }
+html[data-public-theme="folio"] [data-folio-reading] [data-gallery-image] figure img:not(.leaflet-tile):not(.leaflet-marker-icon) { width: auto; max-height: none; }
 html[data-public-theme="folio"] [data-folio-excerpt] { font-size: 1.15rem; line-height: 1.85; max-width: 45rem; }
 html[data-public-theme="folio"] [data-folio-read] { font-family: ui-sans-serif, system-ui, sans-serif; font-size: 0.8rem; text-transform: uppercase; letter-spacing: 0.06em; align-self: flex-start; padding-block: 0.5rem; }
 html[data-public-theme="folio"] [data-folio-location] { font-size: 0.9rem; }
