@@ -19,6 +19,42 @@
   const editorTabs = [...tabs.querySelectorAll('[role="tab"]')];
   const editorPanels = editorTabs.map(tab => form.querySelector('#' + tab.getAttribute('aria-controls')));
   const selectedEditorTab = form.querySelector('[name="EditorTab"]');
+  const editor = form.querySelector('#post-editor');
+  const zenButton = form.querySelector('#editor-zen');
+  let zenBackground = [], zenScroll = 0;
+  function setZenMode(enabled) {
+    editor.dataset.zen = String(enabled);
+    zenButton.setAttribute('aria-pressed', String(enabled));
+    zenButton.setAttribute('aria-label', enabled ? 'Exit zen mode' : 'Enter zen mode');
+    zenButton.title = enabled ? 'Exit zen mode (Escape)' : 'Enter zen mode';
+    zenButton.querySelector('use').setAttribute('href', `/icons/toolbar.svg#${enabled ? 'compress' : 'expand'}`);
+    if (enabled) {
+      zenScroll = window.scrollY;
+      // Keep keyboard and assistive-technology navigation inside the visible editor.
+      for (let node = editor; node.parentElement; node = node.parentElement) {
+        for (const sibling of node.parentElement.children) {
+          if (sibling !== node && !sibling.inert) { sibling.inert = true; zenBackground.push(sibling); }
+        }
+        if (node.parentElement === document.body) break;
+      }
+      document.documentElement.classList.add('overflow-hidden');
+    } else {
+      zenBackground.forEach(element => { element.inert = false; }); zenBackground = [];
+      document.documentElement.classList.remove('overflow-hidden');
+      window.scrollTo(0, zenScroll);
+      zenButton.focus({ preventScroll: true });
+    }
+    window.dispatchEvent(new Event('resize'));
+  }
+  function exitZenMode(event) {
+    if (event.key === 'Escape' && !event.defaultPrevented && editor.dataset.zen === 'true' && !document.querySelector('dialog[open]')) {
+      event.preventDefault(); setZenMode(false);
+    }
+  }
+  zenButton.hidden = false;
+  zenButton.addEventListener('click', () => setZenMode(editor.dataset.zen !== 'true'));
+  document.addEventListener('keydown', exitZenMode);
+  preview.addEventListener('load', () => preview.contentDocument?.addEventListener('keydown', exitZenMode));
   form.querySelectorAll('[data-guide-step]').forEach(step => {
     const key = 'homestead:guide-step:' + step.dataset.guideStep;
     try { step.open = sessionStorage.getItem(key) !== 'closed'; } catch { /* Storage may be disabled. */ }

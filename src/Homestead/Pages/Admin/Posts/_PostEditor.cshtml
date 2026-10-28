@@ -9,8 +9,8 @@
         <input type="hidden" asp-for="Input.Version" />
         <input type="hidden" asp-for="EditorTab" />
         @if (Model.IsNew) { <input type="hidden" asp-for="NewPostType" /> }
-        <section class="min-w-0 border border-base-300 rounded-lg" aria-label="Post editor">
-        <div class="flex flex-wrap items-center justify-between gap-2 border-b border-base-300 px-3">
+        <section id="post-editor" class="group min-w-0 border border-base-300 rounded-lg data-[zen=true]:fixed data-[zen=true]:inset-0 data-[zen=true]:m-0 data-[zen=true]:z-50 data-[zen=true]:flex data-[zen=true]:flex-col data-[zen=true]:rounded-none data-[zen=true]:bg-base-100" aria-label="Post editor">
+        <div class="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-base-300 px-3">
         <div id="editor-tabs" role="tablist" aria-label="Editor mode" class="tabs tabs-border flex-wrap" hidden>
             <button type="button" id="write-tab" role="tab" class="tab tab-active min-h-11 gap-1 px-2 sm:gap-2 sm:px-4" aria-selected="true" aria-controls="editor-write">
                 <svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#pen"></use></svg>Write
@@ -35,10 +35,14 @@
             </button>
         </div>
         <p id="save-status" class="badge badge-soft my-2 ml-auto shrink-0" role="status" aria-live="polite"><svg class="size-4 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#circle-check"></use></svg><span id="save-status-text">@(Model.IsNew ? "Not saved" : "Draft loaded")</span></p>
+        <button type="button" id="editor-zen" class="btn btn-ghost btn-square min-h-11 shrink-0" aria-label="Enter zen mode" title="Enter zen mode" aria-pressed="false" aria-controls="post-editor" hidden>
+            <svg class="size-5 fill-current" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#expand"></use></svg>
+        </button>
         </div>
+        <div class="min-h-0 group-data-[zen=true]:flex-1 group-data-[zen=true]:overflow-y-auto">
         <p id="save-error" class="alert alert-error m-4" role="alert" hidden></p>
         <p id="inline-upload-status" class="px-4 py-2 text-sm" role="status" aria-live="polite" hidden></p>
-        <div id="editor-write" class="p-4 space-y-4">
+        <div id="editor-write" class="p-4 space-y-4 group-data-[zen=true]:flex group-data-[zen=true]:min-h-full group-data-[zen=true]:flex-col">
         @if (review)
         {
             <label class="block space-y-2"><span class="inline-flex items-center gap-1">Subject
@@ -74,16 +78,16 @@
         {
             <label class="block space-y-2"><span>Summary</span><textarea asp-for="Input.Summary" class="textarea w-full" maxlength="1000" rows="2"></textarea></label>
         }
-        <div class="space-y-2">
+        <div class="space-y-2 group-data-[zen=true]:flex group-data-[zen=true]:flex-1 group-data-[zen=true]:flex-col">
         <label for="Input_BodyMarkdown" class="inline-flex items-center gap-1">@(note ? "Note" : review ? "Review" : checkin ? "Visit" : fitness ? "Message" : guide || gallery ? "Introduction" : "Body")
             @if (Model.Post.Type == PostType.Article || review)
             {
                 <svg class="size-3 fill-current text-error" viewBox="0 0 640 640" aria-hidden="true" focusable="false"><use href="/icons/toolbar.svg#asterisk"></use></svg><span class="sr-only"> (required to publish)</span>
             }
         </label>
-        <div class="border border-base-300 rounded-lg overflow-hidden" data-markdown-editor>
+        <div class="border border-base-300 rounded-lg overflow-hidden group-data-[zen=true]:flex group-data-[zen=true]:flex-1 group-data-[zen=true]:flex-col" data-markdown-editor>
         <partial name="/Pages/Admin/Posts/_MarkdownToolbar.cshtml" model='@("Markdown formatting")' />
-        <textarea asp-for="Input.BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px]" maxlength="200000" rows="@(note || gallery || guide || checkin || fitness ? 6 : 16)"></textarea>
+        <textarea asp-for="Input.BodyMarkdown" class="textarea block w-full rounded-none border-0 font-mono focus:outline-offset-[-2px] group-data-[zen=true]:min-h-64 group-data-[zen=true]:flex-1" maxlength="200000" rows="@(note || gallery || guide || checkin || fitness ? 6 : 16)"></textarea>
         </div>
         <p class="text-sm">For diagrams, use a fenced code block starting with <code>```mermaid</code> and ending with <code>```</code>.</p>
         </div>
@@ -178,8 +182,8 @@
                 </section>
             }
         }
-        <div id="editor-preview" class="p-4" hidden>
-            <iframe id="draft-preview" title="Private post preview" class="w-full min-h-160 border border-base-300" sandbox="allow-same-origin"></iframe>
+        <div id="editor-preview" class="p-4 group-data-[zen=true]:flex group-data-[zen=true]:min-h-full group-data-[zen=true]:flex-col" hidden>
+            <iframe id="draft-preview" title="Private post preview" class="w-full min-h-160 border border-base-300 group-data-[zen=true]:min-h-0 group-data-[zen=true]:flex-1" sandbox="allow-same-origin"></iframe>
         </div>
         <div id="editor-images" class="p-4 space-y-4">
         <h2 class="text-xl font-semibold">Images</h2>
@@ -289,7 +293,8 @@
                 </section>
             }
         </div>
-        <footer class="flex flex-wrap items-center gap-3 border-t border-base-300 px-4 py-3" aria-label="Publication status">
+        </div>
+        <footer class="flex shrink-0 flex-wrap items-center gap-3 border-t border-base-300 px-4 py-3" aria-label="Publication status">
             @if (Model.Live is { } live)
             {
                 <a id="post-state" class="badge badge-success badge-soft badge-lg min-h-11 gap-2 hover:badge-outline focus-visible:outline-2 focus-visible:outline-offset-2" href="/posts/@live.Slug/" title="View public post">
