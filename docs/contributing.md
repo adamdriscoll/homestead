@@ -188,7 +188,12 @@ dotnet ef migrations has-pending-model-changes --project src/Homestead --no-buil
 ```
 
 Integration tests use real migrated SQLite files in isolated temporary directories
-and ASP.NET Core's test host. They cover secure setup, single-account races,
+and ASP.NET Core's test host. `TestApplication` disables configuration file reload
+before host startup so the many isolated hosts do not exhaust Linux's per-user
+inotify limit. Configuration values are still loaded normally, and the application
+outside tests retains its default reload behavior. `TestApplicationTests` checks
+this in both Development and Production environments.
+Tests cover secure setup, single-account races,
 authentication, CSRF, private storage, settings, cookies, and restart behavior.
 Article tests also cover the complete publication lifecycle, autosave conflicts,
 upload signatures/decoding, HTML safety, isolated previews, concurrent publication,
