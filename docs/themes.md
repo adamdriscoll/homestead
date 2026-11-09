@@ -72,6 +72,18 @@ independently of Homestead over HTTP(S). Hugo ZIPs preserve Mermaid fences, incl
 a code-block render hook and the local runtime, and render diagrams after building
 with Hugo. Backups preserve the original Markdown as ordinary post content.
 
+## Server-side analytics
+
+Optional analytics counts successful anonymous HTML page requests at Homestead's
+active-generation endpoint, independently of theme rendering. Porch, Journal,
+Ledger, Folio, Town Square, and custom themes need no tracking markup, scripts,
+manifest changes, or new public model members. Listings, post pages, and gallery
+image pages count; private previews and authenticated author visits do not. Public
+navigation and light/dark appearance are unchanged. Generated pages remain static
+and work without JavaScript. Standalone static and Hugo exports contain no counters
+or tracking code. See [deployment](deploy.md#optional-page-view-analytics) for the
+opt-in switch, exclusions, privacy, and counting limitations.
+
 ## Gallery image pages
 
 Each published gallery photo has a static page at
