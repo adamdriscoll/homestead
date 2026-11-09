@@ -717,6 +717,13 @@ namespace Homestead.Data.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("INTEGER");
 
+                    b.Property<string>("AboutImageAltText")
+                        .IsRequired()
+                        .HasColumnType("TEXT");
+
+                    b.Property<Guid?>("AboutImageMediaId")
+                        .HasColumnType("TEXT");
+
                     b.Property<string>("AboutMarkdown")
                         .IsRequired()
                         .HasColumnType("TEXT");
@@ -855,6 +862,8 @@ namespace Homestead.Data.Migrations
                         .HasColumnType("TEXT");
 
                     b.HasKey("Id");
+
+                    b.HasIndex("AboutImageMediaId");
 
                     b.HasIndex("AvatarMediaId");
 
@@ -1101,6 +1110,11 @@ namespace Homestead.Data.Migrations
 
             modelBuilder.Entity("Homestead.Data.Entities.SiteSettings", b =>
                 {
+                    b.HasOne("Homestead.Data.Entities.MediaAsset", null)
+                        .WithMany()
+                        .HasForeignKey("AboutImageMediaId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
                     b.HasOne("Homestead.Data.Entities.MediaAsset", null)
                         .WithMany()
                         .HasForeignKey("AvatarMediaId")

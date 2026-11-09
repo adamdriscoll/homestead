@@ -43,6 +43,15 @@ html[data-accent] header > div > a { color: var(--color-primary); }
   & img { max-width: 100%; height: auto; border-radius: .5rem; }
 }
 
+/* Keep the About image prominent without cropping the uploaded photo. */
+[data-about-image] {
+  display: block;
+  width: 100%;
+  max-height: 32rem;
+  object-fit: contain;
+  border-radius: var(--radius-box);
+}
+
 /* Image pages retain the photo's aspect ratio and natural size in every theme. */
 html[data-public-theme] body main:has(> [data-gallery-image]) { max-width: none; }
 html[data-public-theme] main [data-gallery-image] figure img { width: auto; max-width: 100%; height: auto; max-height: none; object-fit: contain; }

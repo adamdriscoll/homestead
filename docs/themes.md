@@ -111,6 +111,29 @@ automatically for contrast. A custom theme can decline color overrides.
 Administration has a separate **Appearance** selector for System, Light, or Dark.
 That preference is stored in the current browser and does not change public pages.
 
+### About featured image
+
+Upload or remove the featured image in **Settings → About → Featured image**.
+Use JPEG, PNG, or WebP up to 20 MB and add an optional image description for
+screen readers. Save any About text edits before changing the image. All five
+built-in themes render it above the heading on `/about/`, sized to the content
+column with a height limit and no cropping. It also supplies the About page's
+social preview image. About pages without a featured image start at the heading.
+The existing avatar remains available to theme profile and post layouts.
+
+Themes that override `Main` or `Content` can preserve `Model.Content` or
+`Model.DefaultContent` to retain the shared About layout. Themes that build their
+own About layout can use the optional `Model.Site.AboutImage` media model with its
+`Url` and `AltText`. Use the supplied URL so private renders use authenticated
+media. The shared stylesheet sizes an image marked with `data-about-image`.
+
+Static exports keep the active image, including after a failed rebuild. Hugo
+exports put the saved image and its description in the About page bundle.
+The migration adds a nullable media reference and an empty description default.
+Legacy settings and generation manifests can be read without either field.
+
+### Favicon
+
 Upload a public favicon in **Settings → Images → Favicon**. JPEG, PNG, and WebP
 use the same validation and private original storage as other branding images;
 a square image works best. Without a custom favicon, public pages use the bundled
@@ -403,7 +426,8 @@ public requests read only generated static files.
 `ThemeSiteModel` includes `Title`, `Description`, `CanonicalBaseUrl`,
 `DisplayAuthor`, `AuthorBio`, `FooterText`, `HideHomesteadCredit`, `TimeZone`,
 `AccentColor`, `EnableLocationMap`, `EnabledPostTypes`, `FitnessUnits`, `ProfileLinks` (Label/Url),
-sanitized `AboutHtml`, and optional `Avatar`, `Logo`, and `HeaderImage` media.
+sanitized `AboutHtml`, and optional `AboutImage`, `Avatar`, `Logo`, and
+`HeaderImage` media.
 It contains public settings only, with no database entities, credentials, or
 private filesystem paths.
 

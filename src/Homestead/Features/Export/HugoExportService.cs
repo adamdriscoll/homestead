@@ -55,7 +55,20 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             await asset.WriteAsync(bytes, ct);
         }
         await ArchiveFiles.TextAsync(zip, "static/assets/theme-colors.css", ThemeService.ColorStyles(settings, theme), ct);
-        await ArchiveFiles.TextAsync(zip, "content/about/index.md", "---\ntitle: \"About\"\nurl: \"/about/\"\n---\n" +
+        var aboutImage = settings.AboutImageMediaId is { } aboutImageId
+            ? await db.MediaAssets.AsNoTracking().SingleAsync(x => x.Id == aboutImageId, ct) : null;
+        if (aboutImage is not null)
+            await ArchiveFiles.CopyAsync(zip, "content/about/" + aboutImage.StoredFilename,
+                media.OriginalPath(new ArticleMedia(aboutImage.Id, aboutImage.StoredFilename, aboutImage.MimeType, "")), ct);
+        var about = new
+        {
+            title = "About",
+            url = "/about/",
+            layout = "about",
+            featured_image = aboutImage?.StoredFilename,
+            featured_image_alt = settings.AboutImageAltText
+        };
+        await ArchiveFiles.TextAsync(zip, "content/about/index.md", JsonSerializer.Serialize(about) + "\n\n" +
             settings.AboutMarkdown.Replace("{{", "&#123;&#123;", StringComparison.Ordinal), ct);
         var ids = await db.Posts.Where(x => x.Status != PostStatus.Deleted).OrderBy(x => x.CreatedAtUtc).Select(x => x.Id).ToArrayAsync(ct);
         var usedSlugs = (await db.Posts.Where(x => x.Slug != null).Select(x => x.Slug!).ToArrayAsync(ct)).ToHashSet(StringComparer.OrdinalIgnoreCase);

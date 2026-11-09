@@ -92,7 +92,7 @@ public sealed partial class PublishingService(HomesteadDbContext db, ArticleServ
                         tag.NormalizedName == name.Normalize().ToUpperInvariant())?.Slug ?? Slugs.Create(name))
                 }).ToArray();
             }
-            var brandingIds = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId, settings.FaviconMediaId }.OfType<Guid>().ToArray();
+            var brandingIds = new[] { settings.AvatarMediaId, settings.LogoMediaId, settings.HeaderMediaId, settings.FaviconMediaId, settings.AboutImageMediaId }.OfType<Guid>().ToArray();
             var branding = (await db.MediaAssets.AsNoTracking().Where(x => brandingIds.Contains(x.Id)).ToArrayAsync())
                 .Select(x => new ArticleMedia(x.Id, x.StoredFilename, x.MimeType, settings.Title)).ToArray();
             if (branding.Length != brandingIds.Distinct().Count()) throw new InvalidOperationException("A branding image is missing.");

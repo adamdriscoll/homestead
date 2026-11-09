@@ -122,6 +122,15 @@ internal static class HugoTemplates
         {{ define "main" }}<article class="prose-content"><h1>{{ .Title }}</h1><p>{{ .Date.Format "2006-01-02" }} · {{ .Type }}</p>{{ .Content }}{{ partial "fitness.html" . }}
         <p>{{ range .GetTerms "tags" }}<a href="{{ .RelPermalink }}">{{ .LinkTitle }}</a> {{ end }}</p>{{ partial "social-sharing.html" . }}</article>{{ end }}
         """),
+        ("layouts/about.html", """
+        {{ define "main" }}
+        {{ with .Params.featured_image }}{{ with $.Resources.Get . }}
+        <img data-about-image src="{{ .RelPermalink }}" alt="{{ $.Params.featured_image_alt }}">
+        {{ end }}{{ end }}
+        <h1 class="text-3xl font-semibold">{{ .Title }}</h1>
+        <div class="prose-content">{{ .Content }}</div>
+        {{ end }}
+        """),
         ("layouts/list.html", """
         {{ define "main" }}<h1 class="text-3xl font-bold">{{ .Title }}</h1>{{ .Content }}
         {{ range .Pages.ByDate.Reverse }}<article class="card card-border my-4"><div class="card-body"><h2 class="card-title"><a href="{{ .RelPermalink }}">{{ .Title }}</a></h2><p>{{ .Summary }}</p>{{ partial "social-sharing.html" . }}</div></article>{{ end }}{{ end }}

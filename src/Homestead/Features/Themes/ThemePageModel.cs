@@ -14,6 +14,7 @@ public sealed record ThemeSiteModel(string Title, string Description, string Can
     public bool EnableNewsletter { get; init; }
     public FitnessUnitSystem FitnessUnits { get; init; }
     public ThemeMediaModel? Favicon { get; init; }
+    public ThemeMediaModel? AboutImage { get; init; }
     public string FaviconUrl { get; init; } = "/assets/favicon.png";
     public string FaviconMimeType { get; init; } = "image/png";
     public string HomesteadIconUrl { get; init; } = "/assets/favicon.png";
@@ -91,6 +92,7 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
         {
             EnableNewsletter = settings.EnableNewsletter,
             FitnessUnits = settings.FitnessUnits,
+            AboutImage = Brand(settings.AboutImageMediaId) is { } aboutImage ? aboutImage with { AltText = settings.AboutImageAltText } : null,
             Favicon = Brand(settings.FaviconMediaId),
             FaviconUrl = Brand(settings.FaviconMediaId)?.Url ?? (page.Preview ? "/logo.png" : "/assets/favicon.png"),
             FaviconMimeType = Brand(settings.FaviconMediaId)?.MimeType ?? "image/png",
