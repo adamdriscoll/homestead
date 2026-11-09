@@ -40,6 +40,7 @@ public sealed record ThemePostModel(Guid Id, PostType Type, string TypeLabel, st
     public ImmutableArray<GuideSupplySnapshot> Materials { get; init; } = [];
     public ImmutableArray<ThemeLinkModel> ShareLinks { get; init; } = [];
     public FitnessSnapshot? Activity { get; init; }
+    public MarkupString GalleryIntroHtml { get; init; }
 }
 
 public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Heading, bool Preview, bool IsListing,
@@ -70,7 +71,8 @@ public sealed record ThemePageModel(ThemeSiteModel Site, string Path, string Hea
             Tools = post.Tools.ToImmutableArray(),
             Activity = post.Activity,
             Materials = post.Materials.ToImmutableArray(),
-            ShareLinks = SocialSharing.Links(page.Settings, post.Slug, post.DisplayTitle, page.Preview).ToImmutableArray()
+            ShareLinks = SocialSharing.Links(page.Settings, post.Slug, post.DisplayTitle, page.Preview).ToImmutableArray(),
+            GalleryIntroHtml = post.Type == PostType.Gallery ? new(markdown.RenderGalleryIntro(post, page.Preview)) : default
         };
         var settings = page.Settings;
         var about = new ArticleSnapshot(1, Guid.Empty, "about", "About", settings.AboutMarkdown, null,

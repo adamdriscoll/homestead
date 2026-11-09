@@ -24,7 +24,7 @@ public sealed class SafeMarkdown
             return "<figure class=\"block\" data-post-photo>" + photo +
                 (string.IsNullOrWhiteSpace(image.Caption) ? "" : $"<figcaption>{Encode(image.Caption)}</figcaption>") + "</figure>";
         }
-        var html = RenderLocation(post.Location) + (post.Summary is { Length: > 0 } ? $"<p>{Encode(post.Summary)}</p>" : "");
+        var html = PostIntro(post);
         if (post.Type == Data.Entities.PostType.Review && post.Review is { } review)
         {
             html += $"<div class=\"flex flex-wrap items-center gap-2\"><strong>{Encode(review.Subject)}</strong>{RenderRating(review.Rating)}</div>";
@@ -32,7 +32,9 @@ public sealed class SafeMarkdown
                 html += $"<p><a href=\"{Encode(review.ExternalUrl)}\" rel=\"noopener noreferrer\">Visit reviewed subject</a></p>";
         }
         if (post.Type == Data.Entities.PostType.Article && post.Media.SingleOrDefault(x => x.Id == post.CoverMediaId) is { } cover) html += Photo(cover);
-        html += Render(post, preview, canonicalBaseUrl);
+        var body = Render(post, preview, canonicalBaseUrl);
+        html += post.Type == Data.Entities.PostType.Gallery && canonicalBaseUrl is null && body.Length > 0
+            ? $"<div data-gallery-body>{body}</div>" : body;
         if (post.Type == Data.Entities.PostType.Fitness && post.Activity is { } activity) html += FitnessRendering.Render(activity, fitnessUnits, preview);
         if (post.Type == Data.Entities.PostType.Guide)
         {
@@ -54,9 +56,23 @@ public sealed class SafeMarkdown
             html += "</ol>";
         }
         else if (post.Type is Data.Entities.PostType.Microblog or Data.Entities.PostType.Review or Data.Entities.PostType.Gallery or Data.Entities.PostType.Checkin or Data.Entities.PostType.Fitness)
-            html += "<div class=\"grid gap-3 sm:grid-cols-2\">" + string.Concat(PhotosOutsideBody(post).Select(Photo)) + "</div>";
+        {
+            var photos = PhotosOutsideBody(post);
+            if (photos.Length > 0)
+            {
+                var layout = post.Type == Data.Entities.PostType.Gallery && canonicalBaseUrl is null
+                    ? "class=\"grid gap-3\" data-gallery-photos" : "class=\"grid gap-3 sm:grid-cols-2\" data-post-photos";
+                html += $"<div {layout}>" + string.Concat(photos.Select(Photo)) + "</div>";
+            }
+        }
         return html;
     }
+
+    public string RenderGalleryIntro(ArticleSnapshot post, bool preview) =>
+        PostIntro(post) + Render(post, preview, canonicalBaseUrl: null, galleryImagesAsLinks: true);
+
+    private static string PostIntro(ArticleSnapshot post) => RenderLocation(post.Location) +
+        (post.Summary is { Length: > 0 } ? $"<p>{System.Net.WebUtility.HtmlEncode(post.Summary)}</p>" : "");
 
     public static string RenderLocation(LocationSnapshot? location)
     {
@@ -94,7 +110,10 @@ public sealed class SafeMarkdown
         return article.Media.Where(x => !urls.Contains(x.Url)).ToArray();
     }
 
-    public string Render(ArticleSnapshot article, bool preview, string? canonicalBaseUrl = null)
+    public string Render(ArticleSnapshot article, bool preview, string? canonicalBaseUrl = null) =>
+        Render(article, preview, canonicalBaseUrl, galleryImagesAsLinks: false);
+
+    private static string Render(ArticleSnapshot article, bool preview, string? canonicalBaseUrl, bool galleryImagesAsLinks)
     {
         var document = Markdown.Parse(article.BodyMarkdown, pipeline);
         foreach (var link in document.Descendants<LinkInline>().ToArray())
@@ -112,7 +131,21 @@ public sealed class SafeMarkdown
                 {
                     var path = GalleryImages.Path(article, media, preview);
                     var destination = canonicalBaseUrl is null || preview ? path : canonicalBaseUrl.TrimEnd('/') + path;
-                    if (link.Parent is LinkInline parent && !parent.IsImage) parent.Url = destination;
+                    if (link.Parent is LinkInline parent && !parent.IsImage)
+                    {
+                        parent.Url = destination;
+                        if (galleryImagesAsLinks)
+                        {
+                            link.InsertBefore(new LiteralInline(GalleryImages.Title(article, media)));
+                            link.Remove();
+                        }
+                    }
+                    else if (galleryImagesAsLinks)
+                    {
+                        link.IsImage = false;
+                        link.Url = destination;
+                        if (link.FirstChild is null) link.AppendChild(new LiteralInline(GalleryImages.Title(article, media)));
+                    }
                     else
                     {
                         var wrapper = new LinkInline { Url = destination };

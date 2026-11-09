@@ -22,8 +22,9 @@ Existing sites retain their saved theme selection. The selector shows theme name
 and versions without a color-support badge; optional color overrides still work.
 Its Razor sources live in `src/Homestead/Themes/townsquare`. Feeds, post pages,
 and private previews use the full content width within the centered page layout;
-the About page remains accessible from the navigation and home profile cover. Notes,
-galleries, and check-ins show their full content in the feed; articles, reviews,
+the About page remains accessible from the navigation and home profile cover. Notes
+and check-ins show their full content in the feed. Gallery cards show their text
+and a photo mosaic. Articles, reviews,
 and guides link from previews to their complete post. The post-opening arrow is
 an icon-only borderless button to the left of the social sharing buttons. Its hover
 title and accessible name are “Open post” in listings and “Permalink” on post
@@ -33,9 +34,10 @@ All navigation works without JavaScript. Styling is original, with no Facebook
 assets or external fonts.
 
 Town Square displays photo captions in an always-visible translucent dark strip
-over the bottom of each photo on feeds, post pages, and private previews. Captions
+over the bottom of photo tiles on feeds, post pages, and private previews. Captions
 wrap and stay readable in light/dark appearance without hovering or JavaScript.
-Full-size gallery image pages keep their captions below the uncropped image.
+The gallery overflow tile uses the photo count in place of a caption. Full-size
+gallery image pages keep their captions below the uncropped image.
 
 ## Mermaid diagrams
 
@@ -74,9 +76,23 @@ with Hugo. Backups preserve the original Markdown as ordinary post content.
 
 ## Gallery image pages
 
+Town Square home, gallery, and tag listings show up to five gallery photos in
+saved order in an edge-to-edge mosaic with two-pixel gutters. If there are more
+than five photos, the fifth tile shows the remaining count (for example, `+16`)
+and opens the gallery post. The title and Open post action also link to the
+gallery. The other tiles open their individual photo pages. Notes, check-ins,
+and fitness activities with attached photos also use tighter gutters in Town
+Square listings. Porch, Journal, Ledger, and Folio use their cover-based gallery
+cards.
+
+Gallery posts and private previews in all five built-in themes display the
+photos one per row at their original aspect ratio. Inline Markdown photos stay
+at their authored position on the gallery page and appear as text links in the
+Town Square listing, where the mosaic includes them in saved photo order.
+
 Each published gallery photo has a static page at
-`/posts/{slug}/photos/{media-id-without-hyphens}/`. Clicking a gallery image on
-home/type/tag timelines or the post opens its page using an ordinary link. Each
+`/posts/{slug}/photos/{media-id-without-hyphens}/`. Photo tiles and gallery post
+photos link there using ordinary links. Each
 page shows the uncropped optimized image at its natural size, shrinking to fit
 the available width, its caption and alt text, a full-resolution image link,
 and Back to gallery / Previous photo / Next photo navigation in saved photo order.
@@ -94,7 +110,10 @@ media without generating public files. Unknown or foreign image IDs return 404.
 `ThemeMediaModel.ImagePageUrl` supplies a gallery photo's page URL (or its private
 preview URL); it is null for other media. Custom listing/post templates should
 wrap gallery images in a normal anchor using this value. Shared `ContentHtml`
-already includes these links, including inline Markdown photos. On image pages,
+already includes these links, including inline Markdown photos, and supplies
+the single-column gallery layout for post pages and previews. To build a custom
+gallery listing, pair `GalleryIntroHtml` with the ordered `Media` array and use
+`Post.Url` for a link to the full gallery. On image pages,
 `Model.GalleryImage` identifies the selected photo, `Model.IsListing` is false,
 and `Model.CanonicalUrl` points to the photo page. Post/type overrides are skipped;
 Content/Main overrides should preserve `Model.DefaultContent`/`Model.Content`
@@ -421,6 +440,7 @@ structured fields:
 | `Summary`, `Description` | Optional authored summary and generated plain-text excerpt. |
 | `PublishedAtUtc`, `ModifiedAtUtc`, `DisplayDate` | Snapshot timestamps and first-publication date formatted in the site's time zone. |
 | `BodyHtml`, `ContentHtml` | Sanitized Markdown body; full shared content including location, review, photos, and guide steps. Both are `MarkupString`s. |
+| `GalleryIntroHtml` | Gallery location, summary, and sanitized body as a `MarkupString`. Inline images become links to their photo pages so a listing can render its own photo tiles. Empty for other post types. |
 | `Tags` | Ordered `ThemeTagModel` entries (`Name`, `Url`), preserving collision-safe tag URLs. |
 | `Media`, `Cover` | Ordered media and optional selected cover. Each has `Id`, `Url`, `MimeType`, `AltText`, `Caption`, `GuideStepId`, and nullable `ImagePageUrl` for gallery photo links. |
 | `Review` | Optional subject, nullable integer rating, and external URL. Preview ratings can be null. |

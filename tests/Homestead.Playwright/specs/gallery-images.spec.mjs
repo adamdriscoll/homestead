@@ -35,6 +35,12 @@ for (const theme of ['porch', 'journal', 'ledger', 'folio', 'townsquare']) {
         await page.goto(path);
         expect(await page.locator('script').count()).toBe(0);
         expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+        if (path === publicPath || path === previewPath) {
+          const photos = page.locator('[data-gallery-photos] figure');
+          await expect(photos).toHaveCount(2);
+          const [first, second] = await Promise.all([photos.nth(0).boundingBox(), photos.nth(1).boundingBox()]);
+          expect(second.y).toBeGreaterThanOrEqual(first.y + first.height);
+        }
         if (theme === 'townsquare') {
           await page.locator('[data-post-photo] a').first().focus();
           expect(await page.locator('[data-post-photo]').first().evaluate(el => getComputedStyle(el).outlineStyle)).toBe('solid');
@@ -69,3 +75,40 @@ for (const theme of ['porch', 'journal', 'ledger', 'folio', 'townsquare']) {
     }
   });
 }
+
+test('Town Square limits a gallery mosaic and links the overflow tile to the full gallery', async ({ owner: page }) => {
+  test.setTimeout(120_000);
+  await newPost(page, 'gallery');
+  await page.getByLabel('Title', { exact: true }).fill('Seven views');
+  await page.getByRole('button', { name: 'Save draft', exact: true }).click();
+  await page.getByLabel('Photos', { exact: false }).setInputFiles(
+    Array(7).fill(resolve(repoRoot, 'src/Homestead/wwwroot/social-default.png'))
+  );
+  await page.getByRole('button', { name: 'Upload photo', exact: true }).click();
+  await expect(page.locator('#article-images > [data-media]')).toHaveCount(7);
+  const publicPath = await publish(page);
+  await page.goto('/galleries/');
+
+  const mosaic = page.locator('[data-town-gallery="5"]');
+  const tiles = mosaic.locator('figure');
+  await expect(tiles).toHaveCount(5);
+  const [first, second, third, fourth, fifth] = await Promise.all(
+    Array.from({ length: 5 }, (_, index) => tiles.nth(index).boundingBox())
+  );
+  expect(second.x).toBeCloseTo(first.x, 0);
+  expect(third.y).toBeCloseTo(first.y, 0);
+  expect(third.x - (first.x + first.width)).toBeCloseTo(2, 0);
+  expect(fourth.y - (third.y + third.height)).toBeCloseTo(2, 0);
+  expect(fifth.y + fifth.height).toBeCloseTo(second.y + second.height, 0);
+  const firstImage = await tiles.first().locator('img').boundingBox();
+  expect(firstImage.height).toBeCloseTo(first.height, 0);
+  expect(firstImage.width).toBeCloseTo(first.width, 0);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+
+  const overflow = mosaic.getByRole('link', { name: 'View gallery, 2 more photos' });
+  await expect(overflow).toHaveText('+2');
+  await overflow.focus();
+  await overflow.press('Enter');
+  await expect(page).toHaveURL(new RegExp(publicPath + '$'));
+  await expect(page.locator('[data-gallery-photos] figure')).toHaveCount(7);
+});
