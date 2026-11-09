@@ -114,7 +114,8 @@
                     <p>Introduce yourself and add links to your other profiles.</p>
                     <fieldset class="fieldset gap-3">
                         <legend class="fieldset-legend">Featured image</legend>
-                        <p>Appears above the heading on your public About page. A wide photo works best. Use JPEG, PNG, or WebP, up to 20 MB. Save text changes before uploading or removing the image.</p>
+                        <p>Appears as the cover photo on your public About page. Choose a wide photo with the subject near the center. The cover crops to fit the screen. Use JPEG, PNG, or WebP, up to 20 MB. Save text changes before uploading or removing the image.</p>
+                        <p>The profile picture comes from your <a class="link" href="#images">avatar in Images</a>.</p>
                         @if (Model.Settings.AboutImageMediaId is { } aboutImageId)
                         {
                             <img src="/admin/media/@aboutImageId" alt="@Model.Settings.AboutImageAltText" class="max-w-full max-h-32 rounded-lg" />

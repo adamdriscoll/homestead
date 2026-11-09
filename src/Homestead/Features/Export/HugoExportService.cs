@@ -55,18 +55,21 @@ public sealed class HugoExportService(HomesteadDbContext db, ArticleService arti
             await asset.WriteAsync(bytes, ct);
         }
         await ArchiveFiles.TextAsync(zip, "static/assets/theme-colors.css", ThemeService.ColorStyles(settings, theme), ct);
-        var aboutImage = settings.AboutImageMediaId is { } aboutImageId
-            ? await db.MediaAssets.AsNoTracking().SingleAsync(x => x.Id == aboutImageId, ct) : null;
-        if (aboutImage is not null)
-            await ArchiveFiles.CopyAsync(zip, "content/about/" + aboutImage.StoredFilename,
-                media.OriginalPath(new ArticleMedia(aboutImage.Id, aboutImage.StoredFilename, aboutImage.MimeType, "")), ct);
+        var aboutMediaIds = new[] { settings.AboutImageMediaId, settings.AvatarMediaId }.OfType<Guid>().ToArray();
+        var aboutMedia = await db.MediaAssets.AsNoTracking().Where(x => aboutMediaIds.Contains(x.Id)).ToArrayAsync(ct);
+        foreach (var image in aboutMedia)
+            await ArchiveFiles.CopyAsync(zip, "content/about/" + image.StoredFilename,
+                media.OriginalPath(new ArticleMedia(image.Id, image.StoredFilename, image.MimeType, "")), ct);
         var about = new
         {
             title = "About",
             url = "/about/",
             layout = "about",
-            featured_image = aboutImage?.StoredFilename,
-            featured_image_alt = settings.AboutImageAltText
+            featured_image = aboutMedia.SingleOrDefault(x => x.Id == settings.AboutImageMediaId)?.StoredFilename,
+            featured_image_alt = settings.AboutImageAltText,
+            avatar = aboutMedia.SingleOrDefault(x => x.Id == settings.AvatarMediaId)?.StoredFilename,
+            author_name = settings.DisplayAuthor,
+            author_bio = settings.AuthorBio
         };
         await ArchiveFiles.TextAsync(zip, "content/about/index.md", JsonSerializer.Serialize(about) + "\n\n" +
             settings.AboutMarkdown.Replace("{{", "&#123;&#123;", StringComparison.Ordinal), ct);

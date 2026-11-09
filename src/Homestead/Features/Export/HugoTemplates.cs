@@ -60,7 +60,7 @@ internal static class HugoTemplates
                 (settings.EnableLocationMap ? " <a class=\"btn\" href=\"{{ \"map/\" | relURL }}\">Map</a>" : "") +
                 (settings.EnableNewsletter ? $" <a class=\"btn\" href=\"{HtmlEncoder.Default.Encode(DiscoveryFiles.Absolute(settings, "/newsletter/"))}\">Newsletter</a>" : "") +
                 $" <a class=\"btn\" href=\"{HtmlEncoder.Default.Encode(DiscoveryFiles.Absolute(settings, "/admin"))}\">Admin</a></nav></header>",
-            ["main"] = "<main id=\"main\" class=\"max-w-3xl mx-auto px-4 py-8 space-y-6\">{{ block \"main\" . }}{{ end }}</main>",
+            ["main"] = "<main id=\"main\" class=\"max-w-3xl mx-auto px-4 py-8 space-y-6\"{{ if eq .Layout \"about\" }} data-about-page{{ end }}>{{ block \"main\" . }}{{ end }}</main>",
             ["footer"] = "<footer class=\"max-w-3xl mx-auto p-4 border-t border-base-300 space-y-4\"><a class=\"underline\" href=\"{{ \"index.xml\" | relURL }}\">RSS feed</a>" +
                 (settings.HideHomesteadCredit ? "" : "<p class=\"text-sm\">Made at home with <a class=\"link inline-flex items-center gap-1 align-middle\" href=\"https://github.com/adamdriscoll/homestead\"><img src=\"{{ \"assets/favicon.png\" | relURL }}\" alt=\"\" width=\"20\" height=\"20\" class=\"size-5 shrink-0\">Homestead</a></p>") + "</footer>"
         };
@@ -124,11 +124,18 @@ internal static class HugoTemplates
         """),
         ("layouts/about.html", """
         {{ define "main" }}
-        {{ with .Params.featured_image }}{{ with $.Resources.Get . }}
-        <img data-about-image src="{{ .RelPermalink }}" alt="{{ $.Params.featured_image_alt }}">
-        {{ end }}{{ end }}
-        <h1 class="text-3xl font-semibold">{{ .Title }}</h1>
-        <div class="prose-content">{{ .Content }}</div>
+        <header data-about-profile>
+          {{ with .Params.featured_image }}{{ with $.Resources.Get . }}
+          <img data-about-image src="{{ .RelPermalink }}" alt="{{ $.Params.featured_image_alt }}">
+          {{ end }}{{ end }}
+          <div data-about-identity>
+            {{ with .Params.avatar }}{{ with $.Resources.Get . }}
+            <img data-about-avatar src="{{ .RelPermalink }}" alt="">
+            {{ end }}{{ end }}
+            <div><h1>{{ .Params.author_name }}</h1>{{ with .Params.author_bio }}<p>{{ . }}</p>{{ end }}</div>
+          </div>
+        </header>
+        <div class="prose-content" data-about-body>{{ .Content }}</div>
         {{ end }}
         """),
         ("layouts/list.html", """

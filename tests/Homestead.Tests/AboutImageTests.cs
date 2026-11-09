@@ -11,7 +11,7 @@ namespace Homestead.Tests;
 public sealed class AboutImageTests
 {
     [Fact]
-    public async Task Featured_image_replaces_avatar_on_about_in_every_theme_and_is_portable()
+    public async Task About_profile_uses_cover_and_avatar_in_every_theme_and_is_portable()
     {
         using var data = new TemporaryData();
         using var app = new TestApplication(data.Path);
@@ -20,12 +20,19 @@ public sealed class AboutImageTests
         _ = await TestApplication.Setup(author);
         _ = await TestApplication.Login(author);
         var active = app.Services.GetRequiredService<ActiveSite>();
+        await app.WithDatabase(async db =>
+        {
+            var settings = await db.SiteSettings.SingleAsync();
+            settings.DisplayAuthor = "Jamie Morgan";
+            settings.AuthorBio = "Weekend wanderer";
+            await db.SaveChangesAsync();
+        });
 
         using var avatarUpload = await Upload(author, "Avatar");
         Assert.Equal(HttpStatusCode.Redirect, avatarUpload.StatusCode);
         var avatar = Assert.Single(active.Current!.Branding!);
         var originalAbout = await visitor.GetStringAsync("/about/");
-        Assert.DoesNotContain(avatar.Url, MainContent(originalAbout));
+        Assert.Contains(avatar.Url, MainContent(originalAbout));
         Assert.DoesNotContain("data-about-image", MainContent(originalAbout));
 
         using var upload = await Upload(author, "AboutImage", "Trees & hills");
@@ -49,8 +56,10 @@ public sealed class AboutImageTests
             Assert.True((await publisher.RebuildAsync()).Succeeded);
             var about = await visitor.GetStringAsync("/about/");
             var main = MainContent(about);
-            Assert.Matches($"""<img data-about-image src="{Regex.Escape(first.Url)}" alt="Trees &amp; hills"\s*/?>\s*<h1""", main);
-            Assert.DoesNotContain(avatar.Url, main);
+            Assert.Matches($"""<img data-about-image src="{Regex.Escape(first.Url)}" alt="Trees &amp; hills"\s*/?>\s*<div data-about-identity""", main);
+            Assert.Matches($"""<img data-about-avatar src="{Regex.Escape(avatar.Url)}" alt(?:="")?\s*/?>""", main);
+            Assert.Contains("<h1>Jamie Morgan</h1>", main);
+            Assert.Contains("<p>Weekend wanderer</p>", main);
             Assert.Contains($"property=\"og:image\" content=\"https://example.test{first.Url}\"", about);
             var home = await visitor.GetStringAsync("/");
             Assert.DoesNotContain(first.Url, home);
@@ -61,6 +70,7 @@ public sealed class AboutImageTests
         using (var zip = new ZipArchive(archive))
         {
             Assert.NotNull(zip.GetEntry(first.Url.TrimStart('/')));
+            Assert.NotNull(zip.GetEntry(avatar.Url.TrimStart('/')));
             using var about = new StreamReader(zip.GetEntry("about/index.html")!.Open());
             Assert.Contains(first.Url, await about.ReadToEndAsync());
         }
@@ -68,6 +78,7 @@ public sealed class AboutImageTests
         using (var zip = new ZipArchive(archive))
         {
             Assert.NotNull(zip.GetEntry("content/about/" + first.Filename));
+            Assert.NotNull(zip.GetEntry("content/about/" + avatar.Filename));
             using var about = new StreamReader(zip.GetEntry("content/about/index.md")!.Open());
             Assert.Contains($"\"featured_image\":\"{first.Filename}\"", await about.ReadToEndAsync());
         }

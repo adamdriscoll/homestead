@@ -66,7 +66,7 @@
 }
 @if (Region == "main")
 {
-    <main id="main" class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <main id="main" class="max-w-3xl mx-auto px-4 py-8 space-y-6" data-about-page="@(Page.Path == "/about/" ? "" : null)">
         @if (Page.Preview) { <p class="alert" role="status">Private draft preview · unpublished edits</p> }
         @if (Page.NewsletterForm is { } newsletter)
         {
@@ -87,12 +87,22 @@
         }
         else if (Page.Path == "/about/")
         {
-            @if (AboutImage is { } featured)
-            { <img data-about-image src="@ImageUrl(featured)" alt="@Page.Settings.AboutImageAltText" /> }
-            <h1 class="text-3xl font-semibold">About @Page.Settings.DisplayAuthor</h1>
-            <p>@Page.Settings.AuthorBio</p>
-            @if (string.IsNullOrWhiteSpace(Page.Settings.AboutMarkdown)) { <p>More about this homestead soon.</p> }
-            else { <div class="prose-content">@((MarkupString)Markdown.Render(About, Page.Preview))</div> }
+            <header data-about-profile>
+                @if (AboutImage is { } featured)
+                { <img data-about-image src="@ImageUrl(featured)" alt="@Page.Settings.AboutImageAltText" /> }
+                <div data-about-identity>
+                    @if (Brand(Page.Settings.AvatarMediaId) is { } avatar)
+                    { <img data-about-avatar src="@ImageUrl(avatar)" alt="" /> }
+                    <div>
+                        <h1>@Page.Settings.DisplayAuthor</h1>
+                        @if (!string.IsNullOrWhiteSpace(Page.Settings.AuthorBio)) { <p>@Page.Settings.AuthorBio</p> }
+                    </div>
+                </div>
+            </header>
+            <div class="prose-content" data-about-body>
+                @if (string.IsNullOrWhiteSpace(Page.Settings.AboutMarkdown)) { <p>More about this homestead soon.</p> }
+                else { @((MarkupString)Markdown.Render(About, Page.Preview)) }
+            </div>
         }
         else
         {
