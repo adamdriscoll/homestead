@@ -1,5 +1,6 @@
 using Homestead.Data;
 using Homestead.Data.Entities;
+using Homestead.Features.Analytics;
 using Homestead.Features.Articles;
 using Homestead.Features.Media;
 using Homestead.Features.Publishing;
@@ -9,13 +10,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Homestead.Pages.Admin;
 
-public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, ArticleService articles, MediaService media, PublishingService publishing)
+public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, ArticleService articles, MediaService media, PublishingService publishing, AnalyticsService analytics)
     : PostEditorModel(articles, media, publishing, active, db)
 {
     public string SiteTitle { get; private set; } = "";
     public string TimeZone { get; private set; } = "UTC";
     public List<Post> RecentPosts { get; private set; } = [];
     public SiteGeneration? LatestBuild { get; private set; }
+    public bool AnalyticsEnabled => analytics.Enabled;
+    public long TotalPageViews { get; private set; }
     public override string EditorPage => "/Admin/Index";
     public override async Task<IActionResult> OnGetAsync(Guid id)
     {
@@ -41,6 +44,7 @@ public sealed class IndexModel(HomesteadDbContext db, ActiveSite active, Article
         var settings = await Database.SiteSettings.AsNoTracking().SingleAsync();
         SiteTitle = settings.Title; EnabledPostTypes = settings.EnabledPostTypes;
         TimeZone = settings.TimeZone;
+        if (AnalyticsEnabled) TotalPageViews = await Database.PageViews.SumAsync(x => (long?)x.Hits) ?? 0;
         RecentPosts = await Database.Posts.Include(x => x.Draft).Include(x => x.Review).Where(x => x.Status != PostStatus.Deleted && EnabledPostTypes.Contains(x.Type)).OrderByDescending(x => x.UpdatedAtUtc).Take(5).ToListAsync();
         LatestBuild = await Database.SiteGenerations.OrderByDescending(x => x.BuiltAtUtc).FirstOrDefaultAsync();
     }

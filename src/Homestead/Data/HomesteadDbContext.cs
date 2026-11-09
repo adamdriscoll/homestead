@@ -27,6 +27,8 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     public DbSet<NewsletterPost> NewsletterPosts => Set<NewsletterPost>();
     public DbSet<NewsletterDelivery> NewsletterDeliveries => Set<NewsletterDelivery>();
     public DbSet<SiteGeneration> SiteGenerations => Set<SiteGeneration>();
+    public DbSet<AnalyticsSettings> AnalyticsSettings => Set<AnalyticsSettings>();
+    public DbSet<PageViews> PageViews => Set<PageViews>();
 
     protected override void ConfigureConventions(ModelConfigurationBuilder builder)
         => builder.Properties<DateTime>().HaveConversion<UtcDateTimeConverter>();
@@ -34,6 +36,12 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
     protected override void OnModelCreating(ModelBuilder builder)
     {
         base.OnModelCreating(builder);
+        builder.Entity<AnalyticsSettings>().ToTable("AnalyticsSettings", t => t.HasCheckConstraint("CK_AnalyticsSettings_Id", "Id = 1"));
+        builder.Entity<PageViews>(e =>
+        {
+            e.HasKey(x => x.Path);
+            e.ToTable("PageViews", t => t.HasCheckConstraint("CK_PageViews_Hits", "Hits >= 0"));
+        });
         builder.Entity<PostSchedule>(e =>
         {
             e.HasKey(x => x.PostId);
@@ -179,6 +187,7 @@ public sealed class HomesteadDbContext(DbContextOptions<HomesteadDbContext> opti
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.LogoMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.HeaderMediaId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.FaviconMediaId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne<MediaAsset>().WithMany().HasForeignKey(x => x.AboutImageMediaId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 

@@ -4,6 +4,17 @@
 @{ ViewData["Title"] = "Dashboard"; }
 <div class="space-y-6">
     <div class="space-y-2"><p class="text-sm">YOUR HOMESTEAD</p><h1 class="text-3xl font-semibold">@Model.SiteTitle</h1></div>
+    <section class="space-y-2" aria-label="Analytics">
+        @if (Model.AnalyticsEnabled)
+        {
+            <div class="stats border border-base-300"><div class="stat"><div class="stat-title">Total page views</div><div class="stat-value">@Model.TotalPageViews.ToString("N0")</div><div class="stat-desc">All time · Anonymous public pages</div></div></div>
+            <p><a class="link" href="/admin/analytics">View analytics by page</a></p>
+        }
+        else
+        {
+            <p>Analytics is off. <a class="link" href="/admin/analytics">Configure analytics</a></p>
+        }
+    </section>
     @if (Model.EnabledPostTypes.Length > 0)
     {
         <partial name="Posts/_PostTypeNavigation" model="Model" />

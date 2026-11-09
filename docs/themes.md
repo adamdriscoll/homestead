@@ -74,6 +74,18 @@ independently of Homestead over HTTP(S). Hugo ZIPs preserve Mermaid fences, incl
 a code-block render hook and the local runtime, and render diagrams after building
 with Hugo. Backups preserve the original Markdown as ordinary post content.
 
+## Server-side analytics
+
+Optional analytics counts successful anonymous HTML page requests at Homestead's
+active-generation endpoint, independently of theme rendering. Porch, Journal,
+Ledger, Folio, Town Square, and custom themes need no tracking markup, scripts,
+manifest changes, or new public model members. Listings, post pages, and gallery
+image pages count; private previews and authenticated author visits do not. Public
+navigation and light/dark appearance are unchanged. Generated pages remain static
+and work without JavaScript. Standalone static and Hugo exports contain no counters
+or tracking code. See [deployment](deploy.md#optional-page-view-analytics) for the
+opt-in switch, exclusions, privacy, and counting limitations.
+
 ## Gallery image pages
 
 Town Square home, gallery, and tag listings show up to five gallery photos in
@@ -129,6 +141,32 @@ automatically for contrast. A custom theme can decline color overrides.
 
 Administration has a separate **Appearance** selector for System, Light, or Dark.
 That preference is stored in the current browser and does not change public pages.
+
+### About profile header
+
+Upload or remove the featured image in **Settings → About → Featured image**.
+Use JPEG, PNG, or WebP up to 20 MB and add an optional image description for
+screen readers. Save any About text edits before changing the image. All five
+built-in themes show it as a wide cover photo on `/about/`, cropped from the
+center to fit desktop and mobile layouts. It also supplies the About page's
+social preview image. The avatar from **Settings → Images** overlaps the cover
+beside the author's name and short bio. On narrow screens, the avatar and text
+stack in the center. If either photo is absent, the header omits it.
+
+Themes that override `Main` or `Content` can preserve `Model.Content` or
+`Model.DefaultContent` to retain the shared About layout. Themes that build their
+own About layout can use `Model.Site.AboutImage`, `Avatar`, `DisplayAuthor`, and
+`AuthorBio`. Use the media models' supplied URLs so private renders use
+authenticated media, and use `AboutImage.AltText` for the cover description.
+The shared header uses `data-about-profile`, `data-about-image`,
+`data-about-identity`, and `data-about-avatar` for layout and sizing.
+
+Static exports keep the active image, including after a failed rebuild. Hugo
+exports put the saved cover, its description, and the avatar in the About bundle.
+The migration adds a nullable media reference and an empty description default.
+Legacy settings and generation manifests can be read without either field.
+
+### Favicon
 
 Upload a public favicon in **Settings → Images → Favicon**. JPEG, PNG, and WebP
 use the same validation and private original storage as other branding images;
@@ -422,7 +460,8 @@ public requests read only generated static files.
 `ThemeSiteModel` includes `Title`, `Description`, `CanonicalBaseUrl`,
 `DisplayAuthor`, `AuthorBio`, `FooterText`, `HideHomesteadCredit`, `TimeZone`,
 `AccentColor`, `EnableLocationMap`, `EnabledPostTypes`, `FitnessUnits`, `ProfileLinks` (Label/Url),
-sanitized `AboutHtml`, and optional `Avatar`, `Logo`, and `HeaderImage` media.
+sanitized `AboutHtml`, and optional `AboutImage`, `Avatar`, `Logo`, and
+`HeaderImage` media.
 It contains public settings only, with no database entities, credentials, or
 private filesystem paths.
 
