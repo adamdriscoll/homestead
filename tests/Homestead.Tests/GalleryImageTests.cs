@@ -70,6 +70,14 @@ public sealed class GalleryImageTests
             var html = await visitor.GetStringAsync(listing);
             Assert.Contains($"href=\"{paths[0]}\"", html);
             Assert.DoesNotContain("<script", html);
+            if (listing == "/posts/garden-gallery/")
+                Assert.Contains("data-gallery-photos", html);
+            else if (theme == "townsquare")
+            {
+                Assert.Contains("data-town-gallery=\"3\"", html);
+                Assert.Contains($">{images[0].AltText}</a>", html);
+                Assert.Single(html.Split($"src=\"{images[0].Url}\"").Skip(1));
+            }
         }
         for (var i = 0; i < images.Count; i++)
         {

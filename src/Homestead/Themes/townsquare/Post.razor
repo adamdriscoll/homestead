@@ -28,7 +28,31 @@
             {
                 <h1 class="card-title">@post.DisplayTitle</h1>
             }
-            @if (!Model.IsListing || post.Type is PostType.Microblog or PostType.Gallery or PostType.Checkin or PostType.Fitness)
+            @if (Model.IsListing && post.Type == PostType.Gallery)
+            {
+                var tileCount = Math.Min(post.Media.Length, 5);
+                var remaining = post.Media.Length - tileCount;
+                <div class="prose-content" data-town-gallery-intro>@post.GalleryIntroHtml</div>
+                @if (tileCount > 0)
+                {
+                    <div data-town-gallery="@tileCount">
+                        @for (var index = 0; index < tileCount; index++)
+                        {
+                            var photo = post.Media[index];
+                            var overflow = index == tileCount - 1 && remaining > 0;
+                            var photoLabel = string.IsNullOrWhiteSpace(photo.AltText) ? $"Photo {index + 1}" : photo.AltText;
+                            <figure data-post-photo>
+                                <a href="@(overflow ? post.Url : photo.ImagePageUrl)" aria-label="@(overflow ? $"View gallery, {remaining} more photos" : $"View photo: {photoLabel}")">
+                                    <img src="@photo.Url" alt="@photo.AltText" loading="lazy" />
+                                    @if (overflow) { <span data-town-gallery-more aria-hidden="true">+@remaining</span> }
+                                </a>
+                                @if (!overflow && !string.IsNullOrWhiteSpace(photo.Caption)) { <figcaption>@photo.Caption</figcaption> }
+                            </figure>
+                        }
+                    </div>
+                }
+            }
+            else if (!Model.IsListing || post.Type is PostType.Microblog or PostType.Checkin or PostType.Fitness)
             {
                 <div class="prose-content">@post.ContentHtml</div>
             }
