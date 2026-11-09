@@ -20,6 +20,8 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
     [TempData] public string? StatusMessage { get; set; }
     [BindProperty] public IFormFile? Upload { get; set; }
     [BindProperty] public string? Slot { get; set; }
+    [BindProperty] public string? AboutImageAltText { get; set; }
+    private string ImageSection => Slot == "AboutImage" ? "about" : "images";
     public SiteSettings Settings { get; private set; } = null!;
     [BindProperty] public BackupInput Backup { get; set; } = new();
     public BackupSettings BackupStatus { get; private set; } = new();
@@ -113,11 +115,11 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
         try
         {
             if (Upload is null) throw new InvalidOperationException("Choose an image first.");
-            await media.UploadBrandingAsync(Slot ?? "", Upload);
+            await media.UploadBrandingAsync(Slot ?? "", Upload, AboutImageAltText);
             StatusMessage = "Branding image saved. " + (await publishing.RebuildAsync()).Message;
         }
         catch (InvalidOperationException ex) { StatusMessage = ex.Message; }
-        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "images");
+        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: ImageSection);
     }
 
     public async Task<IActionResult> OnPostRemoveAsync()
@@ -132,13 +134,17 @@ public sealed class SettingsModel(HomesteadDbContext db, IWebHostEnvironment env
                 case "Logo": settings.LogoMediaId = null; break;
                 case "Header": settings.HeaderMediaId = null; break;
                 case "Favicon": settings.FaviconMediaId = null; break;
+                case "AboutImage":
+                    settings.AboutImageMediaId = null;
+                    settings.AboutImageAltText = "";
+                    break;
                 default: return BadRequest();
             }
             await db.SaveChangesAsync();
             StatusMessage = "Branding image removed from settings. " + (await publishing.BuildLockedAsync()).Message;
         }
         finally { writer.Semaphore.Release(); }
-        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: "images");
+        return RedirectToPage(pageName: null, pageHandler: null, routeValues: null, fragment: ImageSection);
     }
     public async Task<IActionResult> OnPostAsync()
     {

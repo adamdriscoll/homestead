@@ -14,10 +14,10 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
     public Task<ArticleMedia> UploadAsync(Guid postId, IFormFile file, string? altText, bool inlineOnly = false, PostType? newPostType = null, bool retainOriginal = false)
         => StoreAsync(postId, file, altText, null, inlineOnly, newPostType, retainOriginal);
 
-    public Task<ArticleMedia> UploadBrandingAsync(string slot, IFormFile file)
+    public Task<ArticleMedia> UploadBrandingAsync(string slot, IFormFile file, string? altText = null)
     {
-        if (slot is not ("Avatar" or "Logo" or "Header" or "Favicon")) throw new InvalidOperationException("Choose an avatar, logo, header, or favicon image.");
-        return StoreAsync(null, file, "", slot);
+        if (slot is not ("Avatar" or "Logo" or "Header" or "Favicon" or "AboutImage")) throw new InvalidOperationException("Choose an image slot.");
+        return StoreAsync(null, file, slot == "AboutImage" ? altText?.Trim() : "", slot);
     }
 
     private async Task<ArticleMedia> StoreAsync(Guid? postId, IFormFile file, string? altText, string? slot, bool inlineOnly = false, PostType? newPostType = null, bool retainOriginal = false)
@@ -93,6 +93,10 @@ public sealed class MediaService(HomesteadDbContext db, ArticleService articles,
                     case "Logo": settings.LogoMediaId = asset.Id; break;
                     case "Header": settings.HeaderMediaId = asset.Id; break;
                     case "Favicon": settings.FaviconMediaId = asset.Id; break;
+                    case "AboutImage":
+                        settings.AboutImageMediaId = asset.Id;
+                        settings.AboutImageAltText = altText ?? "";
+                        break;
                 }
             }
             await db.SaveChangesAsync();

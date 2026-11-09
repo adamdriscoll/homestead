@@ -103,7 +103,9 @@ html[data-public-theme="townsquare"] [data-town-layout] {
 }
 html[data-public-theme="townsquare"] main#main { width: 100%; max-width: none; min-width: 0; margin: 0; padding: 0; }
 html[data-public-theme="townsquare"] main#main > h1 { font-size: 1.15rem; font-weight: 700; margin-bottom: 1rem; }
-html[data-public-theme="townsquare"] main#main > :not(.card, h1) { background: var(--color-base-100); border-radius: 0.75rem; padding: 1.25rem; }
+html[data-public-theme="townsquare"] main#main > :not(.card, h1, [data-about-profile]) { background: var(--color-base-100); border-radius: 0.75rem; padding: 1.25rem; }
+html[data-public-theme="townsquare"] [data-about-profile] { background: var(--color-base-100); border-radius: 0.75rem; }
+html[data-public-theme="townsquare"] [data-about-image] { border-radius: 0.75rem 0.75rem 0 0; }
 html[data-public-theme="townsquare"] [data-town-byline] { display: flex; align-items: center; gap: 0.75rem; }
 html[data-public-theme="townsquare"] [data-town-author] { font-weight: 650; text-decoration: none; }
 html[data-public-theme="townsquare"] [data-town-byline] p { font-size: 0.8rem; }

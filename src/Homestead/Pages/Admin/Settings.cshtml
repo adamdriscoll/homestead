@@ -113,6 +113,26 @@
                     <h2 id="about-title" class="text-xl font-semibold">About</h2>
                     <p>Introduce yourself and add links to your other profiles.</p>
                     <fieldset class="fieldset gap-3">
+                        <legend class="fieldset-legend">Featured image</legend>
+                        <p>Appears as the cover photo on your public About page. Choose a wide photo with the subject near the center. The cover crops to fit the screen. Use JPEG, PNG, or WebP, up to 20 MB. Save text changes before uploading or removing the image.</p>
+                        <p>The profile picture comes from your <a class="link" href="#images">avatar in Images</a>.</p>
+                        @if (Model.Settings.AboutImageMediaId is { } aboutImageId)
+                        {
+                            <img src="/admin/media/@aboutImageId" alt="@Model.Settings.AboutImageAltText" class="max-w-full max-h-32 rounded-lg" />
+                        }
+                        <label for="upload-about-image">Choose an image</label>
+                        <input id="upload-about-image" name="Upload" form="about-image-upload-form" type="file" accept="image/jpeg,image/png,image/webp" class="file-input w-full" />
+                        <label for="about-image-alt">Image description (optional)</label>
+                        <input id="about-image-alt" name="AboutImageAltText" value="@Model.Settings.AboutImageAltText" form="about-image-upload-form" class="input w-full" maxlength="1000" />
+                        <div class="flex flex-wrap gap-2">
+                            <button class="btn" type="submit" form="about-image-upload-form">@(Model.Settings.AboutImageMediaId is null ? "Upload featured image" : "Replace featured image")</button>
+                            @if (Model.Settings.AboutImageMediaId is not null)
+                            {
+                                <button class="btn" type="submit" form="about-image-remove-form">Remove featured image</button>
+                            }
+                        </div>
+                    </fieldset>
+                    <fieldset class="fieldset gap-3">
                         <legend class="fieldset-legend">About you</legend>
                         <label asp-for="Input.DisplayAuthor"></label><input asp-for="Input.DisplayAuthor" class="input w-full" />
                         <label asp-for="Input.AuthorBio"></label><textarea asp-for="Input.AuthorBio" class="textarea w-full" rows="3"></textarea>
@@ -139,6 +159,12 @@
                 </div>
             </form>
             <form method="post" id="theme-upload-form" asp-page-handler="Theme" enctype="multipart/form-data" hidden></form>
+            <form method="post" id="about-image-upload-form" asp-page-handler="Upload" enctype="multipart/form-data" hidden>
+                <input type="hidden" name="Slot" value="AboutImage" />
+            </form>
+            <form method="post" id="about-image-remove-form" asp-page-handler="Remove" hidden>
+                <input type="hidden" name="Slot" value="AboutImage" />
+            </form>
             <section id="newsletter" class="space-y-4 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-base-content" aria-labelledby="newsletter-title" data-settings-panel>
                 <h2 id="newsletter-title" class="text-xl font-semibold">Newsletter</h2>
                 <p>Let readers subscribe to new posts through Brevo. Choose a verified sender in your Brevo account and enter an API key with permission to send transactional emails.</p>

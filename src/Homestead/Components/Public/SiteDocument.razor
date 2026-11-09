@@ -66,7 +66,7 @@
 }
 @if (Region == "main")
 {
-    <main id="main" class="max-w-3xl mx-auto px-4 py-8 space-y-6">
+    <main id="main" class="max-w-3xl mx-auto px-4 py-8 space-y-6" data-about-page="@(Page.Path == "/about/" ? "" : null)">
         @if (Page.Preview) { <p class="alert" role="status">Private draft preview · unpublished edits</p> }
         @if (Page.NewsletterForm is { } newsletter)
         {
@@ -87,12 +87,22 @@
         }
         else if (Page.Path == "/about/")
         {
-            <h1 class="text-3xl font-semibold">About @Page.Settings.DisplayAuthor</h1>
-            @if (Brand(Page.Settings.AvatarMediaId) is { } avatar)
-            { <img src="@ImageUrl(avatar)" alt="@Page.Settings.DisplayAuthor" class="w-24 h-24 rounded-full object-cover" /> }
-            <p>@Page.Settings.AuthorBio</p>
-            @if (string.IsNullOrWhiteSpace(Page.Settings.AboutMarkdown)) { <p>More about this homestead soon.</p> }
-            else { <div class="prose-content">@((MarkupString)Markdown.Render(About, Page.Preview))</div> }
+            <header data-about-profile>
+                @if (AboutImage is { } featured)
+                { <img data-about-image src="@ImageUrl(featured)" alt="@Page.Settings.AboutImageAltText" /> }
+                <div data-about-identity>
+                    @if (Brand(Page.Settings.AvatarMediaId) is { } avatar)
+                    { <img data-about-avatar src="@ImageUrl(avatar)" alt="" /> }
+                    <div>
+                        <h1>@Page.Settings.DisplayAuthor</h1>
+                        @if (!string.IsNullOrWhiteSpace(Page.Settings.AuthorBio)) { <p>@Page.Settings.AuthorBio</p> }
+                    </div>
+                </div>
+            </header>
+            <div class="prose-content" data-about-body>
+                @if (string.IsNullOrWhiteSpace(Page.Settings.AboutMarkdown)) { <p>More about this homestead soon.</p> }
+                else { @((MarkupString)Markdown.Render(About, Page.Preview)) }
+            </div>
         }
         else
         {
@@ -136,10 +146,11 @@
         : Page.Path == "/about/" && !string.IsNullOrWhiteSpace(Page.Settings.AuthorBio) ? Page.Settings.AuthorBio : DiscoveryFiles.SiteDescription(Page.Settings);
     private string Absolute(string path) => DiscoveryFiles.Absolute(Page.Settings, path);
     private string Canonical => Absolute(Page.GalleryImageId is not null ? Page.Path : Page.Article is { } post ? $"/posts/{post.Slug}/" : Page.Path);
-    private string SocialImage => Absolute((GalleryImage ?? Page.Article?.Media.SingleOrDefault(x => x.Id == Page.Article.CoverMediaId)
+    private string SocialImage => Absolute(((Page.Path == "/about/" ? AboutImage : null) ?? GalleryImage ?? Page.Article?.Media.SingleOrDefault(x => x.Id == Page.Article.CoverMediaId)
         ?? Page.Article?.Media.FirstOrDefault() ?? Brand(Page.Settings.HeaderMediaId) ?? Brand(Page.Settings.AvatarMediaId)
         ?? Brand(Page.Settings.LogoMediaId))?.Url ?? "/assets/social-default.png");
     private ArticleMedia? Brand(Guid? id) => Page.Branding?.SingleOrDefault(x => x.Id == id);
+    private ArticleMedia? AboutImage => Brand(Page.Settings.AboutImageMediaId);
     private string FaviconUrl => Brand(Page.Settings.FaviconMediaId) is { } favicon ? ImageUrl(favicon)
         : HomesteadIconUrl;
     private string HomesteadIconUrl => Page.Preview ? "/logo.png" : "/assets/favicon.png";
