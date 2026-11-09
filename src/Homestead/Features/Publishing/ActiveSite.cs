@@ -51,7 +51,9 @@ public sealed class ActiveSite(StoragePaths paths, ILogger<ActiveSite> logger)
     private static bool SafeRelativePath(string path) => !Path.IsPathRooted(path) && !path.Contains('\\') &&
         path.Split('/').All(x => x.Length > 0 && x is not ("." or ".."));
 
-    public async Task ServeAsync(HttpContext context)
+    // Return the canonical page path only after a successful HTML response, so the
+    // public endpoint can count views without guessing whether a file was served.
+    public async Task<string?> ServeAsync(HttpContext context)
     {
         var request = context.Request.Path.Value ?? "/";
         var relative = request.TrimStart('/');
@@ -64,11 +66,11 @@ public sealed class ActiveSite(StoragePaths paths, ILogger<ActiveSite> logger)
             {
                 var manifest = Current;
                 if (manifest is null || !SafeRelativePath(relative) || !manifest.Files.Contains(relative, StringComparer.Ordinal))
-                { context.Response.StatusCode = 404; return; }
+                { context.Response.StatusCode = 404; return null; }
                 if (!request.EndsWith('/') && relative.EndsWith("/index.html") && !request.EndsWith("/index.html"))
-                { context.Response.Redirect(request + "/", permanent: true); return; }
+                { context.Response.Redirect(request + "/", permanent: true); return null; }
                 var file = Path.Combine(Root(manifest), relative);
-                if (!new FileExtensionContentTypeProvider().TryGetContentType(file, out type)) { context.Response.StatusCode = 404; return; }
+                if (!new FileExtensionContentTypeProvider().TryGetContentType(file, out type)) { context.Response.StatusCode = 404; return null; }
                 // Open under the same gate as cleanup; FileShare.Delete lets an in-flight response finish.
                 stream = new FileStream(file, FileMode.Open, FileAccess.Read, FileShare.Read | FileShare.Delete);
             }
@@ -78,8 +80,11 @@ public sealed class ActiveSite(StoragePaths paths, ILogger<ActiveSite> logger)
             else if (relative == "sitemap.xml") context.Response.ContentType = "application/xml; charset=utf-8";
             context.Response.Headers.CacheControl = "no-cache";
             if (!HttpMethods.IsHead(context.Request.Method)) await stream.CopyToAsync(context.Response.Body, context.RequestAborted);
+            if (context.Response.StatusCode == StatusCodes.Status200OK && type == "text/html")
+                return relative == "index.html" ? "/" : "/" + (relative.EndsWith("/index.html", StringComparison.Ordinal) ? relative[..^10] : relative);
         }
         catch (FileNotFoundException) { context.Response.StatusCode = 503; }
         catch (DirectoryNotFoundException) { context.Response.StatusCode = 503; }
+        return null;
     }
 }

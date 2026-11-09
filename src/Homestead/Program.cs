@@ -2,6 +2,7 @@ using System.Net;
 using System.Threading.RateLimiting;
 using Homestead.Data;
 using Homestead.Data.Entities;
+using Homestead.Features.Analytics;
 using Homestead.Features.Articles;
 using Homestead.Features.Authentication;
 using Homestead.Features.Export;
@@ -64,6 +65,7 @@ builder.Services.AddSingleton<SetupLock>();
 builder.Services.AddScoped<SetupService>();
 builder.Services.AddSingleton<PublicationLock>();
 builder.Services.AddSingleton<ActiveSite>();
+builder.Services.AddSingleton<AnalyticsService>();
 builder.Services.AddSingleton<IGenerationActivation, GenerationActivation>();
 builder.Services.AddSingleton<SafeMarkdown>();
 builder.Services.AddScoped<ArticleService>();
@@ -135,6 +137,7 @@ await using (var scope = app.Services.CreateAsyncScope())
         await scope.ServiceProvider.GetRequiredService<PublishingService>().RebuildAsync();
 }
 app.UseForwardedHeaders();
+await app.Services.GetRequiredService<AnalyticsService>().InitializeAsync();
 if (!app.Environment.IsDevelopment())
 {
     if (app.Configuration.GetValue<bool>("HOMESTEAD_HTTPS_AT_EDGE"))
@@ -232,7 +235,11 @@ app.MapGet("/admin/media/{id:guid}", async (Guid id, bool? original, HttpContext
     return File.Exists(file) ? Results.File(file, asset.MimeType) : Results.NotFound();
 }).RequireAuthorization();
 app.MapGet("/admin/media/{**path}", () => Results.NotFound()).RequireAuthorization();
-app.MapMethods("/{**path}", ["GET", "HEAD"], (HttpContext context, ActiveSite active) => active.ServeAsync(context));
+app.MapMethods("/{**path}", ["GET", "HEAD"], async (HttpContext context, ActiveSite active, AnalyticsService analytics) =>
+{
+    var page = await active.ServeAsync(context);
+    if (page is not null) await analytics.RecordAsync(context, page);
+});
 await app.RunAsync();
 
 public partial class Program;

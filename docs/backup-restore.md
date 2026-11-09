@@ -23,6 +23,11 @@ Caddy certificates, reverse-proxy configuration, and the application image are
 not included; preserve those separately. Saved canonical URL and branding are
 included in SQLite.
 
+Analytics opt-in settings and aggregate page counters are included in SQLite backups
+and survive restore. A restored enabled installation resumes counting anonymous
+public HTML requests after startup. These private counters and settings are excluded
+from static and Hugo exports.
+
 Scheduled posts include their frozen snapshots, UTC due times, and retry state in
 SQLite. Restoring resumes pending schedules; overdue copies publish on the next
 worker check. Later draft edits remain separate. Static ZIPs contain only currently

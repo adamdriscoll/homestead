@@ -56,6 +56,32 @@ later draft edits into a retry. Any successful rebuild can activate already comm
 changes. Disabled post types wait and retry until enabled, or can be cancelled
 before commitment. Saved schedules survive restart and full backup/restore.
 
+## Optional page-view analytics
+
+Open **Analytics** from the account menu or dashboard, enable **Count public page
+views**, and save. Analytics is off for new and upgraded installations. The switch
+applies immediately without rebuilding the site. The dashboard shows the all-time
+total while enabled; Analytics lists all recorded page paths and counts, including
+pages later unpublished or deleted. Disabling stops increments and retains history.
+
+Only successful anonymous GET requests for generated HTML pages count. Logged-in
+visitors, administration, previews, account/setup/newsletter endpoints, health
+checks, assets, RSS, sitemaps, HEAD requests, redirects, and errors do not count.
+Directory and `index.html` aliases share one path; query strings are discarded.
+Repeat requests count again. This measures page views, not unique readers.
+
+DeviceDetector.NET's user-agent bot parser excludes known crawlers and AI agents,
+with additional filtering for obvious command-line clients and browser automation.
+Missing or oversized user agents are skipped. Agents disguising themselves as
+ordinary browsers can still count; this is best-effort filtering, not bot blocking.
+No tracking JavaScript, cookies, IP addresses, referrers, raw user agents, or visitor
+identifiers are stored. Only paths and aggregate counters live in private SQLite.
+Counting occurs after static HTML is served and uses the shared mutation lock;
+database failures are logged and do not prevent page delivery. Aborted requests or
+failed increments can be missed. Static/Hugo exports do not collect analytics;
+an upstream cache serving a response without contacting Homestead cannot be counted.
+No new environment configuration or runtime service is required.
+
 ## Optional Brevo newsletter
 
 Open **Settings → Newsletter**, enter a Brevo API key, verified sender email, and

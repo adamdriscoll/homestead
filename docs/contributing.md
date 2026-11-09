@@ -74,6 +74,18 @@ The automated-backups migration creates a separate private configuration/status
 table. It does not alter posts or public theme models, and existing installations
 start with backups disabled.
 
+`AnalyticsTests` covers disabled defaults, authenticated/antiforgery configuration,
+anonymous HTML-only counting, canonical paths, bot/AI/automation exclusions,
+concurrent increments, all five built-in themes and private previews, write-failure
+isolation, restart, and full backup/restore. The basic-analytics migration adds
+separate private `AnalyticsSettings` and `PageViews` tables without rebuilding
+`Posts` or changing publication triggers. No public theme model, environment
+configuration, or runtime service changes are required. The exact DeviceDetector.NET
+dependency bundles its bot rules; update it to refresh parser coverage. Browser
+analytics tests cover ordinary forms with and without JavaScript, anonymous/author
+and bot requests, dashboard totals, retained disabled counts, mobile layouts, and
+light/dark appearance, using disposable containers.
+
 ### Browser tests
 
 `tests/Homestead.Playwright` is a separate Node.js 24 project using Playwright Test.
